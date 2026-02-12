@@ -87,6 +87,7 @@ model User {
   profileBackgroundUrl   String?   @db.Text
   favoriteChampion       String?
   bestWinrateChampion    String?
+  inviteCode             String?   @unique
 
   createdAt              DateTime  @default(now())
   updatedAt              DateTime  @updatedAt
@@ -106,6 +107,8 @@ model User {
   profileLikesSent       ProfileLike[]       @relation("ProfileLikesSent")
   supportTickets         SupportTicket[]
   reports                 Report[]
+  referralsSent           Referral[]          @relation("ReferralsSent")
+  referredBy              Referral?            @relation("ReferredBy")
 
   @@map("users")
 }
@@ -296,4 +299,20 @@ model Report {
   @@index([userId])
   @@index([status])
   @@map("reports")
+}
+
+model Referral {
+  id            String   @id @default(cuid())
+  inviterId     String
+  invitedUserId String
+  inviteCode    String
+  createdAt     DateTime @default(now())
+
+  inviter   User @relation("ReferralsSent", fields: [inviterId], references: [id], onDelete: Cascade)
+  invitedUser User @relation("ReferredBy", fields: [invitedUserId], references: [id], onDelete: Cascade)
+
+  @@unique([invitedUserId])
+  @@index([inviterId])
+  @@index([inviteCode])
+  @@map("referrals")
 }

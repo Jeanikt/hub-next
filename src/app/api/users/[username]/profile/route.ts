@@ -4,6 +4,41 @@ import { getRoleLabel } from "@/src/lib/roles";
 
 type Params = { params: Promise<{ username: string }> };
 
+const PROFILE_SELECT_FULL = {
+  id: true,
+  name: true,
+  username: true,
+  image: true,
+  elo: true,
+  level: true,
+  xp: true,
+  rank: true,
+  riotId: true,
+  tagline: true,
+  primaryRole: true,
+  secondaryRole: true,
+  profileBackgroundUrl: true,
+  favoriteChampion: true,
+  bestWinrateChampion: true,
+  isOnline: true,
+} as const;
+
+const PROFILE_SELECT_MINIMAL = {
+  id: true,
+  name: true,
+  username: true,
+  image: true,
+  elo: true,
+  level: true,
+  xp: true,
+  rank: true,
+  riotId: true,
+  tagline: true,
+  primaryRole: true,
+  secondaryRole: true,
+  isOnline: true,
+} as const;
+
 /** GET /api/users/[username]/profile – perfil público com estatísticas */
 export async function GET(_request: Request, { params }: Params) {
   const { username } = await params;
@@ -11,27 +46,27 @@ export async function GET(_request: Request, { params }: Params) {
     return NextResponse.json({ message: "Username é obrigatório." }, { status: 422 });
   }
 
-  const user = await prisma.user.findUnique({
-    where: { username, isBanned: false },
-    select: {
-      id: true,
-      name: true,
-      username: true,
-      image: true,
-      elo: true,
-      level: true,
-      xp: true,
-      rank: true,
-      riotId: true,
-      tagline: true,
-      primaryRole: true,
-      secondaryRole: true,
-      profileBackgroundUrl: true,
-      favoriteChampion: true,
-      bestWinrateChampion: true,
-      isOnline: true,
-    },
-  });
+  let user: Record<string, unknown> | null = null;
+  try {
+    user = await prisma.user.findUnique({
+      where: { username, isBanned: false },
+      select: PROFILE_SELECT_FULL,
+    });
+  } catch (e: unknown) {
+    if ((e as { code?: string })?.code === "P2022") {
+      user = await prisma.user.findUnique({
+        where: { username, isBanned: false },
+        select: PROFILE_SELECT_MINIMAL,
+      });
+      if (user) {
+        user.profileBackgroundUrl = null;
+        user.favoriteChampion = null;
+        user.bestWinrateChampion = null;
+      }
+    } else {
+      throw e;
+    }
+  }
 
   if (!user) {
     return NextResponse.json({ message: "Perfil não encontrado." }, { status: 404 });
@@ -40,16 +75,16 @@ export async function GET(_request: Request, { params }: Params) {
   const [friendsCount, likesCount, missionsCompletedCount] = await Promise.all([
     prisma.friend.count({
       where: {
-        OR: [{ userId: user.id }, { friendId: user.id }],
+        OR: [{ userId: user.id as string }, { friendId: user.id as string }],
         status: "accepted",
       },
-    }),
-    prisma.profileLike.count({ where: { targetUserId: user.id } }),
-    prisma.userMission.count({ where: { userId: user.id } }),
+    }).catch(() => 0),
+    prisma.profileLike.count({ where: { targetUserId: user.id as string } }).catch(() => 0),
+    prisma.userMission.count({ where: { userId: user.id as string } }).catch(() => 0),
   ]);
 
   const { progressToNextLevel } = await import("@/src/lib/xpLevel");
-  const xpProgress = progressToNextLevel(user.xp);
+  const xpProgress = progressToNextLevel(user.xp as number);
 
   return NextResponse.json({
     ...user,
@@ -58,7 +93,7 @@ export async function GET(_request: Request, { params }: Params) {
     likesCount,
     missionsCompletedCount,
     xpProgress,
-    primaryRoleLabel: getRoleLabel(user.primaryRole),
-    secondaryRoleLabel: getRoleLabel(user.secondaryRole),
+    primaryRoleLabel: getRoleLabel(user.primaryRole as string | null),
+    secondaryRoleLabel: getRoleLabel(user.secondaryRole as string | null),
   });
 }

@@ -32,13 +32,29 @@ export function xpToNextLevel(currentLevel: number): number {
   return forNext - forCurrent;
 }
 
-/** Progresso 0–1 para o próximo nível (dado XP total). */
-export function progressToNextLevel(totalXp: number): { level: number; currentXpInLevel: number; xpNeeded: number; progress: number } {
+/** Progresso para o próximo nível (dado XP total). */
+export function progressToNextLevel(totalXp: number): {
+  level: number;
+  nextLevel: number;
+  currentXpInLevel: number;
+  xpNeeded: number;
+  xpNeededForNext: number;
+  progress: number;
+  progressPercent: number;
+} {
   const level = levelFromXp(totalXp);
   const xpAtLevelStart = xpRequiredForLevel(level);
   const xpAtNextLevel = xpRequiredForLevel(level + 1);
   const xpNeeded = xpAtNextLevel - xpAtLevelStart;
   const currentXpInLevel = totalXp - xpAtLevelStart;
   const progress = xpNeeded <= 0 ? 1 : Math.min(1, currentXpInLevel / xpNeeded);
-  return { level, currentXpInLevel, xpNeeded, progress };
+  return {
+    level,
+    nextLevel: level + 1,
+    currentXpInLevel,
+    xpNeeded,
+    xpNeededForNext: xpNeeded,
+    progress,
+    progressPercent: Math.round(progress * 100),
+  };
 }

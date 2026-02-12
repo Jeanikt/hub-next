@@ -3,7 +3,8 @@
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
 import { useSession } from "next-auth/react";
-import { Users, LogOut, CheckCircle2 } from "lucide-react";
+import Link from "next/link";
+import { Users, LogOut, CheckCircle2, Swords, ChevronLeft } from "lucide-react";
 
 type QueueStatus = {
   status?: Record<
@@ -98,52 +99,70 @@ export default function WaitingRoomPage() {
   const players = data?.queuePlayers ?? data?.status?.[type]?.players ?? [];
   const count = players.length;
   const label = type.replace("_", " ").toUpperCase();
+  const needed = 10;
 
   return (
     <div className="space-y-8">
       {matchFoundAlert && (
-        <div className="rounded-2xl border-2 border-[var(--hub-accent)] bg-[var(--hub-accent)]/20 p-5 text-center">
+        <div className="rounded-2xl border-2 border-[var(--hub-accent)] bg-[var(--hub-accent)]/20 p-6 text-center clip-card">
           <p className="text-lg font-bold uppercase tracking-wider text-[var(--hub-accent)]">
             Partida encontrada!
           </p>
           <p className="mt-1 text-sm text-[var(--hub-text-muted)]">Redirecionando para o lobby...</p>
         </div>
       )}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-black uppercase tracking-tight text-[var(--hub-text)] md:text-3xl">
+          <Link
+            href="/queue"
+            className="mb-2 inline-flex items-center gap-1 text-sm text-[var(--hub-text-muted)] hover:text-[var(--hub-accent)]"
+          >
+            <ChevronLeft size={16} />
+            Voltar às filas
+          </Link>
+          <h1 className="text-2xl font-black uppercase tracking-tight text-[var(--hub-text)] md:text-3xl flex items-center gap-2">
+            <Swords className="text-[var(--hub-accent)]" size={28} />
             Sala de espera
           </h1>
-          <p className="mt-1 flex items-center gap-2 text-sm text-[var(--hub-text-muted)]">
-            <span className="rounded bg-[var(--hub-accent)]/20 px-2 py-0.5 font-semibold text-[var(--hub-accent)]">
+          <p className="mt-2 flex flex-wrap items-center gap-2 text-sm text-[var(--hub-text-muted)]">
+            <span className="rounded-lg bg-[var(--hub-accent)]/20 px-2.5 py-1 font-semibold text-[var(--hub-accent)]">
               {label}
             </span>
-            · {count}/10 jogadores
+            <span className="text-[var(--hub-text)]">
+              <strong>{count}</strong>/{needed} jogadores
+            </span>
           </p>
         </div>
         <button
           onClick={leaveQueue}
           disabled={leaving}
-          className="flex items-center justify-center gap-2 rounded-xl border border-[var(--hub-border)] bg-[var(--hub-bg-card)] px-5 py-2.5 text-sm font-medium text-[var(--hub-text)] hover:bg-[var(--hub-bg-elevated)] disabled:opacity-50"
+          className="flex items-center justify-center gap-2 rounded-xl border border-[var(--hub-border)] bg-[var(--hub-bg-card)] px-5 py-2.5 text-sm font-medium text-[var(--hub-text)] hover:bg-[var(--hub-bg-elevated)] disabled:opacity-50 clip-button shrink-0"
         >
           <LogOut size={18} />
           {leaving ? "Saindo..." : "Sair da fila"}
         </button>
-      </div>
+      </header>
 
-      <div className="rounded-2xl border border-[var(--hub-border)] bg-[var(--hub-bg-card)] overflow-hidden hub-animate-slide-up shadow-xl">
-        <div className="border-b border-[var(--hub-border)] bg-[var(--hub-bg-elevated)] px-5 py-4">
+      <div className="rounded-2xl border border-[var(--hub-border)] bg-[var(--hub-bg-card)] overflow-hidden clip-card shadow-xl">
+        <div className="border-b border-[var(--hub-border)] bg-[var(--hub-bg-elevated)] px-6 py-4">
           <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--hub-text-muted)]">
             <Users size={16} />
-            Jogadores na fila · Partida inicia quando completar 10
+            Jogadores na fila · Partida inicia quando completar {needed}
           </p>
+          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-black/40">
+            <div
+              className="h-full rounded-full bg-[var(--hub-accent)] transition-all duration-500"
+              style={{ width: `${(count / needed) * 100}%` }}
+            />
+          </div>
         </div>
-        <div className="p-5">
+        <div className="p-6">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
             {players.map((p) => (
               <div
                 key={p.id}
-                className="flex items-center gap-3 rounded-xl border border-[var(--hub-border)] bg-[var(--hub-bg)]/80 p-3"
+                className="flex items-center gap-3 rounded-xl border border-[var(--hub-border)] bg-[var(--hub-bg)]/80 p-3 clip-button"
               >
                 <span className="flex h-2 w-2 shrink-0 rounded-full bg-[var(--hub-accent)]" />
                 {p.avatar_url ? (
@@ -159,7 +178,7 @@ export default function WaitingRoomPage() {
                 )}
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium text-[var(--hub-text)]">
-                    {p.username ?? `#${p.id}`}
+                    {p.username ?? `Jogador #${p.id}`}
                   </p>
                   <p className="text-xs text-[var(--hub-text-muted)]">
                     ELO {p.elo} · Nível {p.level}
@@ -168,10 +187,10 @@ export default function WaitingRoomPage() {
                 <CheckCircle2 size={18} className="shrink-0 text-[var(--hub-accent)]" />
               </div>
             ))}
-            {Array.from({ length: Math.max(0, 10 - count) }).map((_, i) => (
+            {Array.from({ length: Math.max(0, needed - count) }).map((_, i) => (
               <div
                 key={`empty-${i}`}
-                className="flex items-center justify-center rounded-xl border border-dashed border-[var(--hub-border)] bg-[var(--hub-bg)]/40 p-6"
+                className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[var(--hub-border)] bg-[var(--hub-bg)]/40 p-6 min-h-[80px]"
               >
                 <span className="text-xs text-[var(--hub-text-muted)]">Aguardando...</span>
               </div>

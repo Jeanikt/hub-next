@@ -4,6 +4,64 @@ import { prisma } from "@/src/lib/prisma";
 import { toSafeUser } from "@/src/types/api";
 import { progressToNextLevel } from "@/src/lib/xpLevel";
 
+/** Limpa ban expirado (bannedUntil no passado) e retorna o usuário atualizado. */
+async function clearExpiredBanAndGetUser(userId: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { isBanned: true, bannedUntil: true, banReason: true },
+  });
+  if (!user) return null;
+  if (user.bannedUntil && new Date(user.bannedUntil) < new Date()) {
+    await prisma.user.update({
+      where: { id: userId },
+      data: { isBanned: false, bannedUntil: null, banReason: null },
+    });
+    return { isBanned: false, bannedUntil: null };
+  }
+  return { isBanned: user.isBanned, bannedUntil: user.bannedUntil };
+}
+
+const ME_SELECT_FULL = {
+  id: true,
+  name: true,
+  email: true,
+  username: true,
+  image: true,
+  rank: true,
+  elo: true,
+  xp: true,
+  level: true,
+  isAdmin: true,
+  onboardingCompleted: true,
+  riotId: true,
+  tagline: true,
+  primaryRole: true,
+  secondaryRole: true,
+  profileBackgroundUrl: true,
+  favoriteChampion: true,
+  bestWinrateChampion: true,
+  isOnline: true,
+} as const;
+
+const ME_SELECT_MINIMAL = {
+  id: true,
+  name: true,
+  email: true,
+  username: true,
+  image: true,
+  rank: true,
+  elo: true,
+  xp: true,
+  level: true,
+  isAdmin: true,
+  onboardingCompleted: true,
+  riotId: true,
+  tagline: true,
+  primaryRole: true,
+  secondaryRole: true,
+  isOnline: true,
+} as const;
+
 /** GET /api/me – retorna o usuário autenticado (SafeUser + campos de perfil e progresso). */
 export async function GET() {
   const session = await auth();
@@ -11,30 +69,55 @@ export async function GET() {
     return NextResponse.json({ message: "Não autenticado." }, { status: 401 });
   }
 
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      username: true,
-      image: true,
-      rank: true,
-      elo: true,
-      xp: true,
-      level: true,
-      isAdmin: true,
-      onboardingCompleted: true,
-      riotId: true,
-      tagline: true,
-      primaryRole: true,
-      secondaryRole: true,
-      profileBackgroundUrl: true,
-      favoriteChampion: true,
-      bestWinrateChampion: true,
-      isOnline: true,
-    },
-  });
+  let banStatus: { isBanned: boolean; bannedUntil: Date | null } | null = null;
+  try {
+    banStatus = await clearExpiredBanAndGetUser(session.user.id);
+  } catch {
+    // Colunas de ban podem não existir
+  }
+
+  let user: {
+    id: string;
+    name: string | null;
+    email: string | null;
+    username: string | null;
+    image: string | null;
+    rank: string | null;
+    elo: number;
+    xp: number;
+    level: number;
+    isAdmin: boolean;
+    onboardingCompleted: boolean;
+    riotId: string | null;
+    tagline: string | null;
+    primaryRole: string | null;
+    secondaryRole: string | null;
+    isOnline: boolean;
+    profileBackgroundUrl?: string | null;
+    favoriteChampion?: string | null;
+    bestWinrateChampion?: string | null;
+  } | null = null;
+
+  try {
+    user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: ME_SELECT_FULL,
+    });
+  } catch (e: unknown) {
+    if ((e as { code?: string })?.code === "P2022") {
+      user = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: ME_SELECT_MINIMAL,
+      });
+      if (user) {
+        (user as { profileBackgroundUrl?: null }).profileBackgroundUrl = null;
+        (user as { favoriteChampion?: null }).favoriteChampion = null;
+        (user as { bestWinrateChampion?: null }).bestWinrateChampion = null;
+      }
+    } else {
+      throw e;
+    }
+  }
 
   if (!user) {
     return NextResponse.json({ message: "Usuário não encontrado." }, { status: 404 });
@@ -53,13 +136,15 @@ export async function GET() {
     tagline: user.tagline,
     primaryRole: user.primaryRole,
     secondaryRole: user.secondaryRole,
-    profileBackgroundUrl: user.profileBackgroundUrl,
-    favoriteChampion: user.favoriteChampion,
-    bestWinrateChampion: user.bestWinrateChampion,
+    profileBackgroundUrl: user.profileBackgroundUrl ?? null,
+    favoriteChampion: user.favoriteChampion ?? null,
+    bestWinrateChampion: user.bestWinrateChampion ?? null,
     isOnline: user.isOnline,
     friendsCount,
     likesCount,
     missionsCompletedCount,
     xpProgress: progress,
+    isBanned: banStatus?.isBanned ?? false,
+    bannedUntil: banStatus?.bannedUntil ?? null,
   });
 }

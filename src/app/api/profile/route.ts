@@ -38,6 +38,7 @@ export async function PATCH(request: NextRequest) {
   if (data.username) {
     const existing = await prisma.user.findFirst({
       where: { username: data.username, id: { not: session.user.id } },
+      select: { id: true },
     });
     if (existing) {
       return NextResponse.json({ message: "Este username já está em uso." }, { status: 409 });

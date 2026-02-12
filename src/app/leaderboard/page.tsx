@@ -3,8 +3,9 @@ import { type Metadata } from "next";
 import { prisma } from "@/src/lib/prisma";
 
 export const metadata: Metadata = {
-  title: "Leaderboard | HUBEXPRESSO",
-  description: "Ranking por ELO – HUBEXPRESSO",
+  title: "Ranking e Leaderboard",
+  description: "Ranking dos melhores players por ELO no HUBEXPRESSO. Veja nível, rank e posição no leaderboard de Valorant.",
+  openGraph: { title: "Leaderboard – HUBEXPRESSO", description: "Ranking por ELO dos players." },
 };
 
 async function getLeaderboard() {

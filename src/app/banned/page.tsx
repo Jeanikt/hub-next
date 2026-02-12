@@ -9,12 +9,24 @@ export default async function BannedPage() {
     redirect("/login");
   }
 
-  const user = await prisma.user.findUnique({
+  let user = await prisma.user.findUnique({
     where: { id: session.user.id },
     select: { isBanned: true, bannedUntil: true, banReason: true },
   });
 
-  if (!user?.isBanned && !user?.bannedUntil) {
+  if (!user) {
+    redirect("/dashboard");
+  }
+
+  if (user.bannedUntil && new Date(user.bannedUntil) < new Date()) {
+    await prisma.user.update({
+      where: { id: session.user.id },
+      data: { isBanned: false, bannedUntil: null, banReason: null },
+    });
+    redirect("/dashboard");
+  }
+
+  if (!user.isBanned && !user.bannedUntil) {
     redirect("/dashboard");
   }
 

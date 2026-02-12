@@ -4,6 +4,8 @@ import { Providers } from "./providers";
 import { Sidebar } from "./components/Sidebar";
 import { ChatWidget } from "./components/ChatWidget";
 import { MissionBadge } from "./components/MissionBadge";
+import { ReferralAttribute } from "./components/ReferralAttribute";
+import { JsonLdOrganization, JsonLdWebSite } from "./components/JsonLd";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -16,9 +18,62 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const siteName = "HUBEXPRESSO";
+const defaultDescription =
+  "Hub de players para Valorant – Matchmaking, partidas competitivas, ranking por ELO, filas por nível e integração com conta Riot. Entre na comunidade.";
+const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://dev.hubexpresso.com";
+
 export const metadata: Metadata = {
-  title: "HUBEXPRESSO",
-  description: "Hub de players para Valorant – Matchmaking e partidas competitivas.",
+  metadataBase: new URL(baseUrl),
+  title: {
+    default: `${siteName} – Hub de players Valorant | Matchmaking e partidas`,
+    template: `%s | ${siteName}`,
+  },
+  description: defaultDescription,
+  keywords: [
+    "Valorant",
+    "matchmaking",
+    "partidas competitivas",
+    "ranking ELO",
+    "hub players",
+    "fila ranqueada",
+    "Riot Games",
+    "comunidade Valorant",
+  ],
+  authors: [{ name: siteName, url: baseUrl }],
+  creator: siteName,
+  publisher: siteName,
+  formatDetection: { email: false, address: false, telephone: false },
+  openGraph: {
+    type: "website",
+    locale: "pt_BR",
+    url: baseUrl,
+    siteName,
+    title: `${siteName} – Hub de players Valorant`,
+    description: defaultDescription,
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: siteName,
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: `${siteName} – Hub de players Valorant`,
+    description: defaultDescription,
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true },
+  },
+  verification: {
+    google: process.env.GOOGLE_SITE_VERIFICATION,
+  },
+  alternates: { canonical: baseUrl },
 };
 
 export default function RootLayout({
@@ -32,6 +87,8 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         style={{ background: "var(--hub-bg)", color: "var(--hub-text)" }}
       >
+        <JsonLdOrganization />
+        <JsonLdWebSite />
         <div className="min-h-screen relative overflow-x-hidden">
           <div className="fixed inset-0 z-0 hub-noise" aria-hidden />
           <div
@@ -48,6 +105,7 @@ export default function RootLayout({
           <Providers>
             <Sidebar />
             <MissionBadge />
+            <ReferralAttribute />
             <ChatWidget />
             <main className="relative z-10 min-h-screen pt-14 md:pt-0 md:pl-64">
               <div className="mx-auto max-w-6xl px-4 py-6 md:py-8">{children}</div>

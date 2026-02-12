@@ -52,9 +52,19 @@ export const sendLobbyMessageSchema = z.object({
   content: z.string().min(1).max(2_000).trim(),
 });
 
+/** Durações de suspensão em milissegundos (10m, 1h, 4h, 24h, 7d) */
+export const BAN_DURATION_MS = {
+  "10m": 10 * 60 * 1000,
+  "1h": 60 * 60 * 1000,
+  "4h": 4 * 60 * 60 * 1000,
+  "24h": 24 * 60 * 60 * 1000,
+  "7d": 7 * 24 * 60 * 60 * 1000,
+} as const;
+
 export const adminBanSchema = z.object({
   reason: z.string().min(1).max(500).default("Violação das regras"),
   permanent: z.boolean().optional(),
+  duration: z.enum(["10m", "1h", "4h", "24h", "7d"]).optional(),
   banned_until: z.string().datetime().optional().nullable(),
 });
 

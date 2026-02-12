@@ -88,25 +88,28 @@ export default function ProfileEditPage() {
 
   if (status === "loading" || !session) {
     return (
-      <div className="flex justify-center py-12">
-        <div className="hub-loading-spinner" />
+      <div className="flex min-h-[40vh] items-center justify-center rounded-2xl border border-[var(--hub-border)] bg-[var(--hub-bg-card)] clip-card">
+        <div className="text-center">
+          <div className="hub-loading-spinner mx-auto mb-4" />
+          <p className="text-sm font-medium text-[var(--hub-text-muted)]">Carregando...</p>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="max-w-xl mx-auto">
-      <div className="border-l-4 border-[var(--hub-accent)] pl-6 py-2 mb-8">
-        <p className="text-xs font-bold uppercase tracking-[0.25em] text-[var(--hub-accent)]">
+      <header className="border-l-4 border-[var(--hub-accent)] pl-6 py-2 mb-8">
+        <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--hub-accent)]">
           Configurações
         </p>
-        <h1 className="mt-2 text-2xl font-black uppercase tracking-tight text-[var(--hub-text)]">
+        <h1 className="mt-2 text-2xl font-black uppercase tracking-tight text-[var(--hub-text)] md:text-3xl">
           Editar perfil
         </h1>
-        <p className="text-sm text-[var(--hub-text-muted)] mt-1">
+        <p className="mt-1 text-sm text-[var(--hub-text-muted)]">
           Nome, username, foto, background, funções na fila e campeão favorito.
         </p>
-      </div>
+      </header>
 
       <div
         className="bg-[var(--hub-bg-card)] border border-[var(--hub-border)] p-8 rounded-2xl clip-card"
@@ -114,155 +117,176 @@ export default function ProfileEditPage() {
       >
         <form onSubmit={handleSubmit} className="space-y-6">
           {error && (
-            <div className="p-3 rounded-lg text-sm border border-red-500/30 bg-red-500/10 text-red-400" role="alert">
+            <div className="p-4 rounded-xl text-sm border border-red-500/30 bg-red-500/10 text-red-400" role="alert">
               {error}
             </div>
           )}
           {success && (
-            <div className="p-3 rounded-lg text-sm border border-green-500/30 bg-green-500/10 text-green-400" role="alert">
-              Perfil atualizado.
+            <div className="p-4 rounded-xl text-sm border border-[var(--hub-accent)]/50 bg-[var(--hub-accent)]/10 text-[var(--hub-accent)]" role="alert">
+              Perfil atualizado com sucesso.
             </div>
           )}
 
-          <div>
-            <label className="block text-sm font-medium uppercase tracking-wider text-[var(--hub-text-muted)] mb-2">
-              Nome
-            </label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full px-4 py-3 bg-black/30 border border-[var(--hub-border)] text-white focus:border-[var(--hub-accent)] focus:outline-none clip-button"
-              placeholder="Seu nome"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium uppercase tracking-wider text-[var(--hub-text-muted)] mb-2">
-              Username
-            </label>
-            <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              pattern="[a-zA-Z0-9_-]+"
-              className="w-full px-4 py-3 bg-black/30 border border-[var(--hub-border)] text-white focus:border-[var(--hub-accent)] focus:outline-none clip-button"
-              placeholder="username"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium uppercase tracking-wider text-[var(--hub-text-muted)] mb-2">
-              Riot ID
-            </label>
-            <input
-              type="text"
-              value={riotId}
-              onChange={(e) => setRiotId(e.target.value)}
-              className="w-full px-4 py-3 bg-black/30 border border-[var(--hub-border)] text-white focus:border-[var(--hub-accent)] focus:outline-none clip-button"
-              placeholder="Nome#BR1"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium uppercase tracking-wider text-[var(--hub-text-muted)] mb-2">
-              Tagline
-            </label>
-            <input
-              type="text"
-              value={tagline}
-              onChange={(e) => setTagline(e.target.value)}
-              maxLength={10}
-              className="w-full px-4 py-3 bg-black/30 border border-[var(--hub-border)] text-white focus:border-[var(--hub-accent)] focus:outline-none clip-button"
-              placeholder="BR1"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium uppercase tracking-wider text-[var(--hub-text-muted)] mb-2">
-              URL da foto (avatar)
-            </label>
-            <input
-              type="url"
-              value={image}
-              onChange={(e) => setImage(e.target.value)}
-              className="w-full px-4 py-3 bg-black/30 border border-[var(--hub-border)] text-white focus:border-[var(--hub-accent)] focus:outline-none clip-button"
-              placeholder="https://..."
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium uppercase tracking-wider text-[var(--hub-text-muted)] mb-2">
-              Background do perfil (imagem ou GIF)
-            </label>
-            <input
-              type="url"
-              value={profileBackgroundUrl}
-              onChange={(e) => setProfileBackgroundUrl(e.target.value)}
-              className="w-full px-4 py-3 bg-black/30 border border-[var(--hub-border)] text-white focus:border-[var(--hub-accent)] focus:outline-none clip-button"
-              placeholder="https://..."
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium uppercase tracking-wider text-[var(--hub-text-muted)] mb-2">
-              Campeão favorito
-            </label>
-            <input
-              type="text"
-              value={favoriteChampion}
-              onChange={(e) => setFavoriteChampion(e.target.value)}
-              className="w-full px-4 py-3 bg-black/30 border border-[var(--hub-border)] text-white focus:border-[var(--hub-accent)] focus:outline-none clip-button"
-              placeholder="Ex: Jett, Sage..."
-            />
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
+          <section className="space-y-4">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-[var(--hub-text-muted)] border-b border-[var(--hub-border)] pb-2">
+              Identificação
+            </h2>
             <div>
-              <label className="block text-sm font-medium uppercase tracking-wider text-[var(--hub-text-muted)] mb-2">
-                Função primária (fila)
+              <label className="block text-sm font-medium text-[var(--hub-text-muted)] mb-1.5">
+                Nome
               </label>
-              <select
-                value={primaryRole}
-                onChange={(e) => setPrimaryRole(e.target.value)}
-                className="w-full px-4 py-3 bg-black/30 border border-[var(--hub-border)] text-white focus:border-[var(--hub-accent)] focus:outline-none clip-button"
-              >
-                <option value="">—</option>
-                {ROLES.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.label}
-                  </option>
-                ))}
-              </select>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full px-4 py-3 bg-black/30 border border-[var(--hub-border)] text-white rounded-lg focus:border-[var(--hub-accent)] focus:outline-none transition-colors"
+                placeholder="Seu nome"
+              />
             </div>
             <div>
-              <label className="block text-sm font-medium uppercase tracking-wider text-[var(--hub-text-muted)] mb-2">
-                Função secundária (fila)
+              <label className="block text-sm font-medium text-[var(--hub-text-muted)] mb-1.5">
+                Username
               </label>
-              <select
-                value={secondaryRole}
-                onChange={(e) => setSecondaryRole(e.target.value)}
-                className="w-full px-4 py-3 bg-black/30 border border-[var(--hub-border)] text-white focus:border-[var(--hub-accent)] focus:outline-none clip-button"
-              >
-                <option value="">—</option>
-                {ROLES.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.label}
-                  </option>
-                ))}
-              </select>
+              <input
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                pattern="[a-zA-Z0-9_-]+"
+                className="w-full px-4 py-3 bg-black/30 border border-[var(--hub-border)] text-white rounded-lg focus:border-[var(--hub-accent)] focus:outline-none transition-colors"
+                placeholder="username"
+              />
             </div>
-          </div>
+          </section>
+
+          <section className="space-y-4">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-[var(--hub-text-muted)] border-b border-[var(--hub-border)] pb-2">
+              Riot / Valorant
+            </h2>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="block text-sm font-medium text-[var(--hub-text-muted)] mb-1.5">
+                  Riot ID
+                </label>
+                <input
+                  type="text"
+                  value={riotId}
+                  onChange={(e) => setRiotId(e.target.value)}
+                  className="w-full px-4 py-3 bg-black/30 border border-[var(--hub-border)] text-white rounded-lg focus:border-[var(--hub-accent)] focus:outline-none transition-colors"
+                  placeholder="Nome#BR1"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-[var(--hub-text-muted)] mb-1.5">
+                  Tagline
+                </label>
+                <input
+                  type="text"
+                  value={tagline}
+                  onChange={(e) => setTagline(e.target.value)}
+                  maxLength={10}
+                  className="w-full px-4 py-3 bg-black/30 border border-[var(--hub-border)] text-white rounded-lg focus:border-[var(--hub-accent)] focus:outline-none transition-colors"
+                  placeholder="BR1"
+                />
+              </div>
+            </div>
+          </section>
+
+          <section className="space-y-4">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-[var(--hub-text-muted)] border-b border-[var(--hub-border)] pb-2">
+              Imagens
+            </h2>
+            <div>
+              <label className="block text-sm font-medium text-[var(--hub-text-muted)] mb-1.5">
+                URL da foto (avatar)
+              </label>
+              <input
+                type="url"
+                value={image}
+                onChange={(e) => setImage(e.target.value)}
+                className="w-full px-4 py-3 bg-black/30 border border-[var(--hub-border)] text-white rounded-lg focus:border-[var(--hub-accent)] focus:outline-none transition-colors"
+                placeholder="https://..."
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-[var(--hub-text-muted)] mb-1.5">
+                Background do perfil (URL)
+              </label>
+              <input
+                type="url"
+                value={profileBackgroundUrl}
+                onChange={(e) => setProfileBackgroundUrl(e.target.value)}
+                className="w-full px-4 py-3 bg-black/30 border border-[var(--hub-border)] text-white rounded-lg focus:border-[var(--hub-accent)] focus:outline-none transition-colors"
+                placeholder="https://..."
+              />
+            </div>
+          </section>
+
+          <section className="space-y-4">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-[var(--hub-text-muted)] border-b border-[var(--hub-border)] pb-2">
+              Jogo
+            </h2>
+            <div>
+              <label className="block text-sm font-medium text-[var(--hub-text-muted)] mb-1.5">
+                Campeão favorito
+              </label>
+                <input
+                  type="text"
+                  value={favoriteChampion}
+                  onChange={(e) => setFavoriteChampion(e.target.value)}
+                  className="w-full px-4 py-3 bg-black/30 border border-[var(--hub-border)] text-white focus:border-[var(--hub-accent)] focus:outline-none clip-button"
+                  placeholder="Ex: Jett, Sage..."
+                />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="block text-sm font-medium text-[var(--hub-text-muted)] mb-1.5">
+                  Função primária (fila)
+                </label>
+                <select
+                  value={primaryRole}
+                  onChange={(e) => setPrimaryRole(e.target.value)}
+                  className="w-full px-4 py-3 bg-black/30 border border-[var(--hub-border)] text-white focus:border-[var(--hub-accent)] focus:outline-none clip-button"
+                >
+                  <option value="">—</option>
+                  {ROLES.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-[var(--hub-text-muted)] mb-1.5">
+                  Função secundária (fila)
+                </label>
+                <select
+                  value={secondaryRole}
+                  onChange={(e) => setSecondaryRole(e.target.value)}
+                  className="w-full px-4 py-3 bg-black/30 border border-[var(--hub-border)] text-white focus:border-[var(--hub-accent)] focus:outline-none clip-button"
+                >
+                  <option value="">—</option>
+                  {ROLES.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </section>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-4 px-6 border-2 border-[var(--hub-accent)] bg-[var(--hub-accent)]/20 hover:bg-[var(--hub-accent)] text-white font-bold uppercase tracking-widest text-sm transition-all clip-button disabled:opacity-50"
+            className="w-full py-4 px-6 border-2 border-[var(--hub-accent)] bg-[var(--hub-accent)]/20 hover:bg-[var(--hub-accent)] text-white font-bold uppercase tracking-widest text-sm transition-all clip-button rounded-xl disabled:opacity-50"
           >
-            {loading ? "Salvando…" : "Salvar"}
+            {loading ? "Salvando…" : "Salvar perfil"}
           </button>
         </form>
       </div>
 
-      <p className="mt-6 text-center text-sm">
-        <Link href="/dashboard" className="text-[var(--hub-accent)] hover:underline">
+      <p className="mt-8 text-center">
+        <Link href="/dashboard" className="inline-flex items-center gap-1 text-sm text-[var(--hub-text-muted)] hover:text-[var(--hub-accent)]">
           ← Voltar ao Dashboard
         </Link>
       </p>

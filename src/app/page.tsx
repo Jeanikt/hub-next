@@ -1,5 +1,16 @@
 import Link from "next/link";
 import { auth } from "@/src/lib/auth";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Hub de players Valorant – Matchmaking e partidas competitivas",
+  description:
+    "O seu prime manda aqui. Matchmaking competitivo, partidas equilibradas por ELO, ranking justo e integração com conta Riot. Entre na comunidade HUBEXPRESSO.",
+  openGraph: {
+    title: "HUBEXPRESSO – Hub de players Valorant",
+    description: "Matchmaking competitivo, partidas equilibradas e ranking por ELO. Jogue com seu nível.",
+  },
+};
 
 export default async function Home() {
   const session = await auth();

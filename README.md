@@ -69,6 +69,16 @@ Ou use `npx prisma db seed` (requer `tsx`: `npm i -D tsx`). O seed cria as miss�
 
 Se o banco já existir com tabelas do Auth (Laravel ou outro), pode ser necessário rodar os SQL em `prisma/` (ex.: `create-auth-tables.sql`, `add-users-columns.sql`) antes ou em vez das migrations, conforme o estado do schema.
 
+**Erro "table/column does not exist" (missions, support_tickets, profileBackgroundUrl, etc.):**  
+Se o PostgreSQL foi criado por outro sistema e faltam tabelas/colunas do Prisma, aplique o script que cria apenas o que falta:
+
+```bash
+# No diretório do projeto (substitua pela sua connection string se necessário)
+psql "$DATABASE_URL" -f prisma/apply-missing-postgres.sql
+```
+
+Depois rode `npx prisma generate` e `npm run db:seed`.
+
 ### 4. Subir o projeto
 
 ```bash

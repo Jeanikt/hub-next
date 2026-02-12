@@ -43,12 +43,28 @@ function isOnboardingPath(pathname: string): boolean {
   return pathname.startsWith("/onboarding");
 }
 
+const REF_COOKIE = "hub_invite_ref";
+const REF_COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 dias
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (pathname.startsWith("/api/auth")) {
     return NextResponse.next();
   }
+
+  const ref = request.nextUrl.searchParams.get("ref")?.trim();
+  const setRefCookie = (res: NextResponse) => {
+    if (ref && ref.length >= 4 && ref.length <= 20) {
+      res.cookies.set(REF_COOKIE, ref.toUpperCase(), {
+        maxAge: REF_COOKIE_MAX_AGE,
+        path: "/",
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+      });
+    }
+    return res;
+  };
 
   const token = await getToken({
     req: request,
@@ -62,22 +78,22 @@ export async function middleware(request: NextRequest) {
   if (isAuthPath(pathname) && !isOnboardingPath(pathname) && !loggedIn) {
     const login = new URL("/login", request.url);
     login.searchParams.set("callbackUrl", pathname);
-    return NextResponse.redirect(login);
+    return setRefCookie(NextResponse.redirect(login));
   }
 
   if (loggedIn && !onboardingCompleted && !isOnboardingPath(pathname) && isAuthPath(pathname)) {
-    return NextResponse.redirect(new URL("/onboarding", request.url));
+    return setRefCookie(NextResponse.redirect(new URL("/onboarding", request.url)));
   }
 
   if (pathname.startsWith("/admin") && loggedIn) {
     const email = (token as { email?: string })?.email ?? null;
     const allowedAdmin = process.env.ALLOWED_ADMIN_EMAIL ?? "jeandev003@gmail.com";
     if (!email || email.toLowerCase() !== allowedAdmin.toLowerCase()) {
-      return NextResponse.redirect(new URL("/dashboard", request.url));
+      return setRefCookie(NextResponse.redirect(new URL("/dashboard", request.url)));
     }
   }
 
-  return NextResponse.next();
+  return setRefCookie(NextResponse.next());
 }
 
 export const config = {

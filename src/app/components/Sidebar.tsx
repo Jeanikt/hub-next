@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useSession, signIn, signOut } from "next-auth/react";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   Home,
   Trophy,
@@ -53,8 +53,24 @@ const ADMIN_LINKS = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const { data: session, status } = useSession();
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  useEffect(() => {
+    if (status !== "authenticated" || pathname === "/banned") return;
+    fetch("/api/me", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!data) return;
+        const banned = data.isBanned === true;
+        const until = data.bannedUntil ? new Date(data.bannedUntil) : null;
+        if (banned || (until && until > new Date())) {
+          router.replace("/banned");
+        }
+      })
+      .catch(() => {});
+  }, [status, pathname, router]);
 
   const isActive = useCallback(
     (path: string) => pathname === path || (path !== "/" && pathname.startsWith(path)),
