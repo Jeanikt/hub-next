@@ -93,7 +93,14 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  return setRefCookie(NextResponse.next());
+  const res = setRefCookie(NextResponse.next());
+  res.headers.set("X-Content-Type-Options", "nosniff");
+  res.headers.set("X-Frame-Options", "SAMEORIGIN");
+  res.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  if (process.env.NODE_ENV === "production") {
+    res.headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
+  }
+  return res;
 }
 
 export const config = {

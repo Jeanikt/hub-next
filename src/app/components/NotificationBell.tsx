@@ -14,7 +14,7 @@ type Notif = {
   createdAt: string;
 };
 
-const POLL_MS = 15000;
+const FALLBACK_POLL_MS = 60000;
 
 export function NotificationBell() {
   const { data: session, status } = useSession();
@@ -35,8 +35,43 @@ export function NotificationBell() {
   useEffect(() => {
     if (status !== "authenticated") return;
     fetchList();
-    const t = setInterval(fetchList, POLL_MS);
-    return () => clearInterval(t);
+  }, [status, fetchList]);
+
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    let eventSource: EventSource | null = null;
+    try {
+      eventSource = new EventSource("/api/notifications/stream");
+      eventSource.onmessage = (e) => {
+        try {
+          const data = JSON.parse(e.data as string);
+          if (Array.isArray(data)) {
+            setList((prev) => {
+              const byId = new Map(prev.map((n) => [n.id, n]));
+              for (const n of data) byId.set(n.id, n);
+              return Array.from(byId.values()).sort(
+                (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+              );
+            });
+          } else if (data?.id) {
+            setList((prev) => [data, ...prev.filter((n) => n.id !== data.id)]);
+          }
+        } catch {
+          // ping ou formato inesperado
+        }
+      };
+      eventSource.onerror = () => {
+        eventSource?.close();
+        eventSource = null;
+      };
+    } catch {
+      // EventSource não disponível
+    }
+    const fallback = setInterval(fetchList, FALLBACK_POLL_MS);
+    return () => {
+      eventSource?.close();
+      clearInterval(fallback);
+    };
   }, [status, fetchList]);
 
   const unreadCount = list.filter((n) => !n.readAt).length;

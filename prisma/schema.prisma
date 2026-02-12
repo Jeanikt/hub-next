@@ -1,6 +1,3 @@
-// HUBEXPRESSO – schema PostgreSQL + Auth.js (NextAuth) + domínio
-// Compatível com @auth/prisma-adapter e fortemente tipado.
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,24 +7,20 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// -----------------------------------------------------------------------------
-// Auth.js (NextAuth) – modelos obrigatórios para o adapter
-// -----------------------------------------------------------------------------
 model Account {
   id                String  @id @default(cuid())
   userId            String
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
+  refresh_token     String?
+  access_token      String?
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String? @db.Text
+  id_token          String?
   session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
   @@map("accounts")
@@ -38,8 +31,7 @@ model Session {
   sessionToken String   @unique
   userId       String
   expires      DateTime
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("sessions")
 }
@@ -53,65 +45,58 @@ model VerificationToken {
   @@map("verification_tokens")
 }
 
-// -----------------------------------------------------------------------------
-// Usuário – extensão do User do Auth.js + campos do HUBEXPRESSO
-// Nunca exponha: password, tokens de Account
-// -----------------------------------------------------------------------------
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String?   @unique
-  emailVerified DateTime?
-  image         String?
-  password      String? // null para usuários só OAuth
-
-  username              String?   @unique
-  riotAccount           String?
-  riotId                String?
-  tagline               String?
-  rank                  String?
-  primaryRole           String?
-  secondaryRole         String?
-  xp                    Int       @default(0)
-  elo                   Int       @default(0)
-  level                 Int       @default(1)
-  isAdmin               Boolean   @default(false)
-  isBanned              Boolean   @default(false)
-  bannedUntil           DateTime?
-  banReason             String?
-  isOnline              Boolean   @default(false)
-  lastLoginAt           DateTime?
-  onboardingCompleted   Boolean   @default(false)
-  onboardingSkipped     Boolean   @default(false)
-  onboardingCompletedAt DateTime?
-  profileBackgroundUrl  String?   @db.Text
-  favoriteChampion      String?
-  bestWinrateChampion   String?
-  inviteCode            String?   @unique
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
+  id                     String                 @id @default(cuid())
+  name                   String?
+  email                  String?                @unique
+  emailVerified          DateTime?
+  image                  String?
+  password               String?
+  username               String?                @unique
+  riotAccount            String?
+  riotId                 String?
+  tagline                String?
+  rank                   String?
+  primaryRole            String?
+  secondaryRole          String?
+  xp                     Int                    @default(0)
+  elo                    Int                    @default(0)
+  level                  Int                    @default(1)
+  isAdmin                Boolean                @default(false)
+  isBanned               Boolean                @default(false)
+  bannedUntil            DateTime?
+  banReason              String?
+  isOnline               Boolean                @default(false)
+  lastLoginAt            DateTime?
+  onboardingCompleted    Boolean                @default(false)
+  onboardingSkipped      Boolean                @default(false)
+  onboardingCompletedAt  DateTime?
+  profileBackgroundUrl   String?
+  favoriteChampion       String?
+  bestWinrateChampion    String?
+  inviteCode             String?                @unique
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime               @updatedAt
   accounts               Account[]
-  sessions               Session[]
-  queueEntries           QueueEntry[]
-  friendsSent            Friend[]               @relation("FriendRequester")
-  friendsReceived        Friend[]               @relation("FriendReceiver")
-  friendMessagesSent     FriendMessage[]        @relation("MessageSender")
+  articles               Article[]
   friendMessagesReceived FriendMessage[]        @relation("MessageReceiver")
+  friendMessagesSent     FriendMessage[]        @relation("MessageSender")
+  friendsReceived        Friend[]               @relation("FriendReceiver")
+  friendsSent            Friend[]               @relation("FriendRequester")
   matchParticipants      GameMatchUser[]
-  lobbyMessages          LobbyMessage[]
   createdMatches         GameMatch[]            @relation("MatchCreator")
-  missionsCompleted      UserMission[]
+  lobbyMessages          LobbyMessage[]
+  notifications          Notification[]
   profileLikesReceived   ProfileLike[]          @relation("ProfileLikesReceived")
   profileLikesSent       ProfileLike[]          @relation("ProfileLikesSent")
-  supportTickets         SupportTicket[]
-  reports                Report[]
-  referralsSent          Referral[]             @relation("ReferralsSent")
+  queueEntries           QueueEntry?
   referredBy             Referral?              @relation("ReferredBy")
-  notifications          Notification[]
-  articles               Article[]
+  referralsSent          Referral[]             @relation("ReferralsSent")
+  reports                Report[]
+  sessions               Session[]
   supportTicketMessages  SupportTicketMessage[]
+  supportTickets         SupportTicket[]
+  missionsCompleted      UserMission[]
 
   @@map("users")
 }
@@ -119,13 +104,12 @@ model User {
 model Notification {
   id        String    @id @default(cuid())
   userId    String
-  type      String // friend_request, friend_accepted, mission_completed, etc.
-  title     String    @db.Text
-  body      String?   @db.Text
+  type      String
+  title     String
+  body      String?
   readAt    DateTime?
   createdAt DateTime  @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([userId, readAt])
@@ -133,15 +117,14 @@ model Notification {
 }
 
 model Mission {
-  id          String   @id @default(cuid())
+  id          String        @id @default(cuid())
   title       String
-  description String?  @db.Text
-  type        String // daily, weekly, one_time
-  xpReward    Int      @default(0)
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
+  description String?
+  type        String
+  xpReward    Int           @default(0)
+  isActive    Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
   completions UserMission[]
 
   @@index([type, isActive])
@@ -153,9 +136,8 @@ model UserMission {
   userId      String
   missionId   String
   completedAt DateTime @default(now())
-
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  mission Mission @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  mission     Mission  @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, missionId])
   @@index([userId])
@@ -164,14 +146,12 @@ model UserMission {
 }
 
 model ProfileLike {
-  id           String @id @default(cuid())
-  userId       String // quem curtiu
-  targetUserId String // perfil curtido
-
-  createdAt DateTime @default(now())
-
-  user       User @relation("ProfileLikesSent", fields: [userId], references: [id], onDelete: Cascade)
-  targetUser User @relation("ProfileLikesReceived", fields: [targetUserId], references: [id], onDelete: Cascade)
+  id           String   @id @default(cuid())
+  userId       String
+  targetUserId String
+  createdAt    DateTime @default(now())
+  targetUser   User     @relation("ProfileLikesReceived", fields: [targetUserId], references: [id], onDelete: Cascade)
+  user         User     @relation("ProfileLikesSent", fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, targetUserId])
   @@index([targetUserId])
@@ -180,37 +160,33 @@ model ProfileLike {
 
 model QueueEntry {
   id        Int      @id @default(autoincrement())
-  userId    String
+  userId    String   @unique
   queueType String
   joinedAt  DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId])
   @@index([queueType])
   @@map("queue_entries")
 }
 
 model GameMatch {
-  id            Int       @id @default(autoincrement())
-  matchId       String    @unique
+  id            Int             @id @default(autoincrement())
+  matchId       String          @unique
   type          String
-  status        String    @default("pending")
+  status        String          @default("pending")
   map           String?
-  maxPlayers    Int       @default(10)
-  settings      String?   @db.Text
+  maxPlayers    Int             @default(10)
+  settings      String?
   creatorId     String?
   scheduledAt   DateTime?
   startedAt     DateTime?
   finishedAt    DateTime?
   winnerTeam    String?
   matchDuration Int?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  creator       User?           @relation("MatchCreator", fields: [creatorId], references: [id], onDelete: SetNull)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
   participants  GameMatchUser[]
+  creator       User?           @relation("MatchCreator", fields: [creatorId], references: [id])
   lobbyMessages LobbyMessage[]
 
   @@index([status])
@@ -229,9 +205,8 @@ model GameMatchUser {
   assists     Int       @default(0)
   score       Int       @default(0)
   joinedAt    DateTime? @default(now())
-
-  gameMatch GameMatch @relation(fields: [gameMatchId], references: [id], onDelete: Cascade)
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gameMatch   GameMatch @relation(fields: [gameMatchId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([gameMatchId, userId])
   @@index([userId])
@@ -239,18 +214,16 @@ model GameMatchUser {
 }
 
 model Friend {
-  id       Int    @id @default(autoincrement())
+  id        Int      @id @default(autoincrement())
   /// ID de quem enviou o pedido (mapeado para coluna legacy snake_case "user_id")
-  userId   String @map("user_id")
+  userId    String   @map("user_id")
   /// ID de quem recebeu o pedido (mapeado para coluna legacy snake_case "friend_id")
-  friendId String @map("friend_id")
-  status   String @default("pending")
-
+  friendId  String   @map("friend_id")
+  status    String   @default("pending")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  user   User @relation("FriendRequester", fields: [userId], references: [id], onDelete: Cascade)
-  friend User @relation("FriendReceiver", fields: [friendId], references: [id], onDelete: Cascade)
+  friend    User     @relation("FriendReceiver", fields: [friendId], references: [id], onDelete: Cascade)
+  user      User     @relation("FriendRequester", fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, friendId])
   @@index([friendId])
@@ -261,13 +234,11 @@ model FriendMessage {
   id         Int       @id @default(autoincrement())
   senderId   String
   receiverId String
-  content    String    @db.Text
+  content    String
   readAt     DateTime?
-
-  createdAt DateTime @default(now())
-
-  sender   User @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
-  receiver User @relation("MessageReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  createdAt  DateTime  @default(now())
+  receiver   User      @relation("MessageReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  sender     User      @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
 
   @@index([senderId, receiverId])
   @@index([receiverId])
@@ -275,31 +246,28 @@ model FriendMessage {
 }
 
 model LobbyMessage {
-  id          Int    @id @default(autoincrement())
+  id          Int       @id @default(autoincrement())
   gameMatchId Int
   userId      String
-  content     String @db.Text
-
-  createdAt DateTime @default(now())
-
-  gameMatch GameMatch @relation(fields: [gameMatchId], references: [id], onDelete: Cascade)
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content     String
+  createdAt   DateTime  @default(now())
+  gameMatch   GameMatch @relation(fields: [gameMatchId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([gameMatchId])
   @@map("lobby_messages")
 }
 
 model SupportTicket {
-  id        String   @id @default(cuid())
-  userId    String
-  subject   String   @db.Text
-  body      String   @db.Text
-  status    String   @default("open")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                    String                 @id @default(cuid())
+  userId                String
+  subject               String
+  body                  String
+  status                String                 @default("open")
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
   supportTicketMessages SupportTicketMessage[]
+  user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([status])
@@ -311,12 +279,11 @@ model Report {
   userId     String
   targetType String
   targetId   String
-  reason     String   @db.Text
+  reason     String
   status     String   @default("pending")
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([status])
@@ -326,42 +293,41 @@ model Report {
 model Referral {
   id            String   @id @default(cuid())
   inviterId     String
-  invitedUserId String
+  invitedUserId String   @unique
   inviteCode    String
   createdAt     DateTime @default(now())
+  invitedUser   User     @relation("ReferredBy", fields: [invitedUserId], references: [id], onDelete: Cascade)
+  inviter       User     @relation("ReferralsSent", fields: [inviterId], references: [id], onDelete: Cascade)
 
-  inviter     User @relation("ReferralsSent", fields: [inviterId], references: [id], onDelete: Cascade)
-  invitedUser User @relation("ReferredBy", fields: [invitedUserId], references: [id], onDelete: Cascade)
-
-  @@unique([invitedUserId])
   @@index([inviterId])
   @@index([inviteCode])
   @@map("referrals")
 }
 
 model Article {
-  id       String @id @default(cuid())
+  id       String   @id @default(cuid())
   authorId String
-  title    String @db.Text
-  content  String @db.Text
-
-  user User @relation(fields: [authorId], references: [id], onDelete: NoAction)
+  title    String
+  content  String
+  category String
+  fixed    Boolean?
+  user     User     @relation(fields: [authorId], references: [id], onDelete: NoAction)
 
   @@index([authorId])
   @@map("articles")
 }
 
 model SupportTicketMessage {
-  id        String   @id @default(cuid())
+  id        String        @id @default(cuid())
   userId    String
   ticketId  String
-  content   String   @db.Text
-  timestamp DateTime @default(now())
-
-  user   User          @relation(fields: [userId], references: [id], onDelete: NoAction)
-  ticket SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  content   String
+  timestamp DateTime      @default(now())
+  ticket    SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  user      User          @relation(fields: [userId], references: [id], onDelete: NoAction)
 
   @@index([ticketId, timestamp])
   @@index([userId, timestamp])
   @@map("support_ticket_messages")
 }
+
