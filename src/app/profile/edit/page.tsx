@@ -14,6 +14,7 @@ export default function ProfileEditPage() {
   const [riotId, setRiotId] = useState("");
   const [tagline, setTagline] = useState("");
   const [image, setImage] = useState("");
+  const [avatarUploading, setAvatarUploading] = useState(false);
   const [profileBackgroundUrl, setProfileBackgroundUrl] = useState("");
   const [favoriteChampion, setFavoriteChampion] = useState("");
   const [primaryRole, setPrimaryRole] = useState<string>("");
@@ -197,15 +198,72 @@ export default function ProfileEditPage() {
             </h2>
             <div>
               <label className="block text-sm font-medium text-[var(--hub-text-muted)] mb-1.5">
-                URL da foto (avatar)
+                Foto de perfil (avatar)
               </label>
-              <input
-                type="url"
-                value={image}
-                onChange={(e) => setImage(e.target.value)}
-                className="w-full px-4 py-3 bg-black/30 border border-[var(--hub-border)] text-white rounded-lg focus:border-[var(--hub-accent)] focus:outline-none transition-colors"
-                placeholder="https://..."
-              />
+              <div className="flex flex-wrap items-end gap-4">
+                <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-full border-2 border-[var(--hub-border)] bg-[var(--hub-bg-elevated)]">
+                  {image ? (
+                    <img src={image} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    <span className="flex h-full w-full items-center justify-center text-2xl font-bold text-[var(--hub-text-muted)]">
+                      {(session?.user as { name?: string })?.name?.[0] ?? "?"}
+                    </span>
+                  )}
+                  {avatarUploading && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/60">
+                      <div className="hub-loading-spinner h-8 w-8 border-2" />
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0 space-y-2">
+                  <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-[var(--hub-border)] bg-[var(--hub-bg-elevated)] px-4 py-2.5 text-sm font-medium text-[var(--hub-text)] hover:bg-[var(--hub-bg-card)] transition-colors">
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      className="sr-only"
+                      disabled={avatarUploading}
+                      onChange={async (e) => {
+                        const f = e.target.files?.[0];
+                        if (!f) return;
+                        setAvatarUploading(true);
+                        try {
+                          const form = new FormData();
+                          form.append("file", f);
+                          const res = await fetch("/api/upload/avatar", {
+                            method: "POST",
+                            credentials: "include",
+                            body: form,
+                          });
+                          const data = await res.json().catch(() => ({}));
+                          if (res.ok && data.url) setImage(data.url);
+                          else setError(data?.message ?? "Falha no upload.");
+                        } catch {
+                          setError("Falha no upload.");
+                        } finally {
+                          setAvatarUploading(false);
+                          e.target.value = "";
+                        }
+                      }}
+                    />
+                    {avatarUploading ? "Enviando…" : "Enviar foto"}
+                  </label>
+                  <p className="text-xs text-[var(--hub-text-muted)]">
+                    JPEG, PNG, WebP ou GIF. Máx. 3 MB.
+                  </p>
+                </div>
+              </div>
+              <div className="mt-3">
+                <label className="block text-xs font-medium text-[var(--hub-text-muted)] mb-1">
+                  Ou cole a URL da imagem
+                </label>
+                <input
+                  type="url"
+                  value={image}
+                  onChange={(e) => setImage(e.target.value)}
+                  className="w-full px-4 py-3 bg-black/30 border border-[var(--hub-border)] text-white rounded-lg focus:border-[var(--hub-accent)] focus:outline-none transition-colors text-sm"
+                  placeholder="https://... ou /uploads/avatars/..."
+                />
+              </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-[var(--hub-text-muted)] mb-1.5">

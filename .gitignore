@@ -45,3 +45,6 @@ next-env.d.ts
 # Prisma local SQLite (usar PostgreSQL em produção)
 prisma/*.db
 prisma/dev.db
+
+# Uploads locais (em produção use storage externo, ex: Vercel Blob / S3)
+/public/uploads

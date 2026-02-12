@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/src/lib/prisma";
 import { auth } from "@/src/lib/auth";
 import { addFriendSchema } from "@/src/lib/validators/schemas";
+import { createNotification } from "@/src/lib/notifications";
 
 /** GET /api/friends – lista amigos e pedidos pendentes */
 export async function GET(request: NextRequest) {
@@ -125,6 +126,18 @@ export async function POST(request: NextRequest) {
         status: "pending",
       },
     });
+
+    // Notificar o alvo que recebeu um pedido de amizade
+    const senderName = session.user.name ?? session.user.username ?? "Alguém";
+    try {
+      await createNotification(targetId, {
+        type: "friend_request",
+        title: "Novo pedido de amizade",
+        body: `${senderName} enviou um pedido de amizade.`,
+      });
+    } catch {
+      // não falha a resposta
+    }
 
     return NextResponse.json({ success: true, message: "Pedido de amizade enviado." });
   } catch (e) {

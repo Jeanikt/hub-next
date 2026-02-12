@@ -109,8 +109,25 @@ model User {
   reports                 Report[]
   referralsSent           Referral[]          @relation("ReferralsSent")
   referredBy              Referral?            @relation("ReferredBy")
+  notifications           Notification[]
 
   @@map("users")
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  type      String    // friend_request, friend_accepted, mission_completed, etc.
+  title     String    @db.Text
+  body      String?   @db.Text
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, readAt])
+  @@map("notifications")
 }
 
 model Mission {

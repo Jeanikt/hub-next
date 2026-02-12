@@ -12,8 +12,12 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   const parsed = onboardingProfileSchema.safeParse(body);
   if (!parsed.success) {
+    const flatten = parsed.error.flatten();
     return NextResponse.json(
-      { message: parsed.error.flatten().formErrors[0] ?? "Dados inválidos." },
+      {
+        message: flatten.formErrors[0] ?? "Dados inválidos.",
+        errors: flatten.fieldErrors as { name?: string[]; username?: string[] },
+      },
       { status: 422 }
     );
   }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/src/lib/auth";
 import { prisma } from "@/src/lib/prisma";
+import { verifyAndCompleteMissions } from "@/src/lib/missions/verify";
 
 export async function POST() {
   const session = await auth();
@@ -15,6 +16,13 @@ export async function POST() {
       onboardingCompletedAt: new Date(),
     },
   });
+
+  // Verifica missão "Perfil completo" etc. automaticamente
+  try {
+    await verifyAndCompleteMissions(session.user.id);
+  } catch {
+    // não falha a resposta
+  }
 
   return NextResponse.json({ ok: true });
 }

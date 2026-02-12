@@ -14,6 +14,7 @@ export default function OnboardingPage() {
   const [tagline, setTagline] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<{ name?: string[]; username?: string[]; riotId?: string[]; tagline?: string[] }>({});
 
   if (status === "loading") {
     return (
@@ -30,6 +31,7 @@ export default function OnboardingPage() {
 
   async function saveProfile() {
     setError(null);
+    setFieldErrors({});
     setLoading(true);
     try {
       const res = await fetch("/api/onboarding/profile", {
@@ -40,6 +42,9 @@ export default function OnboardingPage() {
       const data = await res.json();
       if (!res.ok) {
         setError(data.message ?? "Erro ao salvar");
+        if (data.errors && typeof data.errors === "object") {
+          setFieldErrors(data.errors);
+        }
         return;
       }
       await updateSession({ username: data.username, onboardingCompleted: false });
@@ -51,6 +56,7 @@ export default function OnboardingPage() {
 
   async function saveRiotAndComplete() {
     setError(null);
+    setFieldErrors({});
     setLoading(true);
     try {
       const res = await fetch("/api/onboarding/riot", {
@@ -58,9 +64,12 @@ export default function OnboardingPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ riotId: riotId.trim(), tagline: tagline.trim() }),
       });
+      const data = await res.json();
       if (!res.ok) {
-        const data = await res.json();
         setError(data.message ?? "Erro ao salvar");
+        if (data.errors && typeof data.errors === "object") {
+          setFieldErrors(data.errors);
+        }
         return;
       }
       await completeOnboarding();
@@ -116,24 +125,26 @@ export default function OnboardingPage() {
                 <input
                   type="text"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={(e) => { setName(e.target.value); setFieldErrors((prev) => ({ ...prev, name: undefined })); }}
                   placeholder="Como você quer ser chamado?"
-                  className="w-full px-4 py-3 bg-black/40 border border-[var(--hub-border)] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[var(--hub-accent)]"
+                  className={`w-full px-4 py-3 bg-black/40 border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[var(--hub-accent)] ${fieldErrors.name ? "border-red-500" : "border-[var(--hub-border)]"}`}
                 />
+                {fieldErrors.name?.[0] && <p className="mt-1 text-sm text-red-400">{fieldErrors.name[0]}</p>}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">@username *</label>
                 <input
                   type="text"
                   value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  onChange={(e) => { setUsername(e.target.value); setFieldErrors((prev) => ({ ...prev, username: undefined })); }}
                   placeholder="escolha-um-nome"
-                  className="w-full px-4 py-3 bg-black/40 border border-[var(--hub-border)] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[var(--hub-accent)]"
+                  className={`w-full px-4 py-3 bg-black/40 border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[var(--hub-accent)] ${fieldErrors.username ? "border-red-500" : "border-[var(--hub-border)]"}`}
                 />
                 <p className="text-xs text-gray-500 mt-1">Letras, números e _ apenas.</p>
+                {fieldErrors.username?.[0] && <p className="mt-1 text-sm text-red-400">{fieldErrors.username[0]}</p>}
               </div>
             </div>
-            {error && <p className="mt-2 text-sm text-red-400">{error}</p>}
+            {error && !fieldErrors.name?.length && !fieldErrors.username?.length && <p className="mt-2 text-sm text-red-400">{error}</p>}
             <div className="flex justify-between pt-6 border-t border-[var(--hub-border)] mt-6">
               <button
                 type="button"
@@ -169,23 +180,25 @@ export default function OnboardingPage() {
                 <input
                   type="text"
                   value={riotId}
-                  onChange={(e) => setRiotId(e.target.value)}
+                  onChange={(e) => { setRiotId(e.target.value); setFieldErrors((prev) => ({ ...prev, riotId: undefined })); }}
                   placeholder="Nome#tag"
-                  className="w-full px-4 py-3 bg-black/40 border border-[var(--hub-border)] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[var(--hub-accent)]"
+                  className={`w-full px-4 py-3 bg-black/40 border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[var(--hub-accent)] ${fieldErrors.riotId ? "border-red-500" : "border-[var(--hub-border)]"}`}
                 />
+                {fieldErrors.riotId?.[0] && <p className="mt-1 text-sm text-red-400">{fieldErrors.riotId[0]}</p>}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">Tagline</label>
                 <input
                   type="text"
                   value={tagline}
-                  onChange={(e) => setTagline(e.target.value)}
+                  onChange={(e) => { setTagline(e.target.value); setFieldErrors((prev) => ({ ...prev, tagline: undefined })); }}
                   placeholder="BR1"
-                  className="w-full px-4 py-3 bg-black/40 border border-[var(--hub-border)] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[var(--hub-accent)]"
+                  className={`w-full px-4 py-3 bg-black/40 border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[var(--hub-accent)] ${fieldErrors.tagline ? "border-red-500" : "border-[var(--hub-border)]"}`}
                 />
+                {fieldErrors.tagline?.[0] && <p className="mt-1 text-sm text-red-400">{fieldErrors.tagline[0]}</p>}
               </div>
             </div>
-            {error && <p className="mt-2 text-sm text-red-400">{error}</p>}
+            {error && !fieldErrors.riotId?.length && !fieldErrors.tagline?.length && <p className="mt-2 text-sm text-red-400">{error}</p>}
             <div className="flex justify-between pt-6 border-t border-[var(--hub-border)] mt-6">
               <button
                 type="button"

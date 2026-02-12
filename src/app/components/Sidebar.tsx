@@ -26,6 +26,7 @@ import {
   X,
   ChevronRight,
 } from "lucide-react";
+import { NotificationBell } from "./NotificationBell";
 
 const PUBLIC_LINKS = [
   { href: "/", label: "Início", icon: Home },
@@ -108,17 +109,20 @@ export function Sidebar() {
 
   const SidebarContent = () => (
     <div className="flex h-full flex-col">
-      <div className="flex h-16 shrink-0 items-center gap-2 border-b border-[var(--hub-border)] px-4">
-        <span
-          className="h-2.5 w-2.5 shrink-0 rounded-sm rotate-45"
-          style={{
-            background: "var(--hub-accent)",
-            boxShadow: "0 0 14px var(--hub-accent)",
-          }}
-        />
-        <span className="text-sm font-black uppercase tracking-widest text-[var(--hub-text)]">
-          {process.env.NEXT_PUBLIC_APP_NAME ?? "HUBEXPRESSO"}
-        </span>
+      <div className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-[var(--hub-border)] px-4">
+        <div className="flex items-center gap-2 min-w-0">
+          <span
+            className="h-2.5 w-2.5 shrink-0 rounded-sm rotate-45"
+            style={{
+              background: "var(--hub-accent)",
+              boxShadow: "0 0 14px var(--hub-accent)",
+            }}
+          />
+          <span className="text-sm font-black uppercase tracking-widest text-[var(--hub-text)] truncate">
+            {process.env.NEXT_PUBLIC_APP_NAME ?? "HUBEXPRESSO"}
+          </span>
+        </div>
+        {session?.user && <NotificationBell />}
       </div>
 
       <nav className="flex-1 overflow-y-auto p-3 space-y-1">

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/src/lib/prisma";
 import { auth } from "@/src/lib/auth";
 import { friendAcceptRejectSchema } from "@/src/lib/validators/schemas";
+import { verifyAndCompleteMissions } from "@/src/lib/missions/verify";
+import { createNotification } from "@/src/lib/notifications";
 
 /** POST /api/friends/accept – aceitar pedido (body: friend_id = id do registro Friend) */
 export async function POST(request: NextRequest) {
@@ -34,6 +36,25 @@ export async function POST(request: NextRequest) {
       where: { id: friend.id },
       data: { status: "accepted" },
     });
+
+    // Quem enviou o pedido pode ter missão "Adicione um amigo" concluída automaticamente
+    try {
+      await verifyAndCompleteMissions(friend.userId);
+    } catch {
+      // não falha a resposta
+    }
+
+    // Notificar quem enviou o pedido que foi aceito
+    const acceptorName = session.user.name ?? session.user.username ?? "Alguém";
+    try {
+      await createNotification(friend.userId, {
+        type: "friend_accepted",
+        title: "Pedido de amizade aceito",
+        body: `${acceptorName} aceitou seu pedido de amizade.`,
+      });
+    } catch {
+      // não falha a resposta
+    }
 
     return NextResponse.json({ success: true, message: "Pedido aceito." });
   } catch (e) {

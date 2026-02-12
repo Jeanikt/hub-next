@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
 
     const peer = await prisma.user.findUnique({
       where: { id: peerId },
-      select: { id: true, username: true, name: true },
+      select: { id: true, username: true, name: true, isOnline: true },
     });
     if (!peer) {
       return NextResponse.json({ message: "Usuário não encontrado." }, { status: 404 });
@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.json({
-      peer: { id: peer.id, username: peer.username, name: peer.name },
+      peer: { id: peer.id, username: peer.username, name: peer.name, isOnline: peer.isOnline },
       messages: messages.map((m) => ({
         id: m.id,
         content: m.content,

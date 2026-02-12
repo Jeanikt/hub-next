@@ -4,6 +4,7 @@
 
 DO $$
 BEGIN
+  -- Campos de perfil e convite
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'profileBackgroundUrl') THEN
     ALTER TABLE "users" ADD COLUMN "profileBackgroundUrl" TEXT;
   END IF;
@@ -16,6 +17,13 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'inviteCode') THEN
     ALTER TABLE "users" ADD COLUMN "inviteCode" TEXT;
     CREATE UNIQUE INDEX IF NOT EXISTS "users_inviteCode_key" ON "users"("inviteCode");
+  END IF;
+  -- Colunas de auth base
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'isAdmin') THEN
+    ALTER TABLE "users" ADD COLUMN "isAdmin" BOOLEAN NOT NULL DEFAULT false;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'emailVerified') THEN
+    ALTER TABLE "users" ADD COLUMN "emailVerified" TIMESTAMP(3);
   END IF;
   -- Coluna image (usada pelo Auth.js / leaderboard)
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'image') THEN
@@ -115,6 +123,19 @@ CREATE TABLE IF NOT EXISTS "referrals" (
 CREATE UNIQUE INDEX IF NOT EXISTS "referrals_invitedUserId_key" ON "referrals"("invitedUserId");
 CREATE INDEX IF NOT EXISTS "referrals_inviterId_idx" ON "referrals"("inviterId");
 CREATE INDEX IF NOT EXISTS "referrals_inviteCode_idx" ON "referrals"("inviteCode");
+
+-- 7) Tabela notifications
+CREATE TABLE IF NOT EXISTS "notifications" (
+  "id" TEXT NOT NULL PRIMARY KEY,
+  "userId" TEXT NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
+  "type" TEXT NOT NULL,
+  "title" TEXT NOT NULL,
+  "body" TEXT,
+  "readAt" TIMESTAMP(3),
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS "notifications_userId_idx" ON "notifications"("userId");
+CREATE INDEX IF NOT EXISTS "notifications_userId_readAt_idx" ON "notifications"("userId", "readAt");
 
 -- Atualizar updatedAt em missions se a coluna existir (Prisma exige updatedAt)
 DO $$

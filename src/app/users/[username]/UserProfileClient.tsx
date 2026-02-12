@@ -11,7 +11,11 @@ import {
   Zap,
   Circle,
   ChevronLeft,
+  UserPlus,
+  MessageCircle,
+  Flag,
 } from "lucide-react";
+import { ReportModal } from "@/src/app/components/ReportModal";
 
 type XpProgress = {
   currentLevel: number;
@@ -47,11 +51,16 @@ type Profile = {
   xpProgress: XpProgress;
 };
 
+type FriendStatus = "none" | "pending_sent" | "pending_received" | "friends" | "own" | null;
+
 export default function UserProfileClient({ username }: { username: string }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [liked, setLiked] = useState(false);
   const [loading, setLoading] = useState(true);
   const [likeLoading, setLikeLoading] = useState(false);
+  const [friendStatus, setFriendStatus] = useState<FriendStatus>(null);
+  const [friendLoading, setFriendLoading] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
   const { data: session, status } = useSession();
 
   useEffect(() => {
@@ -78,6 +87,26 @@ export default function UserProfileClient({ username }: { username: string }) {
       .catch(() => {});
   }, [session?.user?.id, profile?.id]);
 
+  useEffect(() => {
+    if (!session?.user?.id || !profile?.username?.trim()) return;
+    const myId = (session.user as { id?: string }).id;
+    if (myId === profile.id) {
+      setFriendStatus("own");
+      return;
+    }
+    setFriendStatus(null);
+    fetch(
+      `/api/friends/status?username=${encodeURIComponent(profile.username)}`,
+      { credentials: "include" }
+    )
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d?.status) setFriendStatus(d.status);
+        else setFriendStatus("none");
+      })
+      .catch(() => setFriendStatus("none"));
+  }, [session?.user?.id, profile?.id, profile?.username]);
+
   async function toggleLike() {
     if (!profile?.id || likeLoading) return;
     setLikeLoading(true);
@@ -97,6 +126,25 @@ export default function UserProfileClient({ username }: { username: string }) {
       }
     } finally {
       setLikeLoading(false);
+    }
+  }
+
+  async function sendFriendRequest() {
+    if (!profile?.username?.trim() || friendLoading) return;
+    setFriendLoading(true);
+    try {
+      const res = await fetch("/api/friends", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ username: profile.username }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setFriendStatus("pending_sent");
+      }
+    } finally {
+      setFriendLoading(false);
     }
   }
 
@@ -183,20 +231,74 @@ export default function UserProfileClient({ username }: { username: string }) {
                 {profile.likesCount} curtidas
               </span>
               {!isOwnProfile && session?.user && (
-                <button
-                  type="button"
-                  onClick={toggleLike}
-                  disabled={likeLoading}
-                  className={`flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-medium transition-colors clip-button ${
-                    liked
-                      ? "bg-[var(--hub-accent-red)]/20 text-[var(--hub-accent-red)]"
-                      : "border border-[var(--hub-border)] text-[var(--hub-text-muted)] hover:border-[var(--hub-accent)]/50 hover:text-[var(--hub-accent)]"
-                  }`}
-                >
-                  <Heart size={16} className={liked ? "fill-current" : ""} />
-                  {liked ? "Curtido" : "Curtir"}
-                </button>
+                <>
+                  {friendStatus !== null && friendStatus !== "own" && (
+                    (friendStatus === "none" ? (
+                      <button
+                        type="button"
+                        onClick={sendFriendRequest}
+                        disabled={friendLoading}
+                        className="flex items-center gap-1.5 rounded-xl border border-[var(--hub-border)] px-3.5 py-2 text-sm font-medium text-[var(--hub-text-muted)] transition-colors hover:border-[var(--hub-accent)]/50 hover:text-[var(--hub-accent)] clip-button disabled:opacity-50"
+                      >
+                        <UserPlus size={16} />
+                        {friendLoading ? "Enviando…" : "Enviar solicitação"}
+                      </button>
+                    ) : friendStatus === "pending_sent" ? (
+                      <span className="flex items-center gap-1.5 rounded-xl border border-[var(--hub-border)] bg-[var(--hub-bg-elevated)] px-3.5 py-2 text-sm text-[var(--hub-text-muted)]">
+                        <UserPlus size={16} />
+                        Solicitação enviada
+                      </span>
+                    ) : friendStatus === "pending_received" ? (
+                      <Link
+                        href="/friends"
+                        className="flex items-center gap-1.5 rounded-xl border border-[var(--hub-accent)]/50 bg-[var(--hub-accent)]/10 px-3.5 py-2 text-sm font-medium text-[var(--hub-accent)] transition-colors hover:bg-[var(--hub-accent)]/20 clip-button"
+                      >
+                        <UserPlus size={16} />
+                        Responder pedido
+                      </Link>
+                    ) : friendStatus === "friends" ? (
+                      <Link
+                        href={`/messages/${encodeURIComponent(profile.username ?? "")}`}
+                        className="flex items-center gap-1.5 rounded-xl border-2 border-[var(--hub-accent)] bg-[var(--hub-accent)]/20 px-3.5 py-2 text-sm font-bold uppercase tracking-wider text-[var(--hub-accent)] transition-colors hover:bg-[var(--hub-accent)] hover:text-white clip-button"
+                      >
+                        <MessageCircle size={16} />
+                        Abrir chat
+                      </Link>
+                    ) : null)
+                  )}
+                  <button
+                    type="button"
+                    onClick={toggleLike}
+                    disabled={likeLoading}
+                    className={`flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-medium transition-colors clip-button ${
+                      liked
+                        ? "bg-[var(--hub-accent-red)]/20 text-[var(--hub-accent-red)]"
+                        : "border border-[var(--hub-border)] text-[var(--hub-text-muted)] hover:border-[var(--hub-accent)]/50 hover:text-[var(--hub-accent)]"
+                    }`}
+                  >
+                    <Heart size={16} className={liked ? "fill-current" : ""} />
+                    {liked ? "Curtido" : "Curtir"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setReportOpen(true)}
+                    className="flex items-center gap-1.5 rounded-xl border border-[var(--hub-border)] px-3.5 py-2 text-sm font-medium text-[var(--hub-text-muted)] transition-colors hover:border-red-500/50 hover:text-red-400 clip-button"
+                    title="Reportar jogador"
+                  >
+                    <Flag size={16} />
+                    Reportar
+                  </button>
+                </>
               )}
+            {!isOwnProfile && profile && (
+              <ReportModal
+                isOpen={reportOpen}
+                onClose={() => setReportOpen(false)}
+                targetType="user"
+                targetId={profile.id}
+                targetLabel={profile.username ?? profile.name ?? "Jogador"}
+              />
+            )}
             </div>
           </div>
         </div>

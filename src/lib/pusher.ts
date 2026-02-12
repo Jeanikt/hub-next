@@ -4,11 +4,14 @@
  * Configure PUSHER_APP_ID, PUSHER_KEY, PUSHER_SECRET, PUSHER_CLUSTER no .env.
  */
 
-let pusherServer: {
-  trigger: (channel: string, event: string, data: unknown) => Promise<void>;
-} | null = null;
+let pusherServer: PusherInstance | null = null;
 
-async function getPusher() {
+type PusherInstance = {
+  trigger: (channel: string, event: string, data: unknown) => Promise<void>;
+  authorizeChannel: (socketId: string, channel: string, data?: unknown) => { auth: string };
+};
+
+async function getPusher(): Promise<PusherInstance | null> {
   if (pusherServer) return pusherServer;
   const appId = process.env.PUSHER_APP_ID;
   const key = process.env.PUSHER_KEY;
@@ -23,11 +26,16 @@ async function getPusher() {
       secret,
       cluster,
       useTLS: true,
-    });
+    }) as PusherInstance;
     return pusherServer;
   } catch {
     return null;
   }
+}
+
+/** Retorna a instância do Pusher (para auth de canais privados). */
+export async function getPusherServer(): Promise<PusherInstance | null> {
+  return getPusher();
 }
 
 const CHANNEL_QUEUE = "queue";

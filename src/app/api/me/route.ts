@@ -3,6 +3,7 @@ import { auth } from "@/src/lib/auth";
 import { prisma } from "@/src/lib/prisma";
 import { toSafeUser } from "@/src/types/api";
 import { progressToNextLevel } from "@/src/lib/xpLevel";
+import { verifyAndCompleteMissions } from "@/src/lib/missions/verify";
 
 /** Limpa ban expirado (bannedUntil no passado) e retorna o usuário atualizado. */
 async function clearExpiredBanAndGetUser(userId: string) {
@@ -121,6 +122,13 @@ export async function GET() {
 
   if (!user) {
     return NextResponse.json({ message: "Usuário não encontrado." }, { status: 404 });
+  }
+
+  // Missões são concluídas automaticamente pelo sistema (eventos reais)
+  try {
+    await verifyAndCompleteMissions(user.id);
+  } catch {
+    // não falha o GET /api/me se a verificação der erro
   }
 
   const progress = progressToNextLevel(user.xp);

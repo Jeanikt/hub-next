@@ -14,8 +14,12 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   const parsed = onboardingRiotIdSchema.safeParse(body);
   if (!parsed.success) {
+    const flatten = parsed.error.flatten();
     return NextResponse.json(
-      { message: parsed.error.flatten().formErrors[0] ?? "Dados inválidos." },
+      {
+        message: flatten.formErrors[0] ?? "Dados inválidos.",
+        errors: flatten.fieldErrors as { riotId?: string[]; tagline?: string[] },
+      },
       { status: 422 }
     );
   }
