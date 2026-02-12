@@ -52,14 +52,6 @@ export default function ReportsPage() {
     }
   }
 
-  if (status === "loading") {
-    return (
-      <div className="flex justify-center py-12">
-        <div className="hub-loading-spinner" />
-      </div>
-    );
-  }
-
   return (
     <div className="max-w-xl mx-auto space-y-6">
       <div className="border-l-4 border-[var(--hub-accent)] pl-6 py-2">
