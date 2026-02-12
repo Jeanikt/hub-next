@@ -24,11 +24,12 @@ export default function ProfileEditPage() {
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
+    if (status !== "authenticated" && status !== "unauthenticated") return;
     if (status === "unauthenticated") {
       router.replace("/login");
       return;
     }
-    if (status === "authenticated" && session?.user) {
+    if (session?.user) {
       setName((session.user as { name?: string }).name ?? "");
       setUsername((session.user as { username?: string }).username ?? "");
       setImage((session.user as { image?: string }).image ?? "");

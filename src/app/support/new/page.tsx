@@ -14,6 +14,13 @@ export default function NewTicketPage() {
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  if (status === "loading") {
+    return (
+      <div className="flex min-h-[40vh] items-center justify-center">
+        <div className="hub-loading-spinner" />
+      </div>
+    );
+  }
   if (status === "unauthenticated") {
     router.replace("/login");
     return null;
