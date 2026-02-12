@@ -1,65 +1,91 @@
-import Image from "next/image";
+import Link from "next/link";
+import { auth } from "@/src/lib/auth";
 
-export default function Home() {
+export default async function Home() {
+  const session = await auth();
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <div className="space-y-12">
+      <section className="border-l-4 border-[var(--hub-accent)] pl-6 py-2 relative">
+        <div
+          className="absolute -left-[5px] -top-1 w-2 h-2 rotate-45"
+          style={{ background: "var(--hub-accent)" }}
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+        <div
+          className="absolute -left-[5px] -bottom-1 w-2 h-2 rotate-45"
+          style={{ background: "var(--hub-accent)" }}
+        />
+        <h1 className="text-4xl md:text-6xl font-black uppercase tracking-tighter text-white mb-2 leading-none">
+          O seu prime{" "}
+          <span
+            className="text-transparent bg-clip-text bg-gradient-to-r from-[var(--hub-accent)] to-[var(--hub-accent-soft)]"
+          >
+            manda aqui.
+          </span>
+        </h1>
+        <p className="text-[var(--hub-text-muted)] font-medium tracking-widest uppercase text-sm mt-2">
+          Matchmaking competitivo • Partidas equilibradas • Ranking justo
+        </p>
+      </section>
+
+      <div className="grid md:grid-cols-2 gap-12 items-start">
+        <div>
+          <p className="text-[var(--hub-text-muted)] mb-8 text-lg leading-relaxed border-l-2 border-[var(--hub-border)] pl-6">
+            Uma nova forma de jogar, competir e evoluir. Dispute partidas ranqueadas,
+            jogue com elo equilibrado e suba no ranking mais justo do VALORANT.
           </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+          <Link
+            href={session?.user ? "/queue" : "/login"}
+            className="inline-flex items-center gap-2 px-8 py-4 bg-[var(--hub-accent)] hover:opacity-90 text-white font-black uppercase tracking-widest text-sm transition clip-button"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+            {session?.user ? "Entrar na Fila" : "Jogar Agora"}
+          </Link>
         </div>
-      </main>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="bg-[var(--hub-bg-card)] border border-[var(--hub-border)] p-6 hover:border-[var(--hub-accent)]/50 transition-colors">
+            <p className="text-white font-bold uppercase tracking-wider">Fila</p>
+            <p className="text-[var(--hub-text-muted)] text-sm mt-1">Encontre partidas com seu ELO</p>
+          </div>
+          <div className="bg-[var(--hub-bg-card)] border border-[var(--hub-accent)]/50 p-6">
+            <p className="text-[var(--hub-accent)] font-bold uppercase tracking-wider">Play</p>
+            <p className="text-[var(--hub-text-muted)] text-sm mt-1">10v10 competitivo</p>
+          </div>
+          <div className="bg-[var(--hub-bg-card)] border border-[var(--hub-border)] p-6 hover:border-[var(--hub-accent)]/50 transition-colors">
+            <p className="text-white font-bold uppercase tracking-wider">Amigos</p>
+            <p className="text-[var(--hub-text-muted)] text-sm mt-1">Squads e mensagens</p>
+          </div>
+          <div className="bg-[var(--hub-bg-card)] border border-[var(--hub-border)] p-6">
+            <p className="text-[var(--hub-accent)] font-bold uppercase tracking-wider">HUBEXPRESSO</p>
+            <p className="text-[var(--hub-text-muted)] text-sm mt-1">100% integrado</p>
+          </div>
+        </div>
+      </div>
+
+      <section className="pt-12 border-t border-[var(--hub-border)]">
+        <h2 className="text-2xl font-black uppercase tracking-widest mb-6 flex items-center gap-4">
+          <span className="w-2 h-8 bg-[var(--hub-accent)]" />
+          Como funciona
+        </h2>
+        <div className="grid md:grid-cols-3 gap-6">
+          {[
+            { n: "01", title: "Entre com Google", desc: "Uma conta, acesso total." },
+            { n: "02", title: "Complete o onboarding", desc: "Perfil e Riot ID (opcional)." },
+            { n: "03", title: "Fila e partidas", desc: "Matchmaking e jogatina." },
+          ].map(({ n, title, desc }) => (
+            <div
+              key={n}
+              className="bg-[var(--hub-bg-card)] border border-[var(--hub-border)] p-8 hover:border-[var(--hub-accent)]/50 transition-colors relative group"
+            >
+              <div className="text-5xl font-black text-white/5 absolute top-4 right-4 group-hover:text-[var(--hub-accent)]/10">
+                {n}
+              </div>
+              <h3 className="text-white font-bold uppercase tracking-wide">{title}</h3>
+              <p className="text-[var(--hub-text-muted)] text-sm mt-2">{desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }

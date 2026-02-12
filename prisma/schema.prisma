@@ -1,0 +1,299 @@
+// HUBEXPRESSO – schema PostgreSQL + Auth.js (NextAuth) + domínio
+// Compatível com @auth/prisma-adapter e fortemente tipado.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// -----------------------------------------------------------------------------
+// Auth.js (NextAuth) – modelos obrigatórios para o adapter
+// -----------------------------------------------------------------------------
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// -----------------------------------------------------------------------------
+// Usuário – extensão do User do Auth.js + campos do HUBEXPRESSO
+// Nunca exponha: password, tokens de Account
+// -----------------------------------------------------------------------------
+model User {
+  id                     String    @id @default(cuid())
+  name                   String?
+  email                  String?   @unique
+  emailVerified          DateTime?
+  image                  String?
+  password               String?   // null para usuários só OAuth
+
+  username               String?   @unique
+  riotAccount            String?
+  riotId                 String?
+  tagline                String?
+  rank                   String?
+  primaryRole            String?
+  secondaryRole          String?
+  xp                     Int       @default(0)
+  elo                    Int       @default(0)
+  level                  Int       @default(1)
+  isAdmin                Boolean   @default(false)
+  isBanned                Boolean   @default(false)
+  bannedUntil            DateTime?
+  banReason               String?
+  isOnline                Boolean   @default(false)
+  lastLoginAt             DateTime?
+  onboardingCompleted    Boolean   @default(false)
+  onboardingSkipped       Boolean   @default(false)
+  onboardingCompletedAt  DateTime?
+  profileBackgroundUrl   String?   @db.Text
+  favoriteChampion       String?
+  bestWinrateChampion    String?
+
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  accounts               Account[]
+  sessions               Session[]
+  queueEntries           QueueEntry[]
+  friendsSent             Friend[]           @relation("FriendRequester")
+  friendsReceived         Friend[]            @relation("FriendReceiver")
+  friendMessagesSent      FriendMessage[]     @relation("MessageSender")
+  friendMessagesReceived  FriendMessage[]     @relation("MessageReceiver")
+  matchParticipants       GameMatchUser[]
+  lobbyMessages           LobbyMessage[]
+  createdMatches          GameMatch[]         @relation("MatchCreator")
+  missionsCompleted       UserMission[]
+  profileLikesReceived    ProfileLike[]       @relation("ProfileLikesReceived")
+  profileLikesSent       ProfileLike[]       @relation("ProfileLikesSent")
+  supportTickets         SupportTicket[]
+  reports                 Report[]
+
+  @@map("users")
+}
+
+model Mission {
+  id          String   @id @default(cuid())
+  title       String
+  description String?  @db.Text
+  type        String   // daily, weekly, one_time
+  xpReward    Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  completions UserMission[]
+
+  @@index([type, isActive])
+  @@map("missions")
+}
+
+model UserMission {
+  id         String   @id @default(cuid())
+  userId     String
+  missionId  String
+  completedAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mission Mission @relation(fields: [missionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, missionId])
+  @@index([userId])
+  @@index([missionId])
+  @@map("user_missions")
+}
+
+model ProfileLike {
+  id          String   @id @default(cuid())
+  userId      String   // quem curtiu
+  targetUserId String  // perfil curtido
+
+  createdAt   DateTime @default(now())
+
+  user       User @relation("ProfileLikesSent", fields: [userId], references: [id], onDelete: Cascade)
+  targetUser User @relation("ProfileLikesReceived", fields: [targetUserId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, targetUserId])
+  @@index([targetUserId])
+  @@map("profile_likes")
+}
+
+model QueueEntry {
+  id        Int      @id @default(autoincrement())
+  userId    String
+  queueType String
+  joinedAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId])
+  @@index([queueType])
+  @@map("queue_entries")
+}
+
+model GameMatch {
+  id           Int       @id @default(autoincrement())
+  matchId      String    @unique
+  type         String
+  status       String    @default("pending")
+  map          String?
+  maxPlayers   Int       @default(10)
+  settings     String?   @db.Text
+  creatorId    String?
+  scheduledAt  DateTime?
+  startedAt    DateTime?
+  finishedAt   DateTime?
+  winnerTeam   String?
+  matchDuration Int?
+
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  creator       User?             @relation("MatchCreator", fields: [creatorId], references: [id], onDelete: SetNull)
+  participants  GameMatchUser[]
+  lobbyMessages LobbyMessage[]
+
+  @@index([status])
+  @@index([type])
+  @@map("game_matches")
+}
+
+model GameMatchUser {
+  id          Int       @id @default(autoincrement())
+  gameMatchId Int
+  userId      String
+  team        String?
+  role        String?
+  kills       Int       @default(0)
+  deaths      Int       @default(0)
+  assists     Int       @default(0)
+  score       Int       @default(0)
+  joinedAt    DateTime? @default(now())
+
+  gameMatch GameMatch @relation(fields: [gameMatchId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([gameMatchId, userId])
+  @@index([userId])
+  @@map("game_match_user")
+}
+
+model Friend {
+  id       Int    @id @default(autoincrement())
+  userId   String
+  friendId String
+  status   String @default("pending")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User @relation("FriendRequester", fields: [userId], references: [id], onDelete: Cascade)
+  friend User @relation("FriendReceiver", fields: [friendId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, friendId])
+  @@index([friendId])
+  @@map("friends")
+}
+
+model FriendMessage {
+  id         Int      @id @default(autoincrement())
+  senderId   String
+  receiverId String
+  content    String   @db.Text
+  readAt     DateTime?
+
+  createdAt  DateTime @default(now())
+
+  sender   User @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User @relation("MessageReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@index([senderId, receiverId])
+  @@index([receiverId])
+  @@map("friend_messages")
+}
+
+model LobbyMessage {
+  id          Int    @id @default(autoincrement())
+  gameMatchId Int
+  userId      String
+  content     String @db.Text
+
+  createdAt   DateTime @default(now())
+
+  gameMatch GameMatch @relation(fields: [gameMatchId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([gameMatchId])
+  @@map("lobby_messages")
+}
+
+model SupportTicket {
+  id        String   @id @default(cuid())
+  userId    String
+  subject   String   @db.Text
+  body      String   @db.Text
+  status    String   @default("open")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@map("support_tickets")
+}
+
+model Report {
+  id         String   @id @default(cuid())
+  userId     String
+  targetType String
+  targetId   String
+  reason     String   @db.Text
+  status     String   @default("pending")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@map("reports")
+}
