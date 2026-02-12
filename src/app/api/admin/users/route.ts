@@ -3,6 +3,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/src/lib/prisma";
 import { auth } from "@/src/lib/auth";
 import { isAllowedAdmin } from "@/src/lib/admin";
+import { isUserOnline } from "@/src/lib/online";
 
 /** GET /api/admin/users – listar usuários (apenas email admin permitido) */
 export async function GET(request: NextRequest) {
@@ -48,6 +49,7 @@ export async function GET(request: NextRequest) {
           elo: true,
           rank: true,
           isOnline: true,
+          lastLoginAt: true,
           isBanned: true,
           bannedUntil: true,
           banReason: true,
@@ -61,7 +63,11 @@ export async function GET(request: NextRequest) {
     ]);
 
     return NextResponse.json({
-      data: users.map(({ image, ...u }) => ({ ...u, avatarUrl: image ?? null })),
+      data: users.map(({ image, lastLoginAt, ...u }) => ({
+        ...u,
+        avatarUrl: image ?? null,
+        isOnline: isUserOnline(lastLoginAt),
+      })),
       total,
       page,
       perPage,

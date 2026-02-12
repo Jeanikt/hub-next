@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/src/lib/prisma";
 import { auth } from "@/src/lib/auth";
+import { isUserOnline } from "@/src/lib/online";
 
 /** GET /api/friend-messages?username=xxx ou ?friend_id=xxx – lista mensagens com o amigo */
 export async function GET(request: NextRequest) {
@@ -28,7 +29,7 @@ export async function GET(request: NextRequest) {
 
     const peer = await prisma.user.findUnique({
       where: { id: peerId },
-      select: { id: true, username: true, name: true, isOnline: true },
+      select: { id: true, username: true, name: true, isOnline: true, lastLoginAt: true },
     });
     if (!peer) {
       return NextResponse.json({ message: "Usuário não encontrado." }, { status: 404 });
@@ -49,7 +50,7 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.json({
-      peer: { id: peer.id, username: peer.username, name: peer.name, isOnline: peer.isOnline },
+      peer: { id: peer.id, username: peer.username, name: peer.name, isOnline: isUserOnline(peer.lastLoginAt) },
       messages: messages.map((m) => ({
         id: m.id,
         content: m.content,

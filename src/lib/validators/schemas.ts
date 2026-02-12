@@ -39,7 +39,7 @@ export const removeFriendSchema = z.object({
 
 export const sendFriendMessageSchema = z.object({
   receiver_id: z.string().min(1).max(128),
-  content: z.string().min(1).max(10_000).trim(),
+  content: z.string().trim().min(1).max(10_000),
 });
 
 /** friend_id = userId (cuid) do amigo cujas mensagens serão marcadas como lidas */
@@ -49,7 +49,7 @@ export const markReadFriendSchema = z.object({
 
 export const sendLobbyMessageSchema = z.object({
   matchId: z.string().min(1).max(128),
-  content: z.string().min(1).max(2_000).trim(),
+  content: z.string().trim().min(1).max(2_000),
 });
 
 /** Durações de suspensão em milissegundos (10m, 1h, 4h, 24h, 7d) */

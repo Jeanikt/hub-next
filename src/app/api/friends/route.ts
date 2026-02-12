@@ -3,6 +3,7 @@ import { prisma } from "@/src/lib/prisma";
 import { auth } from "@/src/lib/auth";
 import { addFriendSchema } from "@/src/lib/validators/schemas";
 import { createNotification } from "@/src/lib/notifications";
+import { isUserOnline } from "@/src/lib/online";
 
 /** GET /api/friends – lista amigos e pedidos pendentes */
 export async function GET(request: NextRequest) {
@@ -24,6 +25,7 @@ export async function GET(request: NextRequest) {
               image: true,
               elo: true,
               isOnline: true,
+              lastLoginAt: true,
             },
           },
         },
@@ -39,6 +41,7 @@ export async function GET(request: NextRequest) {
               image: true,
               elo: true,
               isOnline: true,
+              lastLoginAt: true,
             },
           },
         },
@@ -53,7 +56,7 @@ export async function GET(request: NextRequest) {
     const pendingReceived = received.filter((f) => f.status === "pending");
 
     return NextResponse.json({
-      friends: accepted.map((a) => ({ id: a.peer.id, username: a.peer.username, name: a.peer.name, avatarUrl: (a.peer as { image?: string }).image ?? null, elo: a.peer.elo, isOnline: a.peer.isOnline })),
+      friends: accepted.map((a) => ({ id: a.peer.id, username: a.peer.username, name: a.peer.name, avatarUrl: (a.peer as { image?: string }).image ?? null, elo: a.peer.elo, isOnline: isUserOnline((a.peer as { lastLoginAt?: Date | null }).lastLoginAt) })),
       pendingSent: pendingSent.map((f) => ({ id: f.id, friend: f.friend })),
       pendingReceived: pendingReceived.map((f) => ({ id: f.id, user: f.user })),
     });

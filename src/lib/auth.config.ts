@@ -66,6 +66,10 @@ export const authConfig: NextAuthConfig = {
           (user as { username?: string }).username = dbUser.username ?? undefined;
           (user as { isAdmin?: boolean }).isAdmin = dbUser.isAdmin;
           (user as { onboardingCompleted?: boolean }).onboardingCompleted = dbUser.onboardingCompleted;
+          await prisma.user.update({
+            where: { id: dbUser.id },
+            data: { isOnline: true, lastLoginAt: new Date() },
+          });
         }
       } catch {
         // Tabela users com estrutura diferente (ex.: Laravel snake_case) – permite login sem enriquecer sessão

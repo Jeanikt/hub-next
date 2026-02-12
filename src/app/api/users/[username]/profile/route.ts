@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/src/lib/prisma";
 import { getRoleLabel } from "@/src/lib/roles";
+import { isUserOnline } from "@/src/lib/online";
 
 type Params = { params: Promise<{ username: string }> };
 
@@ -21,6 +22,7 @@ const PROFILE_SELECT_FULL = {
   favoriteChampion: true,
   bestWinrateChampion: true,
   isOnline: true,
+  lastLoginAt: true,
 } as const;
 
 const PROFILE_SELECT_MINIMAL = {
@@ -37,6 +39,7 @@ const PROFILE_SELECT_MINIMAL = {
   primaryRole: true,
   secondaryRole: true,
   isOnline: true,
+  lastLoginAt: true,
 } as const;
 
 /** GET /api/users/[username]/profile – perfil público com estatísticas */
@@ -86,9 +89,12 @@ export async function GET(_request: Request, { params }: Params) {
   const { progressToNextLevel } = await import("@/src/lib/xpLevel");
   const xpProgress = progressToNextLevel(user.xp as number);
 
+  const lastLoginAt = user.lastLoginAt as Date | null | undefined;
+  const { lastLoginAt: _dropped, ...safeUser } = user as Record<string, unknown> & { lastLoginAt?: unknown };
   return NextResponse.json({
-    ...user,
+    ...safeUser,
     avatarUrl: user.image,
+    isOnline: isUserOnline(lastLoginAt),
     friendsCount,
     likesCount,
     missionsCompletedCount,

@@ -120,29 +120,6 @@ export default function QueuePage() {
     return () => clearInterval(interval);
   }, []);
 
-  const pusherRef = useRef<{ unsubscribe: (name: string) => void } | null>(null);
-  useEffect(() => {
-    fetch("/api/pusher/config", { credentials: "include" })
-      .then((r) => r.json())
-      .then((config) => {
-        if (!config?.enabled || !config?.key) return;
-        import("pusher-js").then(({ default: Pusher }) => {
-          const client = new Pusher(config.key, { cluster: config.cluster });
-          const channel = client.subscribe("queue");
-          channel.bind("status-update", () => {
-            fetchStatusRef.current?.();
-          });
-          pusherRef.current = client;
-        });
-      });
-    return () => {
-      if (pusherRef.current) {
-        pusherRef.current.unsubscribe("queue");
-        pusherRef.current = null;
-      }
-    };
-  }, []);
-
   async function joinQueue(queueType: string) {
     setJoining(queueType);
     setError(null);

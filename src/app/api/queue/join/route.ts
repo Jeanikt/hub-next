@@ -3,7 +3,6 @@ import { prisma } from "@/src/lib/prisma";
 import { auth } from "@/src/lib/auth";
 import { canJoinQueue } from "@/src/lib/rankPoints";
 import { invalidateQueueStatusCache } from "@/src/lib/redis";
-import { triggerQueueUpdate, triggerMatchFound } from "@/src/lib/pusher";
 import { randomUUID } from "crypto";
 import { ROLE_IDS } from "@/src/lib/roles";
 
@@ -95,7 +94,6 @@ export async function POST(request: NextRequest) {
       },
     });
     await invalidateQueueStatusCache();
-    triggerQueueUpdate().catch(() => {});
 
     const entries = await prisma.queueEntry.findMany({
       where: { queueType: queue_type },
@@ -148,8 +146,6 @@ export async function POST(request: NextRequest) {
         },
       });
       await invalidateQueueStatusCache();
-      triggerQueueUpdate().catch(() => {});
-      triggerMatchFound(match.matchId, entries.map((e) => e.userId)).catch(() => {});
 
       matchFound = true;
       matchId = match.matchId;

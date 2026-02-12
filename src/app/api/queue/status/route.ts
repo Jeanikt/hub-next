@@ -66,7 +66,18 @@ export async function GET(request: NextRequest) {
 
     let queues: Record<string, { count: number; players: unknown[]; players_needed: number; estimated_time: string }>;
 
-    const cached = await getQueueStatusCache();
+    // Se usuário logado, verificar se está na fila; se estiver, ignorar cache para dados em tempo real
+    let userInQueue: string | null = null;
+    if (session?.user?.id) {
+      const entry = await prisma.queueEntry.findUnique({
+        where: { userId: session.user.id },
+        select: { queueType: true },
+      });
+      if (entry) userInQueue = entry.queueType;
+    }
+
+    const useCache = !userInQueue;
+    const cached = useCache ? await getQueueStatusCache() : null;
     if (cached) {
       try {
         queues = JSON.parse(cached) as Record<string, { count: number; players: unknown[]; players_needed: number; estimated_time: string }>;
@@ -79,8 +90,8 @@ export async function GET(request: NextRequest) {
         await setQueueStatusCache(JSON.stringify(queues));
       }
     } else {
-      queues = await computeQueues(null);
-      await setQueueStatusCache(JSON.stringify(queues));
+      queues = await computeQueues(queueTypeParam || null);
+      if (!userInQueue) await setQueueStatusCache(JSON.stringify(queues));
     }
     let inQueue = false;
     let currentQueue: string | null = null;
@@ -88,8 +99,11 @@ export async function GET(request: NextRequest) {
     let hasRiotLinked = false;
     let allowed_queues: string[] = [];
 
+    let matchFound = false;
+    let matchId: string | null = null;
+
     if (session?.user?.id) {
-      const [me, myEntry] = await Promise.all([
+      const [me, myEntry, recentMatch] = await Promise.all([
         prisma.user.findUnique({
           where: { id: session.user.id },
           select: { riotAccount: true, elo: true },
@@ -110,6 +124,11 @@ export async function GET(request: NextRequest) {
             },
           },
         }),
+        prisma.gameMatchUser.findFirst({
+          where: { userId: session.user.id },
+          orderBy: { joinedAt: "desc" },
+          include: { gameMatch: { select: { matchId: true, createdAt: true } } },
+        }),
       ]);
       hasRiotLinked = !!me?.riotAccount;
       allowed_queues = hasRiotLinked ? getAllowedQueues(me?.elo ?? 0) : [];
@@ -118,6 +137,13 @@ export async function GET(request: NextRequest) {
         currentQueue = myEntry.queueType;
         const data = queues[myEntry.queueType];
         if (data) queuePlayers = data.players;
+      }
+      if (!myEntry && recentMatch?.gameMatch) {
+        const createdAt = recentMatch.gameMatch.createdAt.getTime();
+        if (Date.now() - createdAt < 120_000) {
+          matchFound = true;
+          matchId = recentMatch.gameMatch.matchId;
+        }
       }
     }
 
@@ -130,6 +156,8 @@ export async function GET(request: NextRequest) {
       queuePlayers,
       hasRiotLinked,
       allowed_queues,
+      matchFound,
+      matchId,
     });
   } catch (e) {
     console.error("queue status", e);

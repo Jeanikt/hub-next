@@ -61,7 +61,11 @@ export function Sidebar() {
   useEffect(() => {
     if (status !== "authenticated" || pathname === "/banned") return;
     fetch("/api/me", { credentials: "include" })
-      .then((r) => (r.ok ? r.json() : null))
+      .then((r) => {
+        if (r.ok) return r.json();
+        if (r.status === 404) return fetch("/api/auth/me", { credentials: "include" }).then((r2) => (r2.ok ? r2.json() : null));
+        return null;
+      })
       .then((data) => {
         if (!data) return;
         const banned = data.isBanned === true;

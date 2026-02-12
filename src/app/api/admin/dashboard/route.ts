@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/src/lib/prisma";
 import { auth } from "@/src/lib/auth";
 import { isAllowedAdmin } from "@/src/lib/admin";
+import { ONLINE_WINDOW_MS } from "@/src/lib/online";
 
 /** GET /api/admin/dashboard – estatísticas (apenas email admin permitido) */
 export async function GET(request: NextRequest) {
@@ -11,9 +12,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ message: "Acesso negado." }, { status: 403 });
     }
 
+    const since = new Date(Date.now() - ONLINE_WINDOW_MS);
     const [usersTotal, usersOnline, matchesToday, bannedTotal] = await Promise.all([
       prisma.user.count(),
-      prisma.user.count({ where: { isOnline: true } }),
+      prisma.user.count({ where: { lastLoginAt: { gte: since } } }),
       prisma.gameMatch.count({
         where: {
           createdAt: {

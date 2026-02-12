@@ -1,15 +1,6 @@
 import { NextResponse } from "next/server";
-import { getPusherClientConfig } from "@/src/lib/pusher";
 
-/** GET /api/pusher/config – retorna key e cluster para o cliente (canal público queue). */
+/** GET /api/pusher/config – desativado (real-time por polling, sem Pusher). */
 export async function GET() {
-  const config = getPusherClientConfig();
-  if (!config) {
-    return NextResponse.json({ enabled: false }, { status: 200 });
-  }
-  return NextResponse.json({
-    enabled: true,
-    key: config.key,
-    cluster: config.cluster,
-  });
+  return NextResponse.json({ enabled: false }, { status: 200 });
 }

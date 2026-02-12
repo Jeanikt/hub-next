@@ -57,7 +57,8 @@ export default function WaitingRoomPage() {
         return;
       }
       if (json.matchFound && json.matchId) {
-        router.push(`/matches/${json.matchId}`);
+        setMatchFoundAlert(true);
+        setTimeout(() => router.push(`/matches/${json.matchId}`), 1500);
       }
     }
     pollRef.current = poll;
@@ -65,31 +66,6 @@ export default function WaitingRoomPage() {
     const interval = setInterval(poll, 3000);
     return () => clearInterval(interval);
   }, [type, router]);
-
-  useEffect(() => {
-    const userId = (session?.user as { id?: string })?.id;
-    if (!type || !userId) return;
-    let client: InstanceType<typeof import("pusher-js").default> | null = null;
-    fetch("/api/pusher/config", { credentials: "include" })
-      .then((r) => r.json())
-      .then((config) => {
-        if (!config?.enabled || !config?.key) return;
-        return import("pusher-js").then(({ default: Pusher }) => {
-          client = new Pusher(config.key, { cluster: config.cluster });
-          const channel = client.subscribe("queue");
-          channel.bind("match-found", (payload: { matchId?: string; userIds?: string[] }) => {
-            if (payload?.matchId && Array.isArray(payload.userIds) && payload.userIds.includes(userId)) {
-              setMatchFoundAlert(true);
-              setTimeout(() => router.push(`/matches/${payload.matchId}`), 1500);
-            }
-          });
-          channel.bind("status-update", () => pollRef.current?.());
-        });
-      });
-    return () => {
-      if (client) client.unsubscribe("queue");
-    };
-  }, [type, session?.user, router]);
 
   async function leaveQueue() {
     setLeaving(true);

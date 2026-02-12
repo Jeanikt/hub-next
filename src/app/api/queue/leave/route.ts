@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/src/lib/prisma";
 import { auth } from "@/src/lib/auth";
 import { invalidateQueueStatusCache } from "@/src/lib/redis";
-import { triggerQueueUpdate } from "@/src/lib/pusher";
 
 export async function POST() {
   try {
@@ -26,7 +25,6 @@ export async function POST() {
       where: { userId: session.user.id },
     });
     await invalidateQueueStatusCache();
-    triggerQueueUpdate().catch(() => {});
 
     return NextResponse.json({
       success: true,

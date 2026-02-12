@@ -14,16 +14,13 @@ type Notif = {
   createdAt: string;
 };
 
-const CHANNEL_PREFIX = "private-notifications-";
-const EVENT_NOTIFICATION = "new-notification";
-const POLL_MS = 60000;
+const POLL_MS = 15000;
 
 export function NotificationBell() {
   const { data: session, status } = useSession();
   const [list, setList] = useState<Notif[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const pusherRef = useRef<{ unsubscribe: (ch: string) => void } | null>(null);
 
   const fetchList = useCallback(() => {
     if (status !== "authenticated") return;
@@ -41,54 +38,6 @@ export function NotificationBell() {
     const t = setInterval(fetchList, POLL_MS);
     return () => clearInterval(t);
   }, [status, fetchList]);
-
-  useEffect(() => {
-    const userId = (session?.user as { id?: string })?.id;
-    if (!userId || status !== "authenticated") return;
-
-    let client: { unsubscribe: (ch: string) => void } | null = null;
-
-    fetch("/api/pusher/config", { credentials: "include" })
-      .then((r) => r.json())
-      .then((config) => {
-        if (!config?.enabled || !config?.key) return;
-        return import("pusher-js").then(({ default: Pusher }) => {
-          const pusher = new Pusher(config.key, {
-            cluster: config.cluster,
-            authEndpoint: "/api/pusher/auth",
-            auth: { params: {} },
-          });
-          pusherRef.current = pusher;
-          const channelName = `${CHANNEL_PREFIX}${userId}`;
-          const channel = pusher.subscribe(channelName);
-          channel.bind(EVENT_NOTIFICATION, (payload: Partial<Notif>) => {
-            const id = payload?.id;
-            if (id) {
-              setList((prev) => [
-                {
-                  id,
-                  type: payload.type ?? "generic",
-                  title: payload.title ?? "",
-                  body: payload.body ?? null,
-                  readAt: payload.readAt ?? null,
-                  createdAt: payload.createdAt ?? new Date().toISOString(),
-                },
-                ...prev.filter((n) => n.id !== id),
-              ]);
-            }
-          });
-          client = pusher;
-        });
-      });
-
-    return () => {
-      if (client) {
-        const ch = `${CHANNEL_PREFIX}${userId}`;
-        (client as { unsubscribe: (c: string) => void }).unsubscribe(ch);
-      }
-      pusherRef.current = null;
-    };
-  }, [session?.user, status]);
 
   const unreadCount = list.filter((n) => !n.readAt).length;
 

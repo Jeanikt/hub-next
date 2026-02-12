@@ -4,6 +4,7 @@ import { prisma } from "@/src/lib/prisma";
 import { toSafeUser } from "@/src/types/api";
 import { progressToNextLevel } from "@/src/lib/xpLevel";
 import { verifyAndCompleteMissions } from "@/src/lib/missions/verify";
+import { isUserOnline } from "@/src/lib/online";
 
 /** Limpa ban expirado (bannedUntil no passado) e retorna o usuário atualizado. */
 async function clearExpiredBanAndGetUser(userId: string) {
@@ -42,6 +43,7 @@ const ME_SELECT_FULL = {
   favoriteChampion: true,
   bestWinrateChampion: true,
   isOnline: true,
+  lastLoginAt: true,
 } as const;
 
 const ME_SELECT_MINIMAL = {
@@ -61,6 +63,7 @@ const ME_SELECT_MINIMAL = {
   primaryRole: true,
   secondaryRole: true,
   isOnline: true,
+  lastLoginAt: true,
 } as const;
 
 /** GET /api/me – retorna o usuário autenticado (SafeUser + campos de perfil e progresso). */
@@ -94,6 +97,7 @@ export async function GET() {
     primaryRole: string | null;
     secondaryRole: string | null;
     isOnline: boolean;
+    lastLoginAt: Date | null;
     profileBackgroundUrl?: string | null;
     favoriteChampion?: string | null;
     bestWinrateChampion?: string | null;
@@ -124,6 +128,16 @@ export async function GET() {
     return NextResponse.json({ message: "Usuário não encontrado." }, { status: 404 });
   }
 
+  // Heartbeat: mantém usuário como online (atualiza lastLoginAt no máx. a cada 2 min)
+  const now = Date.now();
+  const lastLogin = user.lastLoginAt ? user.lastLoginAt.getTime() : 0;
+  if (now - lastLogin > 120_000) {
+    prisma.user.update({
+      where: { id: session.user.id },
+      data: { lastLoginAt: new Date(), isOnline: true },
+    }).catch(() => {});
+  }
+
   // Missões são concluídas automaticamente pelo sistema (eventos reais)
   try {
     await verifyAndCompleteMissions(user.id);
@@ -147,7 +161,7 @@ export async function GET() {
     profileBackgroundUrl: user.profileBackgroundUrl ?? null,
     favoriteChampion: user.favoriteChampion ?? null,
     bestWinrateChampion: user.bestWinrateChampion ?? null,
-    isOnline: user.isOnline,
+    isOnline: isUserOnline(user.lastLoginAt),
     friendsCount,
     likesCount,
     missionsCompletedCount,
