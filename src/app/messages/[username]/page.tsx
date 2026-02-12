@@ -127,7 +127,7 @@ export default function MessagesPage() {
 
   const peerId = peer?.id ?? null;
   const isMyMessage = (m: Message) => peerId != null && m.senderId !== peerId;
-  const displayName = peer?.name ?? peer?.username ?? username || "—";
+  const displayName = (peer?.name ?? peer?.username ?? username) || "—";
 
   return (
     <div className="mx-auto max-w-3xl space-y-4">

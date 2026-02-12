@@ -14,7 +14,7 @@ const updateProfileSchema = z.object({
   secondaryRole: z.enum(["controller", "duelist", "initiator", "sentinel"]).optional().nullable(),
   profileBackgroundUrl: z.string().url().max(2000).optional().nullable(),
   favoriteChampion: z.string().max(80).optional().nullable(),
-  image: z.union([z.string().url(), z.string().startsWith("/uploads/")]).max(2000).optional().nullable(),
+  image: z.union([z.string().url().max(2000), z.string().startsWith("/uploads/").max(2000)]).optional().nullable(),
 });
 
 /** PATCH /api/profile – atualizar perfil (nome, username, Riot ID). Ao vincular Riot: valida na API, verifica duplicado e atualiza rank/elo. */

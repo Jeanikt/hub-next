@@ -93,7 +93,7 @@ export default function QueuePage() {
   const [joining, setJoining] = useState<string | null>(null);
   const [leaving, setLeaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const fetchStatusRef = useRef<() => Promise<void>>();
+  const fetchStatusRef = useRef<(() => Promise<void>) | undefined>(undefined);
 
   async function fetchStatus() {
     try {

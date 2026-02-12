@@ -6,9 +6,10 @@
 const REDIS_URL = process.env.UPSTASH_REDIS_REST_URL;
 const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
 
-let redisClient: { get: (key: string) => Promise<string | null>; set: (key: string, value: string, options?: { ex?: number }) => Promise<unknown>; del: (key: string) => Promise<unknown> } | null = null;
+type RedisClient = InstanceType<typeof import("@upstash/redis").Redis>;
+let redisClient: RedisClient | null = null;
 
-async function getClient() {
+async function getClient(): Promise<RedisClient | null> {
   if (!REDIS_URL || !REDIS_TOKEN) return null;
   if (redisClient) return redisClient;
   try {

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/src/lib/prisma";
 import { auth } from "@/src/lib/auth";
 import { isAllowedAdmin } from "@/src/lib/admin";
@@ -16,7 +17,7 @@ export async function GET(request: NextRequest) {
     const page = Math.max(1, parseInt(request.nextUrl.searchParams.get("page") ?? "1", 10));
     const perPage = 20;
 
-    const and: unknown[] = [];
+    const and: Prisma.UserWhereInput[] = [];
     if (search.trim()) {
       and.push({
         OR: [

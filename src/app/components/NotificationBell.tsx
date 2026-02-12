@@ -62,17 +62,18 @@ export function NotificationBell() {
           const channelName = `${CHANNEL_PREFIX}${userId}`;
           const channel = pusher.subscribe(channelName);
           channel.bind(EVENT_NOTIFICATION, (payload: Partial<Notif>) => {
-            if (payload?.id) {
+            const id = payload?.id;
+            if (id) {
               setList((prev) => [
                 {
-                  id: payload.id,
+                  id,
                   type: payload.type ?? "generic",
                   title: payload.title ?? "",
                   body: payload.body ?? null,
                   readAt: payload.readAt ?? null,
                   createdAt: payload.createdAt ?? new Date().toISOString(),
                 },
-                ...prev.filter((n) => n.id !== payload.id),
+                ...prev.filter((n) => n.id !== id),
               ]);
             }
           });

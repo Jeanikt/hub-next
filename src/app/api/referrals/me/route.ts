@@ -1,12 +1,21 @@
+import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { auth } from "@/src/lib/auth";
 import { prisma } from "@/src/lib/prisma";
 import { codeFromUsername, generateInviteCode } from "@/src/lib/inviteCode";
 
-const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://dev.hubexpresso.com";
+/** Origem da requisição (host da página: localhost, dev.hubexpresso.com, etc.) */
+function getRequestOrigin(request: NextRequest): string {
+  try {
+    const url = new URL(request.url);
+    return url.origin;
+  } catch {
+    return process.env.NEXT_PUBLIC_APP_URL ?? "https://dev.hubexpresso.com";
+  }
+}
 
 /** GET /api/referrals/me – retorna código de convite do usuário, link e quantidade de convidados. Cria inviteCode se não existir. */
-export async function GET() {
+export async function GET(request: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ message: "Não autenticado." }, { status: 401 });
@@ -38,7 +47,8 @@ export async function GET() {
     where: { inviterId: session.user.id },
   });
 
-  const inviteLink = `${baseUrl}/login?ref=${encodeURIComponent(user.inviteCode!)}`;
+  const origin = getRequestOrigin(request);
+  const inviteLink = `${origin}/login?ref=${encodeURIComponent(user.inviteCode!)}`;
 
   return NextResponse.json({
     inviteCode: user.inviteCode,

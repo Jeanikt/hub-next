@@ -40,7 +40,7 @@ export default function WaitingRoomPage() {
   const [data, setData] = useState<QueueStatus | null>(null);
   const [leaving, setLeaving] = useState(false);
   const [matchFoundAlert, setMatchFoundAlert] = useState(false);
-  const pollRef = useRef<() => Promise<void>>();
+  const pollRef = useRef<(() => Promise<void>) | undefined>(undefined);
 
   useEffect(() => {
     if (!type) return;
@@ -69,7 +69,7 @@ export default function WaitingRoomPage() {
   useEffect(() => {
     const userId = (session?.user as { id?: string })?.id;
     if (!type || !userId) return;
-    let client: { unsubscribe: (ch: string) => void } | null = null;
+    let client: InstanceType<typeof import("pusher-js").default> | null = null;
     fetch("/api/pusher/config", { credentials: "include" })
       .then((r) => r.json())
       .then((config) => {

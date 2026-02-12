@@ -26,7 +26,7 @@ async function getPusher(): Promise<PusherInstance | null> {
       secret,
       cluster,
       useTLS: true,
-    }) as PusherInstance;
+    }) as unknown as PusherInstance;
     return pusherServer;
   } catch {
     return null;
