@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
 import { Users, ChevronRight, ListOrdered, Clock, Swords, Sparkles } from "lucide-react";
 import Link from "next/link";
+import { getQueueAliasFromId } from "@/src/lib/valorant";
 
 type QueuePlayer = {
   id: string;
@@ -62,33 +63,20 @@ const QUEUE_TYPES = [
 
 const PLAYERS_NEEDED = 10;
 
-function PlayerChip({
-  p,
-  position,
-}: {
-  p: QueuePlayer;
-  position: number;
-}) {
+function PlayerChip({ p, position }: { p: QueuePlayer; position: number }) {
+  const alias = getQueueAliasFromId(p.id);
   return (
     <div
       className="flex items-center gap-2 rounded-lg border border-[var(--hub-border)] bg-[var(--hub-bg)]/90 px-2.5 py-2"
       key={p.id}
     >
       <span className="text-[10px] font-mono text-[var(--hub-text-muted)] w-4">{position}</span>
-      {p.avatar_url ? (
-        <img
-          src={p.avatar_url}
-          alt=""
-          className="h-7 w-7 rounded-full object-cover border border-[var(--hub-border)]"
-        />
-      ) : (
-        <div className="h-7 w-7 rounded-full border border-[var(--hub-border)] bg-[var(--hub-bg-card)] flex items-center justify-center text-[10px] text-[var(--hub-text-muted)]">
-          ?
-        </div>
-      )}
+      <div className="h-7 w-7 rounded-full border border-[var(--hub-border)] bg-[var(--hub-bg-card)] flex items-center justify-center text-[10px] text-[var(--hub-text-muted)]">
+        ?
+      </div>
       <div className="min-w-0 flex-1">
         <p className="truncate text-xs font-medium text-[var(--hub-text)]">
-          {p.username ?? "Jogador"}
+          {alias}
         </p>
         <p className="text-[10px] text-[var(--hub-text-muted)]">
           ELO {p.elo ?? "—"} · Nível {p.level ?? "—"}

@@ -7,8 +7,13 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "test:ci": "vitest run --coverage",
     "db:generate": "prisma generate",
-    "db:seed": "npx tsx prisma/seed.ts"
+    "db:seed": "npx tsx prisma/seed.ts",
+    "db:apply-missing": "prisma db execute --file prisma/apply-missing-postgres.sql --schema prisma/schema.prisma",
+    "db:create-auth-tables": "prisma db execute --file prisma/create-auth-tables.sql --schema prisma/schema.prisma"
   },
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"
@@ -26,7 +31,8 @@
     "pusher-js": "^8.4.0-rc2",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "zod": "^4.3.6"
+    "zod": "^4.3.6",
+    "zustand": "^5.0.11"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -38,6 +44,11 @@
     "prisma": "^6.19.2",
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
-    "typescript": "^5"
+    "typescript": "^5",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.1.0",
+    "@testing-library/user-event": "^14.5.2",
+    "vitest": "^3.0.5",
+    "jsdom": "^26.0.0"
   }
 }

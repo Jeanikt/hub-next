@@ -143,3 +143,41 @@ export async function getMMR(
     return null;
   }
 }
+
+/**
+ * Apelidos anônimos inspirados em Valorant (mapas/callouts) para esconder
+ * o nome real dos jogadores na fila / sala de espera.
+ */
+const VALORANT_ALIASES = [
+  "Ascent",
+  "Bind",
+  "Haven",
+  "Split",
+  "Lotus",
+  "Icebox",
+  "Breeze",
+  "Fracture",
+  "Pearl",
+  "Sunset",
+  "Abyss",
+  "Site A",
+  "Site B",
+  "Site C",
+  "Mid",
+  "Heaven",
+  "Garage",
+  "Tower",
+  "Arcade",
+];
+
+/** Gera um alias determinístico a partir do id do jogador. */
+export function getQueueAliasFromId(id: string | number): string {
+  const s = String(id);
+  let hash = 0;
+  for (let i = 0; i < s.length; i += 1) {
+    hash = (hash * 31 + s.charCodeAt(i)) >>> 0;
+  }
+  const index = hash % VALORANT_ALIASES.length;
+  return VALORANT_ALIASES[index];
+}
+

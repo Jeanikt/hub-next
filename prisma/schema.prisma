@@ -221,8 +221,10 @@ model GameMatchUser {
 
 model Friend {
   id       Int    @id @default(autoincrement())
-  userId   String
-  friendId String
+  /// ID de quem enviou o pedido (mapeado para coluna legacy snake_case "user_id")
+  userId   String @map("user_id")
+  /// ID de quem recebeu o pedido (mapeado para coluna legacy snake_case "friend_id")
+  friendId String @map("friend_id")
   status   String @default("pending")
 
   createdAt DateTime @default(now())

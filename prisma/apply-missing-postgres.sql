@@ -2,7 +2,6 @@
 -- Uso: psql $DATABASE_URL -f prisma/apply-missing-postgres.sql
 -- Ou execute no seu cliente SQL (DBeaver, pgAdmin, etc.).
 
--- 1) Colunas em users (ignora se já existir)
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'profileBackgroundUrl') THEN
@@ -18,6 +17,23 @@ BEGIN
     ALTER TABLE "users" ADD COLUMN "inviteCode" TEXT;
     CREATE UNIQUE INDEX IF NOT EXISTS "users_inviteCode_key" ON "users"("inviteCode");
   END IF;
+  -- Coluna image (usada pelo Auth.js / leaderboard)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'image') THEN
+    ALTER TABLE "users" ADD COLUMN "image" TEXT;
+  END IF;
+  -- Colunas de banimento e status online
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'isBanned') THEN
+    ALTER TABLE "users" ADD COLUMN "isBanned" BOOLEAN NOT NULL DEFAULT false;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'bannedUntil') THEN
+    ALTER TABLE "users" ADD COLUMN "bannedUntil" TIMESTAMP(3);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'banReason') THEN
+    ALTER TABLE "users" ADD COLUMN "banReason" TEXT;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'isOnline') THEN
+    ALTER TABLE "users" ADD COLUMN "isOnline" BOOLEAN NOT NULL DEFAULT false;
+  END IF;
 END $$;
 
 -- 2) Tabela missions
@@ -32,6 +48,14 @@ CREATE TABLE IF NOT EXISTS "missions" (
   "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS "missions_type_isActive_idx" ON "missions"("type", "isActive");
+
+-- Garante coluna xpReward mesmo se a tabela já existia sem ela
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'missions' AND column_name = 'xpReward') THEN
+    ALTER TABLE "missions" ADD COLUMN "xpReward" INTEGER NOT NULL DEFAULT 0;
+  END IF;
+END $$;
 
 -- 3) Tabela user_missions
 CREATE TABLE IF NOT EXISTS "user_missions" (

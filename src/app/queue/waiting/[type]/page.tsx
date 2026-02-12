@@ -5,6 +5,7 @@ import { useEffect, useState, useRef } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { Users, LogOut, CheckCircle2, Swords, ChevronLeft } from "lucide-react";
+import { getQueueAliasFromId } from "@/src/lib/valorant";
 
 type QueueStatus = {
   status?: Record<
@@ -159,34 +160,29 @@ export default function WaitingRoomPage() {
         </div>
         <div className="p-6">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-            {players.map((p) => (
-              <div
-                key={p.id}
-                className="flex items-center gap-3 rounded-xl border border-[var(--hub-border)] bg-[var(--hub-bg)]/80 p-3 clip-button"
-              >
-                <span className="flex h-2 w-2 shrink-0 rounded-full bg-[var(--hub-accent)]" />
-                {p.avatar_url ? (
-                  <img
-                    src={p.avatar_url}
-                    alt=""
-                    className="h-10 w-10 rounded-full object-cover border border-[var(--hub-border)]"
-                  />
-                ) : (
+            {players.map((p) => {
+              const alias = getQueueAliasFromId(p.id);
+              return (
+                <div
+                  key={p.id}
+                  className="flex items-center gap-3 rounded-xl border border-[var(--hub-border)] bg-[var(--hub-bg)]/80 p-3 clip-button"
+                >
+                  <span className="flex h-2 w-2 shrink-0 rounded-full bg-[var(--hub-accent)]" />
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[var(--hub-border)] bg-[var(--hub-bg-card)] text-sm font-medium text-[var(--hub-text-muted)]">
                     ?
                   </div>
-                )}
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-[var(--hub-text)]">
-                    {p.username ?? `Jogador #${p.id}`}
-                  </p>
-                  <p className="text-xs text-[var(--hub-text-muted)]">
-                    ELO {p.elo} · Nível {p.level}
-                  </p>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-[var(--hub-text)]">
+                      {alias}
+                    </p>
+                    <p className="text-xs text-[var(--hub-text-muted)]">
+                      ELO {p.elo} · Nível {p.level}
+                    </p>
+                  </div>
+                  <CheckCircle2 size={18} className="shrink-0 text-[var(--hub-accent)]" />
                 </div>
-                <CheckCircle2 size={18} className="shrink-0 text-[var(--hub-accent)]" />
-              </div>
-            ))}
+              );
+            })}
             {Array.from({ length: Math.max(0, needed - count) }).map((_, i) => (
               <div
                 key={`empty-${i}`}
