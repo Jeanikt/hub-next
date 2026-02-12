@@ -4,6 +4,7 @@ import { prisma } from "@/src/lib/prisma";
 import { getAccount, getMMR } from "@/src/lib/valorant";
 import { getRankPointsFromTier } from "@/src/lib/rankPoints";
 import { onboardingRiotIdSchema } from "@/src/lib/validators/schemas";
+import { verifyAndCompleteMissions } from "@/src/lib/missions/verify";
 
 export async function POST(req: Request) {
   try {
@@ -67,6 +68,12 @@ export async function POST(req: Request) {
         elo: rankPoints,
       },
     });
+
+    try {
+      await verifyAndCompleteMissions(session.user.id);
+    } catch {
+      // não falha a resposta
+    }
 
     return NextResponse.json({
       ok: true,

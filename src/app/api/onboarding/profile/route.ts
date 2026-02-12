@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/src/lib/auth";
 import { prisma } from "@/src/lib/prisma";
 import { onboardingProfileSchema } from "@/src/lib/validators/schemas";
+import { verifyAndCompleteMissions } from "@/src/lib/missions/verify";
 
 export async function POST(req: Request) {
   const session = await auth();
@@ -42,6 +43,12 @@ export async function POST(req: Request) {
       username: parsed.data.username,
     },
   });
+
+  try {
+    await verifyAndCompleteMissions(session.user.id);
+  } catch {
+    // não falha a resposta
+  }
 
   return NextResponse.json({ username: parsed.data.username });
 }

@@ -20,7 +20,6 @@ export default function MissionsPage() {
   const router = useRouter();
   const [missions, setMissions] = useState<Mission[]>([]);
   const [loading, setLoading] = useState(true);
-  const [completing, setCompleting] = useState<string | null>(null);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -33,24 +32,6 @@ export default function MissionsPage() {
       .catch(() => setMissions([]))
       .finally(() => setLoading(false));
   }, [status, router]);
-
-  async function completeMission(missionId: string) {
-    setCompleting(missionId);
-    try {
-      const res = await fetch(`/api/missions/${missionId}/complete`, {
-        method: "POST",
-        credentials: "include",
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setMissions((prev) =>
-          prev.map((m) => (m.id === missionId ? { ...m, completed: true } : m))
-        );
-      }
-    } finally {
-      setCompleting(null);
-    }
-  }
 
   if (status === "loading" || loading) {
     return (
@@ -128,15 +109,10 @@ export default function MissionsPage() {
             {m.description && (
               <p className="mt-2 text-sm text-[var(--hub-text-muted)] leading-relaxed">{m.description}</p>
             )}
-            {!m.completed && session?.user && (
-              <button
-                type="button"
-                onClick={() => completeMission(m.id)}
-                disabled={!!completing}
-                className="mt-5 w-full rounded-xl border-2 border-[var(--hub-accent)] bg-[var(--hub-accent)]/20 py-3 text-sm font-bold uppercase tracking-wider text-white transition hover:bg-[var(--hub-accent)] disabled:opacity-50 clip-button"
-              >
-                {completing === m.id ? "Salvando..." : "Marcar como concluída"}
-              </button>
+            {!m.completed && (
+              <p className="mt-5 text-xs text-[var(--hub-text-muted)]">
+                Concluída automaticamente quando você atingir o objetivo.
+              </p>
             )}
           </article>
         ))}

@@ -3,6 +3,7 @@ import { auth } from "@/src/lib/auth";
 import { prisma } from "@/src/lib/prisma";
 import { getAccount, getMMR } from "@/src/lib/valorant";
 import { getRankPointsFromTier } from "@/src/lib/rankPoints";
+import { verifyAndCompleteMissions } from "@/src/lib/missions/verify";
 import { z } from "zod";
 
 const updateProfileSchema = z.object({
@@ -135,6 +136,12 @@ export async function PATCH(request: NextRequest) {
       favoriteChampion: true,
     },
   });
+
+  try {
+    await verifyAndCompleteMissions(session.user.id);
+  } catch {
+    // não falha a resposta do perfil
+  }
 
   return NextResponse.json({
     id: user.id,

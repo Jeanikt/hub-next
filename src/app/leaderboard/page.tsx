@@ -2,6 +2,8 @@ import Link from "next/link";
 import { type Metadata } from "next";
 import { prisma } from "@/src/lib/prisma";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Ranking e Leaderboard",
   description: "Ranking dos melhores players por ELO no HUBEXPRESSO. Veja nível, rank e posição no leaderboard de Valorant.",
@@ -10,7 +12,11 @@ export const metadata: Metadata = {
 
 async function getLeaderboard() {
   const data = await prisma.user.findMany({
-    where: { username: { not: null }, isBanned: false },
+    where: {
+      username: { not: null },
+      isBanned: false,
+      onboardingCompleted: true,
+    },
     select: { id: true, username: true, name: true, image: true, elo: true, level: true, rank: true },
     orderBy: { elo: "desc" },
     take: 50,
