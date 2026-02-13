@@ -125,27 +125,39 @@ export default function AdminSettingsPage() {
   const update = async (key: keyof SettingsState, value: "1" | "0") => {
     const previous = settings ? { ...settings } : null;
     setSaving(key);
+
     try {
       const res = await fetch("/api/admin/settings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
+        cache: "no-store",
         body: JSON.stringify({ [key]: value }),
       });
-      const data = await res.json();
-      if (res.ok) {
-        const next: SettingsState = {
-          allow_custom_matches: normalize(data.allow_custom_matches ?? previous?.allow_custom_matches ?? "0"),
-          queues_disabled: normalize(data.queues_disabled ?? previous?.queues_disabled ?? "0"),
-        };
-        setSettings(next);
-      } else if (previous) setSettings(previous);
-    } catch {
+
+      const data = await res.json().catch(() => ({}));
+      console.log("PATCH /api/admin/settings", res.status, data);
+
+      if (!res.ok) {
+        alert(data?.message ?? data?.error ?? `Erro ao salvar (${res.status})`);
+        if (previous) setSettings(previous);
+        return;
+      }
+
+      const next: SettingsState = {
+        allow_custom_matches: normalize(data.allow_custom_matches ?? previous?.allow_custom_matches ?? "0"),
+        queues_disabled: normalize(data.queues_disabled ?? previous?.queues_disabled ?? "0"),
+      };
+      setSettings(next);
+    } catch (e) {
+      console.error(e);
+      alert("Erro de rede ao salvar.");
       if (previous) setSettings(previous);
     } finally {
       setSaving(null);
     }
   };
+
 
   if (loading) {
     return (
@@ -198,18 +210,16 @@ export default function AdminSettingsPage() {
                   settings.allow_custom_matches === "1" ? "0" : "1"
                 )
               }
-              className={`relative h-8 w-14 shrink-0 rounded-full border-2 transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--hub-accent)] focus:ring-offset-2 focus:ring-offset-[var(--hub-bg-card)] ${
-                settings.allow_custom_matches === "1"
-                  ? "border-[var(--hub-accent)] bg-[var(--hub-accent)]"
-                  : "border-[var(--hub-border)] bg-[var(--hub-bg-elevated)]"
-              }`}
+              className={`relative h-8 w-14 shrink-0 rounded-full border-2 transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--hub-accent)] focus:ring-offset-2 focus:ring-offset-[var(--hub-bg-card)] ${settings.allow_custom_matches === "1"
+                ? "border-[var(--hub-accent)] bg-[var(--hub-accent)]"
+                : "border-[var(--hub-border)] bg-[var(--hub-bg-elevated)]"
+                }`}
               aria-checked={settings.allow_custom_matches === "1"}
               role="switch"
             >
               <span
-                className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-transform ${
-                  settings.allow_custom_matches === "1" ? "left-7" : "left-1"
-                }`}
+                className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-transform ${settings.allow_custom_matches === "1" ? "left-7" : "left-1"
+                  }`}
               />
               {saving === "allow_custom_matches" && (
                 <span className="absolute inset-0 flex items-center justify-center" aria-hidden>
@@ -237,18 +247,16 @@ export default function AdminSettingsPage() {
               onClick={() =>
                 update("queues_disabled", settings.queues_disabled === "1" ? "0" : "1")
               }
-              className={`relative h-8 w-14 shrink-0 rounded-full border-2 transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--hub-accent)] focus:ring-offset-2 focus:ring-offset-[var(--hub-bg-card)] ${
-                settings.queues_disabled === "0"
-                  ? "border-[var(--hub-accent)] bg-[var(--hub-accent)]"
-                  : "border-[var(--hub-border)] bg-[var(--hub-bg-elevated)]"
-              }`}
+              className={`relative h-8 w-14 shrink-0 rounded-full border-2 transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--hub-accent)] focus:ring-offset-2 focus:ring-offset-[var(--hub-bg-card)] ${settings.queues_disabled === "0"
+                ? "border-[var(--hub-accent)] bg-[var(--hub-accent)]"
+                : "border-[var(--hub-border)] bg-[var(--hub-bg-elevated)]"
+                }`}
               aria-checked={settings.queues_disabled === "0"}
               role="switch"
             >
               <span
-                className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-transform ${
-                  settings.queues_disabled === "0" ? "left-7" : "left-1"
-                }`}
+                className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-transform ${settings.queues_disabled === "0" ? "left-7" : "left-1"
+                  }`}
               />
               {saving === "queues_disabled" && (
                 <span className="absolute inset-0 flex items-center justify-center" aria-hidden>
