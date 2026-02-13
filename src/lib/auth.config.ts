@@ -33,6 +33,7 @@ export const authConfig: NextAuthConfig = {
       const allowedEmail = (process.env.ALLOWED_ADMIN_EMAIL ?? "jeandev003@gmail.com").toLowerCase();
       if (user) {
         token.id = (user as { id?: string }).id ?? user.id;
+        token.email = user.email ?? (token as { email?: string }).email;
         token.username = (user as { username?: string }).username;
         token.isAdmin = (user as { isAdmin?: boolean }).isAdmin;
         token.isSuperAdmin = user.email?.toLowerCase() === allowedEmail;
@@ -47,6 +48,7 @@ export const authConfig: NextAuthConfig = {
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.sub ?? token.id as string;
+        session.user.email = (token.email as string) ?? session.user.email;
         session.user.username = token.username as string | undefined;
         session.user.isAdmin = token.isAdmin as boolean | undefined;
         session.user.isSuperAdmin = token.isSuperAdmin as boolean | undefined;

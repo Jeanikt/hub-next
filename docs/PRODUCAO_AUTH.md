@@ -99,6 +99,13 @@ Isso executa `prisma migrate reset --force`: **apaga todos os dados**, recria o 
 
 ---
 
-## 7. Cache (Redis)
+## 7. Evitar "Too many database connections" no build e em produção
+
+- **Build:** As páginas que usam Prisma não são mais pré-renderizadas no build (uso de `force-dynamic` ou contador via API em cache), evitando muitas conexões simultâneas.
+- **Produção:** Use connection pooling na `DATABASE_URL`. Ex.: `postgresql://...?connection_limit=3` ou a URL de **pooled connection** do Vercel Postgres (não a URL direta). Assim o tráfego alto não esgota o limite de conexões do banco.
+
+---
+
+## 8. Cache (Redis)
 
 O Redis neste projeto é usado **apenas** para cache do status da fila (`hub:queue:status`, TTL 3s). **Não afeta autenticação.** Se quiser “resetar” o cache da fila, use `invalidateQueueStatusCache()` ou `resetQueueCache()` de `@/src/lib/redis` (por exemplo numa rota de admin).

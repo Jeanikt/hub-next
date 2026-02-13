@@ -3,6 +3,8 @@ import { type Metadata } from "next";
 import { prisma } from "@/src/lib/prisma";
 import UserProfileClient from "./UserProfileClient";
 
+export const dynamic = "force-dynamic";
+
 type Params = { params: Promise<{ username: string }> };
 
 async function getUserForMeta(username: string) {

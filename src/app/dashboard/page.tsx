@@ -3,6 +3,8 @@ import { auth } from "@/src/lib/auth";
 import { prisma } from "@/src/lib/prisma";
 import { toSafeUser } from "@/src/types/api";
 import { DashboardInviteCard } from "./DashboardInviteCard";
+
+export const dynamic = "force-dynamic";
 import {
   Trophy,
   Target,

@@ -62,12 +62,46 @@ export async function resetQueueCache(): Promise<void> {
   await invalidateQueueStatusCache();
 }
 
+const USERS_COUNT_KEY = "hub:users:count";
+const USERS_COUNT_TTL = 60;
+
+/** Retorna total de jogadores em cache (Redis) ou null. */
+export async function getUsersCountCache(): Promise<number | null> {
+  const client = await getClient();
+  if (!client) return null;
+  try {
+    const v = await client.get(USERS_COUNT_KEY);
+    if (v === null || v === undefined) return null;
+    const n = typeof v === "string" ? parseInt(v, 10) : Number(v);
+    return Number.isNaN(n) ? null : n;
+  } catch {
+    return null;
+  }
+}
+
+/** Armazena total de jogadores em cache (TTL 60s). */
+export async function setUsersCountCache(total: number): Promise<void> {
+  const client = await getClient();
+  if (!client) return;
+  try {
+    await client.set(USERS_COUNT_KEY, String(total), { ex: USERS_COUNT_TTL });
+  } catch {
+    // ignore
+  }
+}
+
 const SETTINGS_PREFIX = "hub:setting:";
 
 /** Fallback em memória quando Redis não está configurado (toggles admin funcionam na sessão atual). */
 const memorySettings = new Map<string, string>();
 
-/** Lê configuração de app (ex.: allow_custom_matches, queues_disabled). Usa Redis ou fallback em memória. */
+/** Valores padrão quando não configurado: filas desativadas, criação de partidas desativada. */
+const DEFAULT_SETTINGS: Record<string, string> = {
+  allow_custom_matches: "0",
+  queues_disabled: "1",
+};
+
+/** Lê configuração de app (ex.: allow_custom_matches, queues_disabled). Usa Redis ou fallback em memória; padrão seguro. */
 export async function getAppSetting(key: string): Promise<string | null> {
   const client = await getClient();
   if (client) {
@@ -75,10 +109,10 @@ export async function getAppSetting(key: string): Promise<string | null> {
       const v = await client.get(SETTINGS_PREFIX + key);
       if (typeof v === "string") return v;
     } catch {
-      // fall through to memory
+      // fall through to memory / default
     }
   }
-  return memorySettings.get(key) ?? null;
+  return memorySettings.get(key) ?? DEFAULT_SETTINGS[key] ?? null;
 }
 
 /** Define configuração de app (valor string, ex. "1" ou "0"). Persiste no Redis ou em memória. */
