@@ -80,13 +80,18 @@ export default function MissionsPage() {
         {missions.map((m) => (
           <article
             key={m.id}
-            className={`rounded-2xl border bg-[var(--hub-bg-card)] p-6 clip-card transition-all duration-300 hover:shadow-lg hover:shadow-black/15 ${
+            className={`relative overflow-hidden rounded-2xl border-2 p-6 clip-card transition-all duration-300 hover:shadow-lg ${
               m.completed
-                ? "border-[var(--hub-accent)]/30 bg-[var(--hub-accent)]/5"
-                : "border-[var(--hub-border)]"
+                ? "border-[var(--hub-accent)] bg-[var(--hub-accent)]/10 shadow-[inset_0_0_0_1px_var(--hub-accent)]/20"
+                : "border-[var(--hub-border)] bg-[var(--hub-bg-card)] hover:shadow-black/15"
             }`}
           >
-            <div className="flex items-start justify-between gap-3">
+            {m.completed && (
+              <div className="absolute right-0 top-0 h-24 w-24 opacity-10" aria-hidden>
+                <CheckCircle2 className="text-[var(--hub-accent)]" size={96} strokeWidth={1.5} />
+              </div>
+            )}
+            <div className="relative flex items-start justify-between gap-3">
               <div className="flex items-center gap-2 rounded-lg bg-[var(--hub-bg)]/80 px-2.5 py-1.5">
                 {typeIcon[m.type] ?? <Target size={18} />}
                 <span className="text-xs font-bold uppercase tracking-wider text-[var(--hub-text-muted)]">
@@ -94,8 +99,8 @@ export default function MissionsPage() {
                 </span>
               </div>
               {m.completed ? (
-                <span className="flex items-center gap-1.5 rounded-lg bg-[var(--hub-accent)]/20 px-2.5 py-1 text-sm font-medium text-[var(--hub-accent)]">
-                  <CheckCircle2 size={18} />
+                <span className="flex items-center gap-1.5 rounded-xl bg-[var(--hub-accent)]/25 px-3 py-1.5 text-sm font-bold text-[var(--hub-accent)] ring-1 ring-[var(--hub-accent)]/30">
+                  <CheckCircle2 size={20} strokeWidth={2.5} />
                   Concluída
                 </span>
               ) : (
@@ -105,12 +110,17 @@ export default function MissionsPage() {
                 </span>
               )}
             </div>
-            <h2 className="mt-4 text-lg font-bold text-[var(--hub-text)]">{m.title}</h2>
+            <h2 className="relative mt-4 text-lg font-bold text-[var(--hub-text)]">{m.title}</h2>
             {m.description && (
-              <p className="mt-2 text-sm text-[var(--hub-text-muted)] leading-relaxed">{m.description}</p>
+              <p className="relative mt-2 text-sm text-[var(--hub-text-muted)] leading-relaxed">{m.description}</p>
             )}
-            {!m.completed && (
-              <p className="mt-5 text-xs text-[var(--hub-text-muted)]">
+            {m.completed ? (
+              <p className="relative mt-4 flex items-center gap-2 text-sm font-medium text-[var(--hub-accent)]">
+                <CheckCircle2 size={18} />
+                Você ganhou <strong>+{m.xpReward} XP</strong> por esta missão.
+              </p>
+            ) : (
+              <p className="relative mt-5 text-xs text-[var(--hub-text-muted)]">
                 Concluída automaticamente quando você atingir o objetivo.
               </p>
             )}
