@@ -18,10 +18,12 @@ Este projeto está preparado para enviar dados de tráfego e eventos para o **Go
 
 ## 2. Variável de ambiente
 
+ID de medição deste projeto: **G-FL17SJ4EG9** (Google tag gtag.js).
+
 No seu ambiente (local, Vercel, Dokploy), defina:
 
 ```env
-NEXT_PUBLIC_GA_MEASUREMENT_ID=G-XXXXXXXXXX
+NEXT_PUBLIC_GA_MEASUREMENT_ID=G-FL17SJ4EG9
 ```
 
 - **Local:** crie ou edite `.env.local` e adicione a linha acima.
