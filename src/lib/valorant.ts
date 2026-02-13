@@ -172,20 +172,32 @@ export type ValorantMatchDetails = {
 /**
  * Dados da conta Riot por nome#tag.
  * API Henrik: 200 + { status: 1, data: { puuid, name, tag } } = sucesso; 404 = conta não encontrada; 429 = rate limit.
+ * Nome e tag devem ser enviados exatamente como o usuário informou (ex.: tag "café" com acento).
  */
 export async function getAccount(
   name: string,
   tag: string
 ): Promise<ValorantAccount | null> {
-  try {
-    const res = await valorantFetch(
-      `${BASE_URL}/v2/account/${encodeURIComponent(name)}/${encodeURIComponent(tag)}`,
-      { headers: getHeaders(), next: { revalidate: 3600 } }
-    );
+  const encodedName = encodeURIComponent(name.trim());
+  const encodedTag = encodeURIComponent(tag.trim());
+
+  async function fetchAccount(version: "v1" | "v2"): Promise<ValorantAccount | null> {
+    const basePath = `${BASE_URL}/${version}/account/${encodedName}/${encodedTag}`;
+    const url = version === "v2" ? `${basePath}?force=true` : basePath;
+    const res = await valorantFetch(url, {
+      headers: getHeaders(),
+      next: { revalidate: version === "v2" ? 3600 : 0 },
+    });
     if (!res.ok) return null;
     const body = (await res.json()) as { status?: number; data?: { puuid?: string; [key: string]: unknown } };
     if (body?.status !== 1 || !body?.data?.puuid) return null;
     return { data: body.data };
+  }
+
+  try {
+    const result = await fetchAccount("v2");
+    if (result) return result;
+    return await fetchAccount("v1");
   } catch (e) {
     if (e instanceof Error && e.message === VALORANT_RATE_LIMIT_ERROR) throw e;
     console.error("Valorant getAccount", e);
