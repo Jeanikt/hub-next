@@ -20,6 +20,7 @@ import {
   HelpCircle,
   Shield,
   Flag,
+  Settings,
   LogOut,
   LogIn,
   Menu,
@@ -53,6 +54,7 @@ const AUTH_LINKS = [
 
 const ADMIN_LINKS = [
   { href: "/admin", label: "Admin", icon: Shield },
+  { href: "/admin/settings", label: "Configurações", icon: Settings },
   { href: "/admin/reports", label: "Reports", icon: Flag },
 ] as const;
 

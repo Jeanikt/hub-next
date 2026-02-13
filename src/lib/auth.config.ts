@@ -1,6 +1,7 @@
 import type { NextAuthConfig } from "next-auth";
 import Google from "next-auth/providers/google";
 import { prisma } from "@/src/lib/prisma";
+import { isAllowedAdminEmail } from "@/src/lib/admin";
 
 declare module "next-auth" {
   interface Session {
@@ -11,7 +12,7 @@ declare module "next-auth" {
       image?: string | null;
       username?: string | null;
       isAdmin?: boolean;
-      /** true apenas quando email === ALLOWED_ADMIN_EMAIL (acesso ao painel /admin) */
+      /** true quando o e-mail está em ALLOWED_ADMIN_EMAIL (acesso ao painel /admin e botão na sidebar) */
       isSuperAdmin?: boolean;
       onboardingCompleted?: boolean;
     };
@@ -30,13 +31,14 @@ export const authConfig: NextAuthConfig = {
   session: { strategy: "jwt", maxAge: 30 * 24 * 60 * 60 },
   callbacks: {
     async jwt({ token, user, trigger, session }) {
-      const allowedEmail = (process.env.ALLOWED_ADMIN_EMAIL ?? "jeandev003@gmail.com").toLowerCase();
       if (user) {
         token.id = (user as { id?: string }).id ?? user.id;
         token.email = user.email ?? (token as { email?: string }).email;
         token.username = (user as { username?: string }).username;
-        token.isAdmin = (user as { isAdmin?: boolean }).isAdmin;
-        token.isSuperAdmin = user.email?.toLowerCase() === allowedEmail;
+        const email = (user.email ?? (token as { email?: string }).email) ?? null;
+        const fromDb = (user as { isAdmin?: boolean }).isAdmin;
+        token.isAdmin = fromDb === true || isAllowedAdminEmail(email);
+        token.isSuperAdmin = isAllowedAdminEmail(email);
         token.onboardingCompleted = (user as { onboardingCompleted?: boolean }).onboardingCompleted ?? false;
       }
       if (trigger === "update" && session) {
@@ -66,7 +68,7 @@ export const authConfig: NextAuthConfig = {
         if (dbUser) {
           (user as { id?: string }).id = String(dbUser.id);
           (user as { username?: string }).username = dbUser.username ?? undefined;
-          (user as { isAdmin?: boolean }).isAdmin = dbUser.isAdmin;
+          (user as { isAdmin?: boolean }).isAdmin = dbUser.isAdmin === true || isAllowedAdminEmail(user.email);
           (user as { onboardingCompleted?: boolean }).onboardingCompleted = dbUser.onboardingCompleted;
           await prisma.user.update({
             where: { id: dbUser.id },

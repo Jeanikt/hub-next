@@ -26,6 +26,7 @@ const AUTH_LINKS = [
 
 const ADMIN_LINKS = [
   { href: "/admin", label: "Admin" },
+  { href: "/admin/settings", label: "Configurações" },
   { href: "/admin/reports", label: "Reports" },
 ] as const;
 
