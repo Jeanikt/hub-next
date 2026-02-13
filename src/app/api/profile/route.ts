@@ -107,7 +107,7 @@ export async function PATCH(request: NextRequest) {
       // Pontos (0–20) baseados no ELO/rank retornado pela API Riot
       const mmrData = await getMMR(riotId, tagline);
       const currentData = mmrData?.data?.current_data;
-      const rankLabel = currentData?.currenttier_patched ?? null;
+      const rankLabel = currentData?.currenttierpatched ?? null;
       const rankPoints = rankLabel != null ? getRankPointsFromTier(rankLabel) : 0;
 
       updateData.riotId = riotId;
