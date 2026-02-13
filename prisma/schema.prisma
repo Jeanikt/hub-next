@@ -371,3 +371,10 @@ model RoadmapLike {
   @@index([roadmapItemId])
   @@map("roadmap_likes")
 }
+
+/// Configurações globais da aplicação (ex.: filas ativadas/desativadas, criação de partidas). Persistidas no banco.
+model AppSetting {
+  key   String @id
+  value String
+  @@map("app_settings")
+}

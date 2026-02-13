@@ -92,16 +92,13 @@ export async function setUsersCountCache(total: number): Promise<void> {
 
 const SETTINGS_PREFIX = "hub:setting:";
 
-/** Fallback em memória quando Redis não está configurado (toggles admin funcionam na sessão atual). */
-const memorySettings = new Map<string, string>();
-
 /** Valores padrão quando não configurado: filas desativadas, criação de partidas desativada. */
 const DEFAULT_SETTINGS: Record<string, string> = {
   allow_custom_matches: "0",
   queues_disabled: "1",
 };
 
-/** Lê configuração de app (ex.: allow_custom_matches, queues_disabled). Usa Redis ou fallback em memória; padrão seguro. */
+/** Lê configuração de app (ex.: allow_custom_matches, queues_disabled). Ordem: Redis (cache) → banco (AppSetting) → padrão. */
 export async function getAppSetting(key: string): Promise<string | null> {
   const client = await getClient();
   if (client) {
@@ -109,22 +106,47 @@ export async function getAppSetting(key: string): Promise<string | null> {
       const v = await client.get(SETTINGS_PREFIX + key);
       if (typeof v === "string") return v;
     } catch {
-      // fall through to memory / default
+      // fall through to DB
     }
   }
-  return memorySettings.get(key) ?? DEFAULT_SETTINGS[key] ?? null;
+  try {
+    const { prisma } = await import("./prisma");
+    const row = await prisma.appSetting.findUnique({ where: { key } });
+    if (row?.value != null) {
+      if (client) {
+        try {
+          await client.set(SETTINGS_PREFIX + key, row.value);
+        } catch {
+          // ignore
+        }
+      }
+      return row.value;
+    }
+  } catch {
+    // ignore
+  }
+  return DEFAULT_SETTINGS[key] ?? null;
 }
 
-/** Define configuração de app (valor string, ex. "1" ou "0"). Persiste no Redis ou em memória. */
+/** Define configuração de app (valor string, ex. "1" ou "0"). Persiste no banco e atualiza cache Redis. */
 export async function setAppSetting(key: string, value: string): Promise<void> {
+  try {
+    const { prisma } = await import("./prisma");
+    await prisma.appSetting.upsert({
+      where: { key },
+      create: { key, value },
+      update: { value },
+    });
+  } catch (e) {
+    console.error("setAppSetting DB", key, e);
+    throw e;
+  }
   const client = await getClient();
   if (client) {
     try {
       await client.set(SETTINGS_PREFIX + key, value);
-      return;
     } catch {
-      // fall through to memory
+      // ignore
     }
   }
-  memorySettings.set(key, value);
 }
