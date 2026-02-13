@@ -73,6 +73,18 @@ Em produção (HTTPS), o NextAuth define o cookie de sessão com o prefixo `__Se
 
 ---
 
-## 5. Cache (Redis)
+## 5. Erro "The column users.cpfHash does not exist" (500 no login)
+
+Se o login retornar 500 e os logs mostrarem `The column users.cpfHash does not exist`, o banco de produção ainda não tem as colunas `cpfHash` e `cpfEncrypted` na tabela `users`. **Execute o SQL no banco de produção** (Vercel Postgres, Supabase, etc.):
+
+```bash
+psql $DATABASE_URL -f prisma/add-cpf-columns.sql
+```
+
+Ou copie e execute o conteúdo de `prisma/add-cpf-columns.sql` no cliente SQL do seu provedor. Depois disso, o login deve voltar a funcionar.
+
+---
+
+## 6. Cache (Redis)
 
 O Redis neste projeto é usado **apenas** para cache do status da fila (`hub:queue:status`, TTL 3s). **Não afeta autenticação.** Se quiser “resetar” o cache da fila, use `invalidateQueueStatusCache()` ou `resetQueueCache()` de `@/src/lib/redis` (por exemplo numa rota de admin).

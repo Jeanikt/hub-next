@@ -32,7 +32,9 @@ export default function LoginPage() {
             >
               {error === "OAuthAccountNotLinked"
                 ? "Este e-mail já está vinculado a outra conta. Use o mesmo provedor."
-                : "Falha ao entrar. Tente novamente."}
+                : error === "Configuration"
+                  ? "Problema temporário no servidor. Nossa equipe foi notificada. Tente novamente em alguns instantes."
+                  : "Falha ao entrar. Tente novamente."}
             </div>
           )}
 

@@ -79,6 +79,7 @@ export const authConfig: NextAuthConfig = {
   },
   pages: {
     signIn: "/login",
+    error: "/auth/error",
   },
   trustHost: true,
 };
