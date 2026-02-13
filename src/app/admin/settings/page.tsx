@@ -105,19 +105,21 @@ export default function AdminSettingsPage() {
 
       <div className="rounded-xl border border-[var(--hub-border)] bg-[var(--hub-bg-card)] overflow-hidden">
         <div className="border-b border-[var(--hub-border)] px-4 py-3 bg-[var(--hub-bg-elevated)]">
-          <p className="text-sm font-bold text-[var(--hub-text)]">Controle de partidas e filas</p>
+          <p className="text-sm font-bold text-[var(--hub-text)]">Partidas e filas</p>
           <p className="text-xs text-[var(--hub-text-muted)] mt-0.5">
-            Ative ou desative criação de partidas e entrada em filas.
+            Liga/desliga criação de partidas e entrada em filas. Estado salvo no servidor.
           </p>
         </div>
         <div className="p-4 space-y-4">
           <div className="flex items-center justify-between gap-4 rounded-lg border border-[var(--hub-border)] bg-[var(--hub-bg)]/80 px-4 py-3">
-            <div className="flex items-center gap-3">
-              <Gamepad2 size={22} className="text-[var(--hub-accent)]" />
-              <div>
-                <p className="font-medium text-[var(--hub-text)]">Permitir criação de partidas</p>
+            <div className="flex items-center gap-3 min-w-0">
+              <Gamepad2 size={22} className="shrink-0 text-[var(--hub-accent)]" />
+              <div className="min-w-0">
+                <p className="font-medium text-[var(--hub-text)]">Criação de partidas</p>
                 <p className="text-xs text-[var(--hub-text-muted)]">
-                  Usuários podem criar partidas custom/competitive/practice.
+                  {settings.allow_custom_matches === "1"
+                    ? "Ativado – usuários podem criar partidas."
+                    : "Desativado – apenas admin pode liberar."}
                 </p>
               </div>
             </div>
@@ -130,11 +132,13 @@ export default function AdminSettingsPage() {
                   settings.allow_custom_matches === "1" ? "0" : "1"
                 )
               }
-              className={`relative h-8 w-14 shrink-0 rounded-full border-2 transition-colors ${
+              className={`relative h-8 w-14 shrink-0 rounded-full border-2 transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--hub-accent)] focus:ring-offset-2 focus:ring-offset-[var(--hub-bg-card)] ${
                 settings.allow_custom_matches === "1"
                   ? "border-[var(--hub-accent)] bg-[var(--hub-accent)]"
                   : "border-[var(--hub-border)] bg-[var(--hub-bg-elevated)]"
               }`}
+              aria-checked={settings.allow_custom_matches === "1"}
+              role="switch"
             >
               <span
                 className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-transform ${
@@ -142,7 +146,7 @@ export default function AdminSettingsPage() {
                 }`}
               />
               {saving === "allow_custom_matches" && (
-                <span className="absolute inset-0 flex items-center justify-center">
+                <span className="absolute inset-0 flex items-center justify-center" aria-hidden>
                   <Loader2 size={18} className="animate-spin text-white" />
                 </span>
               )}
@@ -150,12 +154,14 @@ export default function AdminSettingsPage() {
           </div>
 
           <div className="flex items-center justify-between gap-4 rounded-lg border border-[var(--hub-border)] bg-[var(--hub-bg)]/80 px-4 py-3">
-            <div className="flex items-center gap-3">
-              <ListOrdered size={22} className="text-[var(--hub-accent)]" />
-              <div>
-                <p className="font-medium text-[var(--hub-text)]">Desativar filas</p>
+            <div className="flex items-center gap-3 min-w-0">
+              <ListOrdered size={22} className="shrink-0 text-[var(--hub-accent)]" />
+              <div className="min-w-0">
+                <p className="font-medium text-[var(--hub-text)]">Filas competitivas</p>
                 <p className="text-xs text-[var(--hub-text-muted)]">
-                  Ninguém pode entrar em filas competitivas enquanto estiver ativado.
+                  {settings.queues_disabled === "0"
+                    ? "Ativadas – usuários podem entrar na fila."
+                    : "Desativadas – ninguém pode entrar na fila."}
                 </p>
               </div>
             </div>
@@ -165,19 +171,21 @@ export default function AdminSettingsPage() {
               onClick={() =>
                 update("queues_disabled", settings.queues_disabled === "1" ? "0" : "1")
               }
-              className={`relative h-8 w-14 shrink-0 rounded-full border-2 transition-colors ${
-                settings.queues_disabled === "1"
-                  ? "border-[var(--hub-accent-red)] bg-[var(--hub-accent-red)]"
+              className={`relative h-8 w-14 shrink-0 rounded-full border-2 transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--hub-accent)] focus:ring-offset-2 focus:ring-offset-[var(--hub-bg-card)] ${
+                settings.queues_disabled === "0"
+                  ? "border-[var(--hub-accent)] bg-[var(--hub-accent)]"
                   : "border-[var(--hub-border)] bg-[var(--hub-bg-elevated)]"
               }`}
+              aria-checked={settings.queues_disabled === "0"}
+              role="switch"
             >
               <span
                 className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-transform ${
-                  settings.queues_disabled === "1" ? "left-7" : "left-1"
+                  settings.queues_disabled === "0" ? "left-7" : "left-1"
                 }`}
               />
               {saving === "queues_disabled" && (
-                <span className="absolute inset-0 flex items-center justify-center">
+                <span className="absolute inset-0 flex items-center justify-center" aria-hidden>
                   <Loader2 size={18} className="animate-spin text-white" />
                 </span>
               )}

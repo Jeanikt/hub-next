@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ROLES } from "@/src/lib/roles";
+import { trackProfileUpdate } from "@/src/lib/analytics";
 
 export default function ProfileEditPage() {
   const { data: session, status } = useSession();
@@ -82,6 +83,7 @@ export default function ProfileEditPage() {
         setError(data?.message ?? "Erro ao salvar.");
         return;
       }
+      trackProfileUpdate();
       setSuccess(true);
     } finally {
       setLoading(false);

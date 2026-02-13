@@ -3,6 +3,7 @@
 import { signIn } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { trackLogin } from "@/src/lib/analytics";
 
 export default function LoginPage() {
   const searchParams = useSearchParams();
@@ -40,7 +41,10 @@ export default function LoginPage() {
 
           <button
             type="button"
-            onClick={() => signIn("google", { callbackUrl })}
+            onClick={() => {
+              trackLogin("google");
+              signIn("google", { callbackUrl });
+            }}
             className="w-full flex items-center justify-center gap-3 py-4 px-6 border-2 border-[var(--hub-border)] hover:border-[var(--hub-accent)] bg-white/5 hover:bg-[var(--hub-accent)]/10 text-white font-bold uppercase tracking-widest text-sm transition-all clip-button"
           >
             <svg className="w-6 h-6" viewBox="0 0 24 24" aria-hidden>
@@ -65,7 +69,11 @@ export default function LoginPage() {
           </button>
 
           <p className="mt-6 text-center text-xs text-[var(--hub-text-muted)]">
-            Ao continuar, você concorda com os termos de uso do HUBEXPRESSO.
+            Ao continuar, você concorda com os{" "}
+            <Link href="/termos" className="text-[var(--hub-accent)] hover:underline focus:outline-none focus:underline">
+              Termos de Uso
+            </Link>{" "}
+            do HUBEXPRESSO.
           </p>
         </div>
 

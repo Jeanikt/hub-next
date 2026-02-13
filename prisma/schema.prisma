@@ -314,10 +314,12 @@ model Article {
   title    String
   content  String
   category String
+  slug     String?
   fixed    Boolean?
   user     User     @relation(fields: [authorId], references: [id], onDelete: NoAction)
 
   @@index([authorId])
+  @@index([slug])
   @@map("articles")
 }
 

@@ -7,6 +7,7 @@ import { ChatWidget } from "./components/ChatWidget";
 import { MissionBadge } from "./components/MissionBadge";
 import { ReferralAttribute } from "./components/ReferralAttribute";
 import { JsonLdOrganization, JsonLdWebSite } from "./components/JsonLd";
+import { GoogleAnalytics } from "./components/GoogleAnalytics";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -113,6 +114,7 @@ export default function RootLayout({
             </main>
           </Providers>
         </div>
+        <GoogleAnalytics />
         <Analytics />
       </body>
     </html>

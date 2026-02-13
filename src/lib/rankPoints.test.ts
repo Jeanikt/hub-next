@@ -41,4 +41,9 @@ describe("getRankPointsFromTier", () => {
     expect(getRankPointsFromTier("gOLD 1")).toBe(5);
     expect(getRankPointsFromTier("radiant")).toBe(20);
   });
+
+  it("reconhece Unranked como 0 pontos", () => {
+    expect(getRankPointsFromTier("Unranked")).toBe(0);
+    expect(getRankPointsFromTier("unranked")).toBe(0);
+  });
 });

@@ -32,8 +32,12 @@ describe("schemas", () => {
   });
 
   describe("onboardingProfileSchema", () => {
-    it("aceita nome e username válidos", () => {
-      const r = onboardingProfileSchema.safeParse({ name: "Jean", username: "jean_01" });
+    it("aceita nome, username e CPF válidos", () => {
+      const r = onboardingProfileSchema.safeParse({
+        name: "Jean",
+        username: "jean_01",
+        cpf: "52998224725",
+      });
       expect(r.success).toBe(true);
     });
 

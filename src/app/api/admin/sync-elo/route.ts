@@ -7,11 +7,12 @@ import { getRankPointsFromTier } from "@/src/lib/rankPoints";
 
 const DELAY_MS = 600;
 
-/** Extrai rank (currenttier_patched) da resposta da API Henrik. */
-function extractRankFromMMR(mmrData: { data?: { current_data?: { currenttier_patched?: string } } } | null): string | null {
+/** Extrai rank (currenttier_patched) da resposta da API Henrik. Trata vazio como Unranked. */
+function extractRankFromMMR(mmrData: { data?: { current_data?: { currenttier_patched?: string; elo?: number } } } | null): string | null {
   const label = mmrData?.data?.current_data?.currenttier_patched;
-  if (label == null || String(label).trim() === "") return null;
-  return String(label).trim();
+  const s = label != null ? String(label).trim() : "";
+  if (s === "" || s.toLowerCase() === "unranked") return "Unranked";
+  return s;
 }
 
 /** POST /api/admin/sync-elo – atualiza elo e rank de todos os usuários com conta Riot pela API. Apenas admin. */
@@ -50,9 +51,6 @@ export async function POST() {
       } catch (e) {
         const reason = e instanceof Error ? e.message : "Erro ao atualizar";
         errors.push({ userId: u.id, username: u.username, reason });
-        if (mmrData == null) {
-          console.warn(`[sync-elo] Sem dados MMR para ${riotId}#${tagline} (${u.username ?? u.id}). Verifique região ou API.`);
-        }
       }
     }
 
@@ -62,8 +60,7 @@ export async function POST() {
       updated,
       errors: errors.length > 0 ? errors : undefined,
     });
-  } catch (e) {
-    console.error("admin sync-elo", e);
+  } catch {
     return NextResponse.json({ error: "Erro ao sincronizar ELO." }, { status: 500 });
   }
 }

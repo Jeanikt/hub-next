@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/src/lib/auth";
+import { prisma } from "@/src/lib/prisma";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 
@@ -61,16 +62,27 @@ export async function POST(request: Request) {
     await mkdir(baseDir, { recursive: true });
     const buffer = Buffer.from(await file.arrayBuffer());
     await writeFile(filepath, buffer);
-  } catch (e) {
-    console.error("upload avatar", e);
+  } catch {
     return NextResponse.json(
-      { message: "Erro ao salvar o arquivo." },
+      { message: "Erro ao salvar o arquivo. Em hospedagem serverless use armazenamento externo (ex.: Vercel Blob)." },
       { status: 500 }
     );
   }
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
   const url = baseUrl ? `${baseUrl}/uploads/avatars/${filename}` : `/uploads/avatars/${filename}`;
+
+  try {
+    await prisma.user.update({
+      where: { id: session.user.id },
+      data: { image: url },
+    });
+  } catch {
+    return NextResponse.json(
+      { message: "Arquivo salvo, mas falha ao atualizar perfil. Tente salvar o perfil novamente." },
+      { status: 500 }
+    );
+  }
 
   return NextResponse.json({ url });
 }

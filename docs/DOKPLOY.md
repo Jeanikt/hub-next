@@ -18,6 +18,8 @@ Configure no Dokploy (ou no `docker run`):
 - `AUTH_GOOGLE_ID` e `AUTH_GOOGLE_SECRET` – OAuth Google
 - `ALLOWED_ADMIN_EMAIL` – Email do admin (default: `jeandev003@gmail.com`)
 - Opcional: `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` para cache
+- Opcional: `NEXT_PUBLIC_GA_MEASUREMENT_ID` (GA4, ex.: `G-XXXXXXXXXX`) para analytics
+- Opcional: `NEXT_PUBLIC_APP_URL` (URL pública do app, para links e uploads)
 
 ## Rodar o container
 
@@ -34,6 +36,10 @@ docker run --rm -e DATABASE_URL="postgresql://..." hub-next npx prisma migrate d
 ```
 
 No Dokploy, você pode criar um job único (one-off) que execute esse comando, ou rodar em um container temporário com a mesma imagem e variáveis do app.
+
+## Upload de avatar
+
+O upload de foto de perfil grava em `public/uploads/avatars` e atualiza o campo `image` do usuário no banco. Em ambiente Docker com sistema de arquivos efêmero, a pasta pode ser perdida entre restarts. Para persistir: monte um volume no container em `/app/public/uploads` (ou ajuste o path conforme o WORKDIR). Alternativa: usar armazenamento externo (ex.: Vercel Blob, S3) e alterar a rota `/api/upload/avatar`.
 
 ## HTTPS e segurança
 

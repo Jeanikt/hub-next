@@ -18,8 +18,7 @@ export async function GET() {
       allow_custom_matches,
       queues_disabled,
     });
-  } catch (e) {
-    console.error("admin settings GET", e);
+  } catch {
     return NextResponse.json({ error: "Erro ao ler configurações." }, { status: 500 });
   }
 }
@@ -42,8 +41,7 @@ export async function PATCH(request: NextRequest) {
       allow_custom_matches,
       queues_disabled,
     });
-  } catch (e) {
-    console.error("admin settings PATCH", e);
+  } catch {
     return NextResponse.json({ error: "Erro ao salvar configurações." }, { status: 500 });
   }
 }

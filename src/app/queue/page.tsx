@@ -5,6 +5,7 @@ import { useEffect, useState, useRef } from "react";
 import { Users, ChevronRight, ListOrdered, Clock, Swords, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { getQueueAliasFromId } from "@/src/lib/valorant";
+import { trackQueueJoin } from "@/src/lib/analytics";
 
 type QueuePlayer = {
   id: string;
@@ -135,6 +136,7 @@ export default function QueuePage() {
         setError(json.message || "Erro ao entrar na fila.");
         return;
       }
+      trackQueueJoin(queueType);
       if (json.matchFound && json.matchId) {
         router.push(`/matches/${json.matchId}`);
         return;

@@ -30,6 +30,7 @@ export const RANK_POINTS = {
   "iron 3": 0,
   "iron 2": 0,
   "iron 1": 0,
+  unranked: 0,
 } as const;
 
 export type RankKey = keyof typeof RANK_POINTS;
@@ -41,8 +42,8 @@ function normalizeTierPatched(patched: string): RankKey | null {
     .toLowerCase()
     .replace(/\s+/g, " ");
   if (!s) return null;
-  // Radiant sem número
   if (s === "radiant") return "radiant";
+  if (s === "unranked") return "unranked";
   const key = s as RankKey;
   if (key in RANK_POINTS) return key;
   // Platinum pode vir como "Plat 1"
