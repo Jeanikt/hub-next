@@ -54,7 +54,7 @@ const QUEUE_TYPES = [
   },
   {
     id: "inclusive",
-    label: "FILA INCLUSIVA",
+    label: "FILA ABERTA",
     desc: "Liberada para qualquer elo. Partidas mistas.",
     color: "from-[var(--hub-accent)]/20 to-[var(--hub-accent)]/5",
     borderColor: "border-[var(--hub-accent)]/40",
@@ -230,7 +230,7 @@ export default function QueuePage() {
           <div className="flex items-center gap-3">
             <span className="flex h-3 w-3 rounded-full bg-[var(--hub-accent)] animate-pulse" />
             <p className="text-[var(--hub-text)]">
-              Você está na fila <strong className="text-[var(--hub-accent)]">{data.currentQueue.replace("_", " ")}</strong>.
+              Você está na fila <strong className="text-[var(--hub-accent)]">{data.currentQueue === "inclusive" ? "aberta" : data.currentQueue.replace("_", " ")}</strong>.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">

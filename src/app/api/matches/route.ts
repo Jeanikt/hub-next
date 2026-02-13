@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { getAppSetting } = await import("@/src/lib/redis");
-    const allowCreation = await getAppSetting("allow_custom_matches");
+    const allowCreation = (await getAppSetting("allow_custom_matches")) ?? "1";
     if (allowCreation !== "1") {
       return NextResponse.json(
         { message: "Criação de partidas está desativada no momento. Apenas um administrador pode reativar." },

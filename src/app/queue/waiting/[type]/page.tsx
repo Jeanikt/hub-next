@@ -75,7 +75,7 @@ export default function WaitingRoomPage() {
 
   const players = data?.queuePlayers ?? data?.status?.[type]?.players ?? [];
   const count = players.length;
-  const label = type.replace("_", " ").toUpperCase();
+  const label = type === "inclusive" ? "ABERTA" : type.replace("_", " ").toUpperCase();
   const needed = 5;
 
   return (

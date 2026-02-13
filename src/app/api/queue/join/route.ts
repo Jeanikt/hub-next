@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { getAppSetting } = await import("@/src/lib/redis");
-    const queuesDisabled = await getAppSetting("queues_disabled");
+    const queuesDisabled = (await getAppSetting("queues_disabled")) ?? "0";
     if (queuesDisabled === "1") {
       return NextResponse.json(
         { message: "As filas estão desativadas no momento. Tente mais tarde." },

@@ -33,8 +33,8 @@ export async function GET() {
     );
   }
 
-  const allow_custom_matches = (await getAppSetting("allow_custom_matches")) ?? "0";
-  const queues_disabled = (await getAppSetting("queues_disabled")) ?? "1";
+  const allow_custom_matches = (await getAppSetting("allow_custom_matches")) ?? "1";
+  const queues_disabled = (await getAppSetting("queues_disabled")) ?? "0";
 
   return NextResponse.json(
     { allow_custom_matches, queues_disabled, debug: health },
@@ -66,8 +66,8 @@ export async function PATCH(request: NextRequest) {
     if (next) await setAppSetting(key, next);
   }
 
-  const allow_custom_matches = (await getAppSetting("allow_custom_matches")) ?? "0";
-  const queues_disabled = (await getAppSetting("queues_disabled")) ?? "1";
+  const allow_custom_matches = (await getAppSetting("allow_custom_matches")) ?? "1";
+  const queues_disabled = (await getAppSetting("queues_disabled")) ?? "0";
 
   return NextResponse.json(
     { allow_custom_matches, queues_disabled, debug: { ...health, written } },

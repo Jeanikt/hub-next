@@ -87,7 +87,7 @@ export const HIGH_ELO_MIN_POINTS = 11;
 
 /**
  * Verifica se o usuário (pelos pontos de rank) pode entrar na fila.
- * Fila inclusiva: liberada para qualquer elo (sempre true).
+ * Fila aberta: liberada para qualquer elo (sempre true).
  */
 export function canJoinQueue(
   queueType: "low_elo" | "high_elo" | "inclusive",
