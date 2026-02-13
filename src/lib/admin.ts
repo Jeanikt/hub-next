@@ -3,7 +3,7 @@
  * Ex.: ALLOWED_ADMIN_EMAIL=jeandev003@gmail.com,yagobtelles@gmail.com
  */
 
-const DEFAULT_ADMIN_EMAILS = "jeandev003@gmail.com,yagobtelles@gmail.com";
+const DEFAULT_ADMIN_EMAILS = "jeandev003@gmail.com,yagobtelles@gmail.com,santiagosslemes@gmail.com";
 
 function getAdminEmailsSet(): Set<string> {
   const raw = process.env.ALLOWED_ADMIN_EMAIL ?? DEFAULT_ADMIN_EMAILS;
