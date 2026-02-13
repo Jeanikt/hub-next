@@ -13,6 +13,7 @@
     "db:generate": "prisma generate",
     "db:seed": "npx tsx prisma/seed.ts",
     "db:apply-missing": "prisma db execute --file prisma/apply-missing-postgres.sql --schema prisma/schema.prisma",
+    "db:add-cpf": "prisma db execute --file prisma/add-cpf-columns.sql --schema prisma/schema.prisma",
     "db:create-auth-tables": "prisma db execute --file prisma/create-auth-tables.sql --schema prisma/schema.prisma",
     "db:reset": "prisma db push --force-reset --accept-data-loss"
   },

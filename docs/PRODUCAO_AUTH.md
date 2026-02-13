@@ -81,10 +81,22 @@ Se o login retornar 500 e os logs mostrarem `The column users.cpfHash does not e
 psql $DATABASE_URL -f prisma/add-cpf-columns.sql
 ```
 
-Ou copie e execute o conteúdo de `prisma/add-cpf-columns.sql` no cliente SQL do seu provedor. Depois disso, o login deve voltar a funcionar.
+Ou copie e execute o conteúdo de `prisma/add-cpf-columns.sql` no cliente SQL do seu provedor. Ou use: `npm run db:add-cpf` (com DATABASE_URL configurado). Depois disso, o login deve voltar a funcionar.
 
 ---
 
-## 6. Cache (Redis)
+## 6. Reset completo do banco e schema
+
+Para recriar todas as tabelas a partir do `schema.prisma` (útil após mudanças no schema ou para ambiente limpo):
+
+```bash
+npm run db:reset
+```
+
+Isso executa `prisma db push --force-reset --accept-data-loss`: **apaga todos os dados** e recria as tabelas. O schema atual já inclui as colunas `cpfHash` e `cpfEncrypted`, então após o reset o login e o heartbeat funcionam sem rodar scripts adicionais.
+
+---
+
+## 7. Cache (Redis)
 
 O Redis neste projeto é usado **apenas** para cache do status da fila (`hub:queue:status`, TTL 3s). **Não afeta autenticação.** Se quiser “resetar” o cache da fila, use `invalidateQueueStatusCache()` ou `resetQueueCache()` de `@/src/lib/redis` (por exemplo numa rota de admin).

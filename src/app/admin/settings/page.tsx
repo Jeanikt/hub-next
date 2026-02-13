@@ -13,7 +13,11 @@ export default function AdminSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
-  const [syncResult, setSyncResult] = useState<{ updated: number; totalWithRiot: number; errors?: { userId: string; reason: string }[] } | null>(null);
+  const [syncResult, setSyncResult] = useState<{
+    updated: number;
+    totalWithRiot: number;
+    errors?: { userId: string; username?: string | null; reason: string }[];
+  } | null>(null);
 
   const load = () => {
     setLoading(true);
@@ -56,6 +60,8 @@ export default function AdminSettingsPage() {
   };
 
   const update = async (key: keyof SettingsState, value: "1" | "0") => {
+    const previous = settings ? { ...settings } : null;
+    setSettings((s) => (s ? { ...s, [key]: value } : s));
     setSaving(key);
     try {
       const res = await fetch("/api/admin/settings", {
@@ -65,9 +71,11 @@ export default function AdminSettingsPage() {
         body: JSON.stringify({ [key]: value }),
       });
       const data = await res.json();
-      if (res.ok && data[key] !== undefined) {
-        setSettings((s) => (s ? { ...s, [key]: data[key] } : s));
-      }
+      if (res.ok && (data.allow_custom_matches !== undefined || data.queues_disabled !== undefined)) {
+        setSettings((s) => (s ? { ...s, ...data } : s));
+      } else if (previous) setSettings(previous);
+    } catch {
+      if (previous) setSettings(previous);
     } finally {
       setSaving(null);
     }
@@ -196,10 +204,22 @@ export default function AdminSettingsPage() {
             Sincronizar ELO de todos os usuários
           </button>
           {syncResult && (
-            <p className="mt-3 text-sm text-[var(--hub-text-muted)]">
-              {syncResult.updated} de {syncResult.totalWithRiot} usuários com conta Riot atualizados.
-              {syncResult.errors?.length ? ` ${syncResult.errors.length} erro(s).` : ""}
-            </p>
+            <div className="mt-3 space-y-1 text-sm text-[var(--hub-text-muted)]">
+              <p>
+                {syncResult.updated} de {syncResult.totalWithRiot} usuários com conta Riot atualizados.
+                {syncResult.errors?.length ? ` ${syncResult.errors.length} erro(s).` : ""}
+              </p>
+              {syncResult.errors?.length ? (
+                <ul className="list-disc list-inside text-xs">
+                  {syncResult.errors.slice(0, 5).map((e, i) => (
+                    <li key={i}>{e.username ?? e.userId}: {e.reason}</li>
+                  ))}
+                  {syncResult.errors.length > 5 && (
+                    <li>… e mais {syncResult.errors.length - 5} erro(s)</li>
+                  )}
+                </ul>
+              ) : null}
+            </div>
           )}
         </div>
       </div>

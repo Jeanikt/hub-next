@@ -144,6 +144,25 @@ export async function getMMR(
   }
 }
 
+const MMR_REGIONS = ["br", "latam", "na"] as const;
+
+/**
+ * Busca MMR tentando várias regiões (br, latam, na). Útil quando a conta pode estar em outra região.
+ */
+export async function getMMRWithRegionFallback(
+  name: string,
+  tag: string
+): Promise<ValorantMMRData | null> {
+  for (const region of MMR_REGIONS) {
+    const data = await getMMR(name, tag, region);
+    const hasRank =
+      data?.data?.current_data?.currenttier_patched != null &&
+      String(data.data.current_data.currenttier_patched).trim() !== "";
+    if (hasRank) return data;
+  }
+  return null;
+}
+
 /**
  * Apelidos anônimos inspirados em Valorant (mapas/callouts) para esconder
  * o nome real dos jogadores na fila / sala de espera.

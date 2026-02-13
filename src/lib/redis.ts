@@ -64,25 +64,33 @@ export async function resetQueueCache(): Promise<void> {
 
 const SETTINGS_PREFIX = "hub:setting:";
 
-/** Lê configuração de app (ex.: allow_custom_matches, queues_disabled). Retorna null se não existir. */
+/** Fallback em memória quando Redis não está configurado (toggles admin funcionam na sessão atual). */
+const memorySettings = new Map<string, string>();
+
+/** Lê configuração de app (ex.: allow_custom_matches, queues_disabled). Usa Redis ou fallback em memória. */
 export async function getAppSetting(key: string): Promise<string | null> {
   const client = await getClient();
-  if (!client) return null;
-  try {
-    const v = await client.get(SETTINGS_PREFIX + key);
-    return typeof v === "string" ? v : null;
-  } catch {
-    return null;
+  if (client) {
+    try {
+      const v = await client.get(SETTINGS_PREFIX + key);
+      if (typeof v === "string") return v;
+    } catch {
+      // fall through to memory
+    }
   }
+  return memorySettings.get(key) ?? null;
 }
 
-/** Define configuração de app (valor string, ex. "1" ou "0"). */
+/** Define configuração de app (valor string, ex. "1" ou "0"). Persiste no Redis ou em memória. */
 export async function setAppSetting(key: string, value: string): Promise<void> {
   const client = await getClient();
-  if (!client) return;
-  try {
-    await client.set(SETTINGS_PREFIX + key, value);
-  } catch {
-    // ignore
+  if (client) {
+    try {
+      await client.set(SETTINGS_PREFIX + key, value);
+      return;
+    } catch {
+      // fall through to memory
+    }
   }
+  memorySettings.set(key, value);
 }

@@ -2,10 +2,17 @@ import { NextResponse } from "next/server";
 import { auth } from "@/src/lib/auth";
 import { isAllowedAdmin } from "@/src/lib/admin";
 import { prisma } from "@/src/lib/prisma";
-import { getMMR } from "@/src/lib/valorant";
+import { getMMRWithRegionFallback } from "@/src/lib/valorant";
 import { getRankPointsFromTier } from "@/src/lib/rankPoints";
 
 const DELAY_MS = 600;
+
+/** Extrai rank (currenttier_patched) da resposta da API Henrik. */
+function extractRankFromMMR(mmrData: { data?: { current_data?: { currenttier_patched?: string } } } | null): string | null {
+  const label = mmrData?.data?.current_data?.currenttier_patched;
+  if (label == null || String(label).trim() === "") return null;
+  return String(label).trim();
+}
 
 /** POST /api/admin/sync-elo – atualiza elo e rank de todos os usuários com conta Riot pela API. Apenas admin. */
 export async function POST() {
@@ -24,7 +31,7 @@ export async function POST() {
     });
 
     let updated = 0;
-    const errors: { userId: string; reason: string }[] = [];
+    const errors: { userId: string; username: string | null; reason: string }[] = [];
 
     for (const u of users) {
       const riotId = u.riotId!.trim();
@@ -33,22 +40,19 @@ export async function POST() {
 
       await new Promise((r) => setTimeout(r, DELAY_MS));
 
-      const mmrData = await getMMR(riotId, tagline);
-      const currentData = mmrData?.data?.current_data;
-      const rankLabel = currentData?.currenttier_patched ?? null;
+      const mmrData = await getMMRWithRegionFallback(riotId, tagline);
+      const rankLabel = extractRankFromMMR(mmrData);
       const rankPoints = rankLabel != null ? getRankPointsFromTier(rankLabel) : 0;
 
       try {
-        await prisma.user.update({
-          where: { id: u.id },
-          data: { rank: rankLabel, elo: rankPoints },
-        });
+        await prisma.$executeRaw`UPDATE users SET rank = ${rankLabel}, elo = ${rankPoints} WHERE id = ${u.id}`;
         updated++;
       } catch (e) {
-        errors.push({
-          userId: u.id,
-          reason: e instanceof Error ? e.message : "Erro ao atualizar",
-        });
+        const reason = e instanceof Error ? e.message : "Erro ao atualizar";
+        errors.push({ userId: u.id, username: u.username, reason });
+        if (mmrData == null) {
+          console.warn(`[sync-elo] Sem dados MMR para ${riotId}#${tagline} (${u.username ?? u.id}). Verifique região ou API.`);
+        }
       }
     }
 

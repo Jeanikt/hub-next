@@ -6,8 +6,8 @@ import { ONLINE_WINDOW_MS } from "@/src/lib/online";
 /**
  * GET /api/presence/heartbeat
  * Marca o usuário autenticado como online (atualiza lastLoginAt e isOnline).
- * Chamado periodicamente pelo frontend enquanto o usuário está na plataforma.
- * Também marca como offline usuários inativos há mais que ONLINE_WINDOW_MS.
+ * Usa raw SQL para atualizar apenas essas colunas e evitar 500 quando o banco
+ * ainda não tiver colunas opcionais (ex.: cpfHash).
  */
 export async function GET() {
   const session = await auth();
@@ -18,19 +18,15 @@ export async function GET() {
   const now = new Date();
   const cutoff = new Date(now.getTime() - ONLINE_WINDOW_MS);
 
-  await Promise.all([
-    prisma.user.update({
-      where: { id: session.user.id },
-      data: { lastLoginAt: now, isOnline: true },
-    }),
-    prisma.user.updateMany({
-      where: {
-        isOnline: true,
-        lastLoginAt: { lt: cutoff },
-      },
-      data: { isOnline: false },
-    }),
-  ]);
+  try {
+    await Promise.all([
+      prisma.$executeRaw`UPDATE users SET "lastLoginAt" = ${now}, "isOnline" = true WHERE id = ${session.user.id}`,
+      prisma.$executeRaw`UPDATE users SET "isOnline" = false WHERE "isOnline" = true AND "lastLoginAt" < ${cutoff}`,
+    ]);
+  } catch (e) {
+    console.error("presence heartbeat", e);
+    return NextResponse.json({ ok: false }, { status: 500 });
+  }
 
   return NextResponse.json({ ok: true });
 }
