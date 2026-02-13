@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/src/lib/auth";
 import { prisma } from "@/src/lib/prisma";
-import { getAccount, getMMR, getRankLabelFromMMR } from "@/src/lib/valorant";
+import { getAccount, getMMR, getRankLabelFromMMR, VALORANT_RATE_LIMIT_ERROR } from "@/src/lib/valorant";
 import { getRankPointsFromTier } from "@/src/lib/rankPoints";
 import { verifyAndCompleteMissions } from "@/src/lib/missions/verify";
 import { z } from "zod";
@@ -83,37 +83,47 @@ export async function PATCH(request: NextRequest) {
     } else {
       const riotAccount = `${riotId}#${tagline}`;
 
-      const accountData = await getAccount(riotId, tagline);
-      if (!accountData?.data?.puuid) {
-        return NextResponse.json(
-          { message: "Conta Riot não encontrada. Verifique o nome e a tag." },
-          { status: 404 }
-        );
+      try {
+        const accountData = await getAccount(riotId, tagline);
+        if (!accountData?.data?.puuid) {
+          return NextResponse.json(
+            { message: "Conta Riot não encontrada. Verifique o nome e a tag." },
+            { status: 422 }
+          );
+        }
+
+        const existing = await prisma.user.findFirst({
+          where: {
+            riotAccount,
+            id: { not: session.user.id },
+          },
+        });
+        if (existing) {
+          return NextResponse.json(
+            { message: "Esta conta Riot já está vinculada a outro usuário." },
+            { status: 409 }
+          );
+        }
+
+        // Pontos (0–20) baseados no ELO/rank retornado pela API Riot
+        const mmrData = await getMMR(riotId, tagline);
+        const rankLabel = getRankLabelFromMMR(mmrData);
+        const rankPoints = rankLabel != null ? getRankPointsFromTier(rankLabel) : 0;
+
+        updateData.riotId = riotId;
+        updateData.tagline = tagline;
+        updateData.riotAccount = riotAccount;
+        updateData.rank = rankLabel;
+        updateData.elo = rankPoints;
+      } catch (e) {
+        if (e instanceof Error && e.message === VALORANT_RATE_LIMIT_ERROR) {
+          return NextResponse.json(
+            { message: "Muitos acessos à API Riot. Tente em 1 minuto." },
+            { status: 503 }
+          );
+        }
+        throw e;
       }
-
-      const existing = await prisma.user.findFirst({
-        where: {
-          riotAccount,
-          id: { not: session.user.id },
-        },
-      });
-      if (existing) {
-        return NextResponse.json(
-          { message: "Esta conta Riot já está vinculada a outro usuário." },
-          { status: 409 }
-        );
-      }
-
-      // Pontos (0–20) baseados no ELO/rank retornado pela API Riot
-      const mmrData = await getMMR(riotId, tagline);
-      const rankLabel = getRankLabelFromMMR(mmrData);
-      const rankPoints = rankLabel != null ? getRankPointsFromTier(rankLabel) : 0;
-
-      updateData.riotId = riotId;
-      updateData.tagline = tagline;
-      updateData.riotAccount = riotAccount;
-      updateData.rank = rankLabel;
-      updateData.elo = rankPoints;
     }
   }
 

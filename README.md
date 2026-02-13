@@ -157,6 +157,44 @@ Sem Pusher/Redis o app continua funcionando: filas usam polling; cache de status
 
 **Cron – Check matches:** para sincronizar partidas pendentes com o resultado do jogo (Valorant/API Henrik), agende `GET /api/cron/check-matches` com o mesmo segredo. Recomendado a cada 3–5 minutos para que, quando a partida for encerrada no jogo, o site atualize com vencedor, K/D/A e variação de ELO.
 
+### Configurando os crons no Dokploy
+
+Use **Schedule Jobs** do Dokploy para chamar as APIs de cron via HTTP. O ideal é usar um **Server Job** (no host onde o app está) ou **Dokploy Server Job**, com um script que faz `curl` na URL pública do app.
+
+1. No painel do Dokploy: **Schedule** (ou **Schedule Jobs**) → **Create**.
+2. Escolha o tipo:
+   - **Server Job** – se o app está em um servidor gerenciado pelo Dokploy (o script roda no host e pode usar `curl`).
+   - **Dokploy Server Job** – script roda dentro do container do Dokploy; o host precisa conseguir acessar a URL do app (ex.: `https://seu-dominio.com`).
+3. Para cada cron, crie um job:
+
+**Job 1 – Check matches (a cada 3–5 minutos)**
+
+- **Nome:** ex. `Hub Check Matches`
+- **Schedule (cron):** `*/5 * * * *` (a cada 5 minutos) ou `*/3 * * * *` (a cada 3 minutos).
+- **Script:**
+
+```bash
+#!/bin/bash
+curl -s -o /dev/null -w "%{http_code}" "https://SEU_DOMINIO/api/cron/check-matches?secret=SEU_CRON_SECRET"
+```
+
+Substitua `SEU_DOMINIO` e `SEU_CRON_SECRET` pelo domínio do app e pelo valor de `CRON_SECRET` (ou `CRON_API_KEY`) do `.env`.
+
+**Job 2 – Sync ELO (a cada 6–12 horas)**
+
+- **Nome:** ex. `Hub Sync ELO`
+- **Schedule (cron):** `0 */6 * * *` (a cada 6 horas) ou `0 */12 * * *` (a cada 12 horas).
+- **Script:**
+
+```bash
+#!/bin/bash
+curl -s -o /dev/null -w "%{http_code}" "https://SEU_DOMINIO/api/cron/sync-elo?secret=SEU_CRON_SECRET"
+```
+
+4. Salve e acompanhe em **Logs** se as execuções retornam HTTP 200.
+
+Se o **Server Job** não tiver `curl` no host, use **Dokploy Server Job** e garanta que o container Dokploy consiga resolver e acessar a URL do app (por exemplo, usando o domínio público com HTTPS).
+
 ---
 
 ## Scripts

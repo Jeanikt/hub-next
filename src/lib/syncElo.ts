@@ -3,10 +3,11 @@
  * Atualiza rank e elo de todos os usuários com conta Riot via API Henrik.
  */
 import { prisma } from "@/src/lib/prisma";
-import { getMMRWithRegionFallback, getRankLabelFromMMR } from "@/src/lib/valorant";
+import { getMMRWithRegionFallback, getRankLabelFromMMR, VALORANT_RATE_LIMIT_ERROR } from "@/src/lib/valorant";
 import { getRankPointsFromTier } from "@/src/lib/rankPoints";
 
-const DELAY_MS = 600;
+/** Delay entre usuários para não estourar rate limit (já temos 28/min no módulo valorant). */
+const DELAY_MS = 2500;
 
 export type SyncEloResult = {
   totalWithRiot: number;
@@ -30,7 +31,17 @@ export async function runSyncElo(): Promise<SyncEloResult> {
 
     await new Promise((r) => setTimeout(r, DELAY_MS));
 
-    const mmrData = await getMMRWithRegionFallback(riotId, tagline);
+    let mmrData;
+    try {
+      mmrData = await getMMRWithRegionFallback(riotId, tagline);
+    } catch (e) {
+      const reason = e instanceof Error && e.message === VALORANT_RATE_LIMIT_ERROR
+        ? "Rate limit da API Riot"
+        : (e instanceof Error ? e.message : "Erro ao buscar MMR");
+      errors.push({ userId: u.id, username: u.username, reason });
+      continue;
+    }
+
     const rankLabel = getRankLabelFromMMR(mmrData);
     const rankPoints = rankLabel != null ? getRankPointsFromTier(rankLabel) : 0;
 

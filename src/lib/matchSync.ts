@@ -3,7 +3,7 @@
  * Usado pelo cron /api/cron/check-matches.
  */
 import { prisma } from "@/src/lib/prisma";
-import { getLastCustomMatchFresh, getMatchByMatchId, type ValorantMatch, type ValorantMatchDetails } from "@/src/lib/valorant";
+import { getLastCustomMatchFresh, getMatchByMatchId, VALORANT_RATE_LIMIT_ERROR, type ValorantMatch, type ValorantMatchDetails } from "@/src/lib/valorant";
 import { invalidateQueueStatusCache } from "@/src/lib/redis";
 import { verifyAndCompleteMissions } from "@/src/lib/missions/verify";
 
@@ -75,7 +75,15 @@ export async function syncPendingMatchesFromRiot(): Promise<SyncResult> {
     const tag = creator.user.tagline!.trim();
 
     await new Promise((r) => setTimeout(r, DELAY_MS));
-    const lastCustom = await getLastCustomMatchFresh(name, tag);
+    let lastCustom;
+    try {
+      lastCustom = await getLastCustomMatchFresh(name, tag);
+    } catch (e) {
+      if (e instanceof Error && e.message === VALORANT_RATE_LIMIT_ERROR) {
+        errors.push("Rate limit da API Riot");
+      }
+      continue;
+    }
     if (!lastCustom || "error" in lastCustom) continue;
 
     const first = extractFirstMatch(lastCustom.data);
@@ -89,7 +97,15 @@ export async function syncPendingMatchesFromRiot(): Promise<SyncResult> {
     if (settings.riot_match_id === riotMatchId) continue;
 
     await new Promise((r) => setTimeout(r, DELAY_MS));
-    const detailsRes = await getMatchByMatchId("br", riotMatchId);
+    let detailsRes;
+    try {
+      detailsRes = await getMatchByMatchId("br", riotMatchId);
+    } catch (e) {
+      if (e instanceof Error && e.message === VALORANT_RATE_LIMIT_ERROR) {
+        errors.push("Rate limit da API Riot");
+      }
+      continue;
+    }
     if (!detailsRes?.data) continue;
     const details = detailsRes.data as ValorantMatchDetails;
 

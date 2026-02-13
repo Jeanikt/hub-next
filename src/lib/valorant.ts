@@ -1,7 +1,12 @@
 /**
  * Cliente para a API Valorant (Henrik Dev)
  * https://docs.henrikdev.xyz/valorant
+ * Rate limit: 30 req/min (básico); uso interno limitado a 28/min.
  */
+
+import { waitForValorantRateLimit, VALORANT_RATE_LIMIT_ERROR } from "@/src/lib/valorantRateLimit";
+
+export { VALORANT_RATE_LIMIT_ERROR };
 
 const BASE_URL = "https://api.henrikdev.xyz/valorant";
 
@@ -11,6 +16,16 @@ function getHeaders(): HeadersInit {
     "Content-Type": "application/json",
     ...(key ? { Authorization: key } : {}),
   };
+}
+
+/** Fetch com rate limit interno; lança se a API retornar 429. */
+async function valorantFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  await waitForValorantRateLimit();
+  const res = await fetch(input, init);
+  if (res.status === 429) {
+    throw new Error(VALORANT_RATE_LIMIT_ERROR);
+  }
+  return res;
 }
 
 export type ValorantMatch = {
@@ -37,7 +52,7 @@ export async function getMatchlist(
   platform = "pc"
 ): Promise<{ data?: ValorantMatch[]; error?: string } | null> {
   try {
-    const res = await fetch(
+    const res = await valorantFetch(
       `${BASE_URL}/v4/matches/${region}/${platform}/${encodeURIComponent(name)}/${encodeURIComponent(tag)}`,
       { headers: getHeaders(), next: { revalidate: 300 } }
     );
@@ -47,6 +62,7 @@ export async function getMatchlist(
     const data = await res.json();
     return data;
   } catch (e) {
+    if (e instanceof Error && e.message === VALORANT_RATE_LIMIT_ERROR) throw e;
     console.error("Valorant getMatchlist", e);
     return null;
   }
@@ -85,7 +101,7 @@ async function getLastCustomMatchInternal(
     );
     url.searchParams.set("mode", "custom");
     url.searchParams.set("size", "1");
-    const res = await fetch(url.toString(), {
+    const res = await valorantFetch(url.toString(), {
       headers: getHeaders(),
       next: { revalidate },
     });
@@ -95,6 +111,7 @@ async function getLastCustomMatchInternal(
     const data = await res.json();
     return data;
   } catch (e) {
+    if (e instanceof Error && e.message === VALORANT_RATE_LIMIT_ERROR) throw e;
     console.error("Valorant getLastCustomMatch", e);
     return null;
   }
@@ -106,7 +123,7 @@ export async function getMatchByMatchId(
   matchId: string
 ): Promise<{ data?: ValorantMatchDetails; error?: string } | null> {
   try {
-    const res = await fetch(
+    const res = await valorantFetch(
       `${BASE_URL}/v4/match/${region}/${encodeURIComponent(matchId)}`,
       { headers: getHeaders(), next: { revalidate: 0 } }
     );
@@ -116,6 +133,7 @@ export async function getMatchByMatchId(
     const data = await res.json();
     return data;
   } catch (e) {
+    if (e instanceof Error && e.message === VALORANT_RATE_LIMIT_ERROR) throw e;
     console.error("Valorant getMatchByMatchId", e);
     return null;
   }
@@ -151,19 +169,25 @@ export type ValorantMatchDetails = {
   [key: string]: unknown;
 };
 
-/** Dados da conta Riot por nome#tag */
+/**
+ * Dados da conta Riot por nome#tag.
+ * API Henrik: 200 + { status: 1, data: { puuid, name, tag } } = sucesso; 404 = conta não encontrada; 429 = rate limit.
+ */
 export async function getAccount(
   name: string,
   tag: string
 ): Promise<ValorantAccount | null> {
   try {
-    const res = await fetch(
+    const res = await valorantFetch(
       `${BASE_URL}/v2/account/${encodeURIComponent(name)}/${encodeURIComponent(tag)}`,
       { headers: getHeaders(), next: { revalidate: 3600 } }
     );
     if (!res.ok) return null;
-    return await res.json();
+    const body = (await res.json()) as { status?: number; data?: { puuid?: string; [key: string]: unknown } };
+    if (body?.status !== 1 || !body?.data?.puuid) return null;
+    return { data: body.data };
   } catch (e) {
+    if (e instanceof Error && e.message === VALORANT_RATE_LIMIT_ERROR) throw e;
     console.error("Valorant getAccount", e);
     return null;
   }
@@ -209,6 +233,7 @@ export function getRankLabelFromMMR(mmr: ValorantMMRData | null): string | null 
 /**
  * Busca MMR/rank atual do jogador (API v2).
  * Região br; retorna rank atual (currenttierpatched) e elo numérico da Riot.
+ * API: status 1 = ok; 404/25 = sem MMR (Unranked).
  */
 export async function getMMR(
   name: string,
@@ -216,13 +241,16 @@ export async function getMMR(
   region = "br"
 ): Promise<ValorantMMRData | null> {
   try {
-    const res = await fetch(
+    const res = await valorantFetch(
       `${BASE_URL}/v2/mmr/${region}/${encodeURIComponent(name)}/${encodeURIComponent(tag)}`,
       { headers: getHeaders(), next: { revalidate: 0 } }
     );
     if (!res.ok) return null;
-    return await res.json();
+    const data = (await res.json()) as ValorantMMRData;
+    if (data?.status !== undefined && data.status !== 1 && data.status !== 404) return null;
+    return data;
   } catch (e) {
+    if (e instanceof Error && e.message === VALORANT_RATE_LIMIT_ERROR) throw e;
     console.error("Valorant getMMR", e);
     return null;
   }

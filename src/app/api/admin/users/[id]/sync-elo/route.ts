@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/src/lib/auth";
 import { isAllowedAdmin } from "@/src/lib/admin";
 import { prisma } from "@/src/lib/prisma";
-import { getMMRWithRegionFallback, getRankLabelFromMMR } from "@/src/lib/valorant";
+import { getMMRWithRegionFallback, getRankLabelFromMMR, VALORANT_RATE_LIMIT_ERROR } from "@/src/lib/valorant";
 import { getRankPointsFromTier } from "@/src/lib/rankPoints";
 
 /** POST /api/admin/users/[id]/sync-elo – sincroniza ELO/rank de um usuário pela API Riot. Apenas admin. */
@@ -43,7 +43,13 @@ export async function POST(
       rank: rankLabel,
       elo: rankPoints,
     });
-  } catch {
+  } catch (e) {
+    if (e instanceof Error && e.message === VALORANT_RATE_LIMIT_ERROR) {
+      return NextResponse.json(
+        { message: "Muitos acessos à API Riot. Tente em 1 minuto." },
+        { status: 503 }
+      );
+    }
     return NextResponse.json({ error: "Erro ao sincronizar ELO." }, { status: 500 });
   }
 }

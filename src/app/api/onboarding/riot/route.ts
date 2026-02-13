@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/src/lib/auth";
 import { prisma } from "@/src/lib/prisma";
-import { getAccount, getMMR, getRankLabelFromMMR } from "@/src/lib/valorant";
-import { getRankPointsFromTier } from "@/src/lib/rankPoints";
+import { getAccount, VALORANT_RATE_LIMIT_ERROR } from "@/src/lib/valorant";
 import { onboardingRiotIdSchema } from "@/src/lib/validators/schemas";
 import { verifyAndCompleteMissions } from "@/src/lib/missions/verify";
 
+/**
+ * Onboarding Riot: apenas 1 chamada à API (getAccount) para respeitar 30 req/min.
+ * Rank e ELO são preenchidos pelo cron sync-elo ou ao editar perfil.
+ */
 export async function POST(req: Request) {
   try {
     const session = await auth();
@@ -29,7 +32,7 @@ export async function POST(req: Request) {
     const { riotId, tagline } = parsed.data;
     const riotAccount = `${riotId}#${tagline}`;
 
-    // 1) Verificar se a conta existe na API Riot (422 = dados inválidos, não 404)
+    // 1) Verificar se a conta existe na API Riot (1 chamada apenas; evita estourar rate limit)
     const accountData = await getAccount(riotId, tagline);
     if (!accountData?.data?.puuid) {
       return NextResponse.json(
@@ -52,19 +55,15 @@ export async function POST(req: Request) {
       );
     }
 
-    // 3) Buscar ELO real na Riot e definir pontos iniciais (0–20) para filas e ranking
-    const mmrData = await getMMR(riotId, tagline);
-    const rankLabel = getRankLabelFromMMR(mmrData);
-    const rankPoints = rankLabel != null ? getRankPointsFromTier(rankLabel) : 0;
-
+    // 3) Salvar vínculo; rank/elo serão preenchidos pelo cron sync-elo (ou ao abrir perfil)
     await prisma.user.update({
       where: { id: session.user.id },
       data: {
         riotId,
         tagline,
         riotAccount,
-        rank: rankLabel,
-        elo: rankPoints,
+        rank: null,
+        elo: 0,
       },
     });
 
@@ -76,10 +75,17 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       ok: true,
-      rank: rankLabel,
-      elo: rankPoints,
+      rank: null,
+      elo: 0,
+      message: "Conta vinculada. Seu rank será atualizado em breve.",
     });
   } catch (e) {
+    if (e instanceof Error && e.message === VALORANT_RATE_LIMIT_ERROR) {
+      return NextResponse.json(
+        { message: "Muitos usuários vinculando agora. Tente em 1 minuto." },
+        { status: 503 }
+      );
+    }
     console.error("POST /api/onboarding/riot", e);
     return NextResponse.json(
       { message: "Erro ao vincular conta Riot. Tente novamente." },
