@@ -16,17 +16,39 @@ export async function GET() {
 
   const stream = new ReadableStream({
     async start(controller) {
+      let closed = false;
+      let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
       const send = (event: string, data: string) => {
-        controller.enqueue(encoder.encode(`event: ${event}\ndata: ${data}\n\n`));
+        if (closed) return;
+        try {
+          controller.enqueue(encoder.encode(`event: ${event}\ndata: ${data}\n\n`));
+        } catch {
+          closed = true;
+        }
+      };
+
+      const closeStream = () => {
+        if (closed) return;
+        closed = true;
+        if (timeoutId != null) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
+        try {
+          controller.close();
+        } catch {
+          // controller já fechado
+        }
       };
 
       let lastSeenAt: Date | null = null;
       const deadline = Date.now() + SSE_MAX_DURATION_MS;
 
       const tick = async () => {
+        if (closed) return;
         if (Date.now() >= deadline) {
-          send("ping", "{}");
-          controller.close();
+          closeStream();
           return;
         }
         try {
@@ -45,7 +67,7 @@ export async function GET() {
               createdAt: true,
             },
           });
-          if (list.length > 0) {
+          if (!closed && list.length > 0) {
             const newest = list[0];
             if (!lastSeenAt || newest.createdAt > lastSeenAt) lastSeenAt = newest.createdAt;
             const payload = list.map((n) => ({
@@ -63,17 +85,24 @@ export async function GET() {
             }
           }
         } catch {
-          send("ping", "{}");
+          if (!closed) send("ping", "{}");
         }
+        if (closed) return;
         if (Date.now() < deadline) {
-          setTimeout(tick, SSE_POLL_MS);
+          timeoutId = setTimeout(() => {
+            timeoutId = null;
+            tick();
+          }, SSE_POLL_MS);
         } else {
-          controller.close();
+          closeStream();
         }
       };
 
       send("ping", "{}");
-      setTimeout(tick, 500);
+      timeoutId = setTimeout(() => {
+        timeoutId = null;
+        tick();
+      }, 500);
     },
   });
 
