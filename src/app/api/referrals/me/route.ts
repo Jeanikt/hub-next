@@ -5,13 +5,8 @@ import { prisma } from "@/src/lib/prisma";
 import { codeFromUsername, generateInviteCode } from "@/src/lib/inviteCode";
 
 /** Origem da requisição (host da página: localhost, dev.hubexpresso.com, etc.) */
-function getRequestOrigin(request: NextRequest): string {
-  try {
-    const url = new URL(request.url);
-    return url.origin;
-  } catch {
-    return process.env.NEXT_PUBLIC_APP_URL ?? "https://dev.hubexpresso.com";
-  }
+function getRequestOrigin(): string {
+  return process.env.NEXT_PUBLIC_APP_URL ?? "https://hubexpresso.com";
 }
 
 /** GET /api/referrals/me – retorna código de convite do usuário, link e quantidade de convidados. Cria inviteCode se não existir. */
@@ -47,7 +42,7 @@ export async function GET(request: NextRequest) {
     where: { inviterId: session.user.id },
   });
 
-  const origin = getRequestOrigin(request);
+  const origin = getRequestOrigin();
   const inviteLink = `${origin}/login?ref=${encodeURIComponent(user.inviteCode!)}`;
 
   return NextResponse.json({
