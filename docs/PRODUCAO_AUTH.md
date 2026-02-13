@@ -106,6 +106,14 @@ Isso executa `prisma migrate reset --force`: **apaga todos os dados**, recria o 
 
 ---
 
-## 8. Cache (Redis)
+## 8. Segurança: HTTPS e dados sensíveis (CPF)
+
+- **Requisições criptografadas:** Em produção o site deve ser acessado **somente por HTTPS**. Assim, todo o tráfego (incluindo login e envio de CPF no onboarding) já vai criptografado (TLS). Nunca use `NEXTAUTH_URL` ou links públicos em HTTP em produção.
+- **Console do navegador:** O build de produção remove todos os `console.*` do código que vai para o client; o usuário não vê logs no DevTools.
+- **CPF:** Não é logado em nenhuma rota; é apenas normalizado, hasheado (cpfHash) e criptografado (cpfEncrypted) antes de persistir. Nunca escreva o valor em claro em logs ou respostas.
+
+---
+
+## 9. Cache (Redis)
 
 O Redis neste projeto é usado **apenas** para cache do status da fila (`hub:queue:status`, TTL 3s). **Não afeta autenticação.** Se quiser “resetar” o cache da fila, use `invalidateQueueStatusCache()` ou `resetQueueCache()` de `@/src/lib/redis` (por exemplo numa rota de admin).

@@ -60,7 +60,7 @@ export default async function Home() {
           </div>
           <div className="bg-[var(--hub-bg-card)] border border-[var(--hub-accent)]/50 p-6">
             <p className="text-[var(--hub-accent)] font-bold uppercase tracking-wider">Play</p>
-            <p className="text-[var(--hub-text-muted)] text-sm mt-1">10v10 competitivo</p>
+            <p className="text-[var(--hub-text-muted)] text-sm mt-1">5v5 competitivo</p>
           </div>
           <div className="bg-[var(--hub-bg-card)] border border-[var(--hub-border)] p-6 hover:border-[var(--hub-accent)]/50 transition-colors">
             <p className="text-white font-bold uppercase tracking-wider">Amigos</p>

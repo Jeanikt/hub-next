@@ -1,0 +1,35 @@
+# Dependencies and build
+node_modules
+.next
+out
+*.tsbuildinfo
+
+# Git and IDE
+.git
+.gitignore
+.cursor
+.vscode
+*.md
+!README.md
+
+# Env (inject at runtime no Dokploy)
+.env
+.env.*
+!.env.example
+
+# Test and dev
+coverage
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+vitest.config.ts
+src/test
+
+# Vercel
+.vercel
+
+# Misc
+.DS_Store
+*.log
+bun.lock

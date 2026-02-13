@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import Link from "next/link";
 import { AlertTriangle, RefreshCw, Home } from "lucide-react";
 
@@ -11,10 +10,6 @@ export default function Error({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
-  useEffect(() => {
-    console.error("App error boundary:", error);
-  }, [error]);
-
   return (
     <div className="min-h-screen bg-[var(--hub-bg)] text-[var(--hub-text)] flex flex-col items-center justify-center px-4">
       <div className="w-full max-w-md text-center">
