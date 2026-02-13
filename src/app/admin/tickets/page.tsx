@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { MessageSquare } from "lucide-react";
+import Link from "next/link";
 
 export default function AdminTicketsPage() {
   const [data, setData] = useState<{ id: string; subject?: string; status?: string }[] | null>(null);
@@ -35,13 +36,15 @@ export default function AdminTicketsPage() {
       ) : (
         <ul className="space-y-2">
           {data.map((t) => (
-            <li
-              key={t.id}
-              className="rounded-xl border border-[var(--hub-border)] bg-[var(--hub-bg-card)] p-4"
-            >
-              <p className="font-medium text-[var(--hub-text)]">{t.subject ?? t.id}</p>
-              <p className="text-sm text-[var(--hub-text-muted)]">{t.status ?? "—"}</p>
-            </li>
+            <Link href={`https://suporte.hubexpresso.com/admin/tickets/${t.id}`}>
+              <li
+                key={t.id}
+                className="rounded-xl border border-[var(--hub-border)] bg-[var(--hub-bg-card)] p-4"
+              >
+                <p className="font-medium text-[var(--hub-text)]">{t.subject ?? t.id}</p>
+                <p className="text-sm text-[var(--hub-text-muted)]">{t.status ?? "—"}</p>
+              </li>
+            </Link>
           ))}
         </ul>
       )}

@@ -64,7 +64,7 @@ export async function POST(request: Request) {
     await writeFile(filepath, buffer);
   } catch {
     return NextResponse.json(
-      { message: "Erro ao salvar o arquivo. Em hospedagem serverless use armazenamento externo (ex.: Vercel Blob)." },
+      { message: "Erro ao salvar o arquivo." },
       { status: 500 }
     );
   }
