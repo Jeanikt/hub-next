@@ -53,19 +53,11 @@ export function NotificationBell() {
       .then((r) => (r.ok ? r.json() : { data: [] }))
       .then((json) => {
         const next = json.data ?? [];
-        setList((prev) => {
-          const prevIds = new Set(prev.map((n) => n.id));
-          next.forEach((n: Notif) => {
-            if (!prevIds.has(n.id) && TOAST_TYPES.has(n.type)) {
-              addToast({ title: n.title, body: n.body ?? undefined, type: n.type });
-            }
-          });
-          return next;
-        });
+        setList(next);
       })
       .catch(() => setList([]))
       .finally(() => setLoading(false));
-  }, [status, addToast]);
+  }, [status]);
 
   useEffect(() => {
     if (status !== "authenticated") return;
