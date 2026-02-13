@@ -73,9 +73,9 @@ Em produção (HTTPS), o NextAuth define o cookie de sessão com o prefixo `__Se
 
 ---
 
-## 5. Erro "The column users.cpfHash does not exist" (500 no login)
+## 5. Erro no login com Google (500 ou redirecionamento para /auth/error?error=Configuration)
 
-Se o login retornar 500 e os logs mostrarem `The column users.cpfHash does not exist`, o banco de produção ainda não tem as colunas `cpfHash` e `cpfEncrypted` na tabela `users`. **Execute o SQL no banco de produção** (Vercel Postgres, Supabase, etc.):
+Se o login retornar 500 ou o usuário for redirecionado para `/auth/error?error=Configuration`, a causa costuma ser o banco de produção sem as colunas `cpfHash` e `cpfEncrypted` na tabela `users` (o adapter do NextAuth falha ao acessar o usuário). **Execute o SQL no banco de produção** (Vercel Postgres, Supabase, etc.):
 
 ```bash
 psql $DATABASE_URL -f prisma/add-cpf-columns.sql

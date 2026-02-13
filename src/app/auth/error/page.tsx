@@ -6,9 +6,9 @@ import { AlertCircle, RefreshCw } from "lucide-react";
 
 const MESSAGES: Record<string, { title: string; description: string }> = {
   Configuration: {
-    title: "Problema temporário no login",
+    title: "Erro de configuração no login",
     description:
-      "Estamos ajustando o servidor. Por favor, tente novamente em alguns instantes. Se o problema continuar, nossa equipe já foi notificada.",
+      "O login com Google falhou por um problema no servidor (geralmente falta de atualização do banco de dados). Se você é administrador, execute no banco de produção o script prisma/add-cpf-columns.sql ou npm run db:add-cpf. Caso contrário, tente novamente mais tarde ou entre em contato com o suporte.",
   },
   AccessDenied: {
     title: "Acesso negado",
