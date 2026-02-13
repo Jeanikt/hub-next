@@ -81,7 +81,43 @@ export const onboardingProfileSchema = z.object({
   cpf: cpfRawSchema,
 });
 
-export const onboardingRiotIdSchema = z.object({
-  riotId: z.string().min(2).max(50).trim(),
-  tagline: z.string().min(2).max(10).trim(),
-});
+/**
+ * Normaliza Riot ID: aceita "Nome#Tag" em um campo ou nome e tag em dois.
+ * Retorna { name, tag } ou null se inválido.
+ */
+export function parseRiotIdAndTag(
+  riotId: string,
+  tagline: string
+): { name: string; tag: string } | null {
+  const r = (riotId ?? "").trim();
+  const t = (tagline ?? "").trim();
+  if (r.includes("#")) {
+    const idx = r.indexOf("#");
+    const name = r.slice(0, idx).trim();
+    const tagFromR = r.slice(idx + 1).trim();
+    const tag = tagFromR || t;
+    if (name.length >= 2 && tag.length >= 1 && tag.length <= 10) return { name, tag };
+    return null;
+  }
+  if (r.length >= 2 && t.length >= 1 && t.length <= 10) return { name: r, tag: t };
+  return null;
+}
+
+/** Aceita Nome#Tag no primeiro campo (tagline vazio) ou nome e tag em dois campos. */
+export const onboardingRiotIdSchema = z
+  .object({
+    riotId: z.string().min(1, "Informe o nome ou Nome#Tag").max(100).trim(),
+    tagline: z.string().max(10).trim().optional().default(""),
+  })
+  .transform((data) => {
+    const parsed = parseRiotIdAndTag(data.riotId, data.tagline ?? "");
+    if (parsed) return { riotId: parsed.name, tagline: parsed.tag };
+    return data;
+  })
+  .refine(
+    (data) => {
+      const parsed = parseRiotIdAndTag(data.riotId, data.tagline ?? "");
+      return parsed != null && parsed.name.length >= 2 && parsed.tag.length >= 1 && parsed.tag.length <= 10;
+    },
+    { message: "Use Nome#Tag (ex: Avestruz#001) no primeiro campo e deixe o segundo vazio, ou preencha os dois campos." }
+  );

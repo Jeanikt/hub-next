@@ -11,7 +11,7 @@ import {
 
 describe("schemas", () => {
   describe("onboardingRiotIdSchema", () => {
-    it("aceita riotId e tagline válidos", () => {
+    it("aceita riotId e tagline em dois campos", () => {
       const r = onboardingRiotIdSchema.safeParse({ riotId: "Player", tagline: "BR1" });
       expect(r.success).toBe(true);
       if (r.success) {
@@ -20,13 +20,22 @@ describe("schemas", () => {
       }
     });
 
+    it("aceita Nome#Tag no primeiro campo e tagline vazio", () => {
+      const r = onboardingRiotIdSchema.safeParse({ riotId: "Avestruz#001", tagline: "" });
+      expect(r.success).toBe(true);
+      if (r.success) {
+        expect(r.data.riotId).toBe("Avestruz");
+        expect(r.data.tagline).toBe("001");
+      }
+    });
+
     it("rejeita riotId vazio", () => {
       const r = onboardingRiotIdSchema.safeParse({ riotId: "", tagline: "BR1" });
       expect(r.success).toBe(false);
     });
 
-    it("rejeita tagline curta", () => {
-      const r = onboardingRiotIdSchema.safeParse({ riotId: "Player", tagline: "A" });
+    it("rejeita quando nome e tag insuficientes (dois campos)", () => {
+      const r = onboardingRiotIdSchema.safeParse({ riotId: "Player", tagline: "" });
       expect(r.success).toBe(false);
     });
   });

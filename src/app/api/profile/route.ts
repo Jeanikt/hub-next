@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/src/lib/auth";
 import { prisma } from "@/src/lib/prisma";
 import { getAccount, getMMR, getRankLabelFromMMR, VALORANT_RATE_LIMIT_ERROR } from "@/src/lib/valorant";
+import { parseRiotIdAndTag } from "@/src/lib/validators/schemas";
 import { getRankPointsFromTier } from "@/src/lib/rankPoints";
 import { verifyAndCompleteMissions } from "@/src/lib/missions/verify";
 import { z } from "zod";
@@ -69,18 +70,26 @@ export async function PATCH(request: NextRequest) {
     ...(data.image !== undefined && { image: data.image }),
   };
 
-  // Alteração de conta Riot
+  // Alteração de conta Riot (aceita Nome#Tag em um campo ou nome e tag em dois)
   if (data.riotId !== undefined && data.tagline !== undefined) {
-    const riotId = data.riotId?.trim() || null;
-    const tagline = data.tagline?.trim() || null;
+    const riotIdRaw = data.riotId?.trim() || null;
+    const taglineRaw = data.tagline?.trim() || null;
 
-    if (riotId == null || tagline == null || !riotId || !tagline) {
+    if (riotIdRaw == null || (!riotIdRaw && !taglineRaw)) {
       updateData.riotId = null;
       updateData.tagline = null;
       updateData.riotAccount = null;
       updateData.rank = null;
       updateData.elo = 0;
     } else {
+      const normalized = parseRiotIdAndTag(riotIdRaw ?? "", taglineRaw ?? "");
+      if (!normalized) {
+        return NextResponse.json(
+          { message: "Use Nome#Tag (ex: Avestruz#001) no primeiro campo e deixe o segundo vazio, ou preencha os dois campos." },
+          { status: 422 }
+        );
+      }
+      const { name: riotId, tag: tagline } = normalized;
       const riotAccount = `${riotId}#${tagline}`;
 
       try {

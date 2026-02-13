@@ -169,19 +169,19 @@ export default function ProfileEditPage() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <label className="block text-sm font-medium text-[var(--hub-text-muted)] mb-1.5">
-                  Riot ID
+                  Riot ID (nome ou Nome#Tag)
                 </label>
                 <input
                   type="text"
                   value={riotId}
                   onChange={(e) => setRiotId(e.target.value)}
                   className="w-full px-4 py-3 bg-black/30 border border-[var(--hub-border)] text-white rounded-lg focus:border-[var(--hub-accent)] focus:outline-none transition-colors"
-                  placeholder="Nome#BR1"
+                  placeholder="Ex: Avestruz#001 ou só o nome"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-[var(--hub-text-muted)] mb-1.5">
-                  Tagline
+                  Tagline (ou vazio se usou # acima)
                 </label>
                 <input
                   type="text"
@@ -189,7 +189,7 @@ export default function ProfileEditPage() {
                   onChange={(e) => setTagline(e.target.value)}
                   maxLength={10}
                   className="w-full px-4 py-3 bg-black/30 border border-[var(--hub-border)] text-white rounded-lg focus:border-[var(--hub-accent)] focus:outline-none transition-colors"
-                  placeholder="BR1"
+                  placeholder="Ex: BR1, 001"
                 />
               </div>
             </div>
