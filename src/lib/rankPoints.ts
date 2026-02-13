@@ -87,6 +87,7 @@ export const HIGH_ELO_MIN_POINTS = 11;
 
 /**
  * Verifica se o usuário (pelos pontos de rank) pode entrar na fila.
+ * Fila inclusiva: liberada para qualquer elo (sempre true).
  */
 export function canJoinQueue(
   queueType: "low_elo" | "high_elo" | "inclusive",
@@ -98,15 +99,15 @@ export function canJoinQueue(
     case "high_elo":
       return rankPoints >= HIGH_ELO_MIN_POINTS;
     case "inclusive":
-      return true;
+      return true; // qualquer elo
     default:
       return false;
   }
 }
 
-/** Lista de filas que o usuário pode entrar dado seu rank (pontos). */
+/** Lista de filas que o usuário pode entrar dado seu rank (pontos). Inclusiva sempre liberada para qualquer elo. */
 export function getAllowedQueues(rankPoints: number): ("low_elo" | "high_elo" | "inclusive")[] {
-  const allowed: ("low_elo" | "high_elo" | "inclusive")[] = ["inclusive"];
+  const allowed: ("low_elo" | "high_elo" | "inclusive")[] = ["inclusive"]; // sempre liberada
   if (rankPoints <= LOW_ELO_MAX_POINTS) allowed.push("low_elo");
   if (rankPoints >= HIGH_ELO_MIN_POINTS) allowed.push("high_elo");
   return allowed;

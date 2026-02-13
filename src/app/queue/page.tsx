@@ -55,7 +55,7 @@ const QUEUE_TYPES = [
   {
     id: "inclusive",
     label: "FILA INCLUSIVA",
-    desc: "Todos os ranks. Partidas mistas.",
+    desc: "Liberada para qualquer elo. Partidas mistas.",
     color: "from-[var(--hub-accent)]/20 to-[var(--hub-accent)]/5",
     borderColor: "border-[var(--hub-accent)]/40",
     accent: "text-[var(--hub-accent)]",
