@@ -91,7 +91,7 @@ export function UsersList() {
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold text-white truncate flex items-center gap-1.5">
                           {u.username ?? u.name ?? "—"}
-                          {u.isVerified && <BadgeCheck size={14} className="shrink-0 text-[var(--hub-accent)]" title="Verificado" />}
+                          {u.isVerified && <span title="Verificado"><BadgeCheck size={14} className="shrink-0 text-[var(--hub-accent)]" /></span>}
                           {u.profileBadge && (
                             <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[var(--hub-text-muted)] shrink-0">
                               {u.profileBadge === "dev" ? "Dev" : u.profileBadge === "admin" ? "Admin" : u.profileBadge === "mod" ? "Mod" : u.profileBadge === "streamer" ? "Streamer" : u.profileBadge}
