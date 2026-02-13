@@ -3,7 +3,6 @@
 import { useSession } from "next-auth/react";
 import { useCallback, useEffect, useState } from "react";
 import { Trophy, X } from "lucide-react";
-import Image from "next/image";
 
 const STORAGE_KEY = "hub_top1_last_shown_at";
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -90,7 +89,14 @@ export function Top1Daily() {
         <div className="p-4 flex items-center gap-4">
           <div className="relative h-14 w-14 rounded-full overflow-hidden bg-[var(--hub-bg-elevated)] shrink-0">
             {top.avatarUrl ? (
-              <Image src={top.avatarUrl} alt="" width={56} height={56} className="object-cover" />
+              <img
+                src={top.avatarUrl}
+                alt=""
+                width={56}
+                height={56}
+                className="h-full w-full object-cover"
+                referrerPolicy="no-referrer"
+              />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-xl font-bold text-[var(--hub-text-muted)]">
                 {(top.username ?? top.name ?? "?")[0].toUpperCase()}

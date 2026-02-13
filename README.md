@@ -125,7 +125,7 @@ hub-next/
 
 - **Rotas públicas:** home, leaderboard, users, tournaments, missions, parceiros.
 - **Rotas autenticadas:** dashboard, queue, matches, friends, profile, notifications, support.
-- **Admin:** apenas o e-mail em `ALLOWED_ADMIN_EMAIL` acessa `/admin` (middleware + layout + APIs).
+- **Admin:** os e-mails em `ALLOWED_ADMIN_EMAIL` (separados por vírgula) acessam `/admin` (middleware + layout + APIs).
 
 ---
 
@@ -138,7 +138,7 @@ hub-next/
 | `AUTH_GOOGLE_SECRET` | Sim | Client secret OAuth Google |
 | `NEXTAUTH_SECRET` | Sim | Chave para JWT/session (ex: `openssl rand -base64 32`) |
 | `NEXTAUTH_URL` | Sim | URL da app (dev: `http://localhost:3000`) |
-| `ALLOWED_ADMIN_EMAIL` | Não | E-mail único que acessa `/admin` (padrão: `jeandev003@gmail.com`) |
+| `ALLOWED_ADMIN_EMAIL` | Não | E-mails que acessam `/admin`, separados por vírgula (padrão: `jeandev003@gmail.com,yagobtelles@gmail.com`) |
 | `VALORANT_API_KEY` ou `VALORANT_KEY` | Não | API key Henrik (conta Riot + MMR) |
 | `PUSHER_APP_ID` | Não | App ID Pusher (real-time) |
 | `PUSHER_KEY` | Não | Key Pusher |
@@ -199,7 +199,7 @@ Prisma (fora do package.json):
 
 ### Admin
 
-- Acesso **apenas** para o e-mail em `ALLOWED_ADMIN_EMAIL`.
+- Acesso **apenas** para os e-mails em `ALLOWED_ADMIN_EMAIL` (vírgula para vários).
 - Dashboard (métricas), usuários (listar, banir/desbanir), filas (jogadores por tipo), tickets (stub) e reports.
 
 ---
