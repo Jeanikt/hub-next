@@ -5,14 +5,18 @@
 
 FROM node:20-alpine AS deps
 WORKDIR /app
+RUN apk add --no-cache libc6-compat
 COPY package.json package-lock.json* ./
 RUN npm ci --omit=dev
 
 FROM node:20-alpine AS builder
 WORKDIR /app
+RUN apk add --no-cache libc6-compat ca-certificates openssl
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
+# prisma generate exige DATABASE_URL (prisma.config.ts); no build usamos dummy; em runtime o Dokploy injeta o real.
+ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy?schema=public"
 RUN npx prisma generate
 RUN npm run build
 
@@ -20,6 +24,7 @@ FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+RUN apk add --no-cache ca-certificates openssl
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
