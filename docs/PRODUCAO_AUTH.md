@@ -85,15 +85,17 @@ Ou copie e execute o conteúdo de `prisma/add-cpf-columns.sql` no cliente SQL do
 
 ---
 
-## 6. Reset completo do banco e schema
+## 6. Reset completo do banco e rodar do zero (migrations)
 
-Para recriar todas as tabelas a partir do `schema.prisma` (útil após mudanças no schema ou para ambiente limpo):
+Para **apagar o banco e recriar do zero** com todas as tabelas (incluindo `cpfHash` e `cpfEncrypted`), use as migrations:
 
 ```bash
 npm run db:reset
 ```
 
-Isso executa `prisma db push --force-reset --accept-data-loss`: **apaga todos os dados** e recria as tabelas. O schema atual já inclui as colunas `cpfHash` e `cpfEncrypted`, então após o reset o login e o heartbeat funcionam sem rodar scripts adicionais.
+Isso executa `prisma migrate reset --force`: **apaga todos os dados**, recria o banco e aplica todas as migrations em `prisma/migrations/`. A migração inicial (`20250212000000_init`) já cria a tabela `users` com todas as colunas necessárias para o login com Google.
+
+**Em produção:** configure `DATABASE_URL` e rode `npm run db:reset` (ou `npx prisma migrate reset --force`) no ambiente de produção. **Atenção:** isso apaga todos os dados. Para apenas aplicar migrations sem apagar (ex.: primeiro deploy), use `npm run db:migrate` (`prisma migrate deploy`).
 
 ---
 
