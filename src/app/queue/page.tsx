@@ -61,7 +61,7 @@ const QUEUE_TYPES = [
   },
 ] as const;
 
-const PLAYERS_NEEDED = 10;
+const PLAYERS_NEEDED = 5;
 
 function PlayerChip({ p, position }: { p: QueuePlayer; position: number }) {
   const alias = getQueueAliasFromId(p.id);

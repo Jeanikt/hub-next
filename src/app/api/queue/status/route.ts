@@ -5,7 +5,8 @@ import { getAllowedQueues } from "@/src/lib/rankPoints";
 import { getQueueStatusCache, setQueueStatusCache } from "@/src/lib/redis";
 
 const QUEUE_TYPES = ["low_elo", "high_elo", "inclusive"] as const;
-const PLAYERS_NEEDED = 10;
+/** 5v5 = 5 jogadores por partida. */
+const PLAYERS_NEEDED = 5;
 
 async function computeQueues(queueTypeParam: string | null) {
   const queues: Record<string, { count: number; players: unknown[]; players_needed: number; estimated_time: string }> = {};

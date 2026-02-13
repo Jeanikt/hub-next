@@ -7,9 +7,13 @@ import { randomUUID } from "crypto";
 import { ROLE_IDS } from "@/src/lib/roles";
 
 const VALID_TYPES = ["low_elo", "high_elo", "inclusive"] as const;
-const PLAYERS_NEEDED = 10;
+/** 5v5 = 5 jogadores por partida (2 vs 3 ou 3 vs 2). */
+const PLAYERS_NEEDED = 5;
 
-/** Agrupa 10 jogadores em dois times (red/blue): no máximo um por função primária por time. */
+const RED_SIZE = 2;
+const BLUE_SIZE = 3;
+
+/** Agrupa 5 jogadores em dois times (red/blue): no máximo um por função primária por time. */
 function assignTeamsByRole<T extends { userId: string; user: { primaryRole: string | null } }>(
   entries: T[]
 ): T[][] {
@@ -22,9 +26,9 @@ function assignTeamsByRole<T extends { userId: string; user: { primaryRole: stri
     withRole.forEach((e, i) => {
       if (assigned.has(e.userId)) return;
       assigned.add(e.userId);
-      if (i % 2 === 0 && red.length < 5) {
+      if (i % 2 === 0 && red.length < RED_SIZE) {
         red.push(e);
-      } else if (blue.length < 5) {
+      } else if (blue.length < BLUE_SIZE) {
         blue.push(e);
       } else {
         red.push(e);
@@ -33,7 +37,7 @@ function assignTeamsByRole<T extends { userId: string; user: { primaryRole: stri
   }
   const remaining = entries.filter((e) => !assigned.has(e.userId));
   for (const e of remaining) {
-    if (red.length < 5) red.push(e);
+    if (red.length < RED_SIZE) red.push(e);
     else blue.push(e);
   }
   return [red, blue];
@@ -137,7 +141,7 @@ export async function POST(request: NextRequest) {
       });
 
       for (let i = 0; i < PLAYERS_NEEDED; i++) {
-        const team = i < 5 ? "red" : "blue";
+        const team = i < RED_SIZE ? "red" : "blue";
         const role = i === 0 ? "creator" : orderedEntries[i].user.primaryRole ?? "player";
         await prisma.gameMatchUser.create({
           data: {

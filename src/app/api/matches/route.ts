@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
         matchId: randomUUID(),
         type,
         status: "pending",
-        maxPlayers: 10,
+        maxPlayers: 5,
         creatorId: session.user.id,
         settings: JSON.stringify({
           mode: type,
@@ -110,8 +110,7 @@ export async function POST(request: NextRequest) {
       type: match.type,
       status: match.status,
     });
-  } catch (e) {
-    console.error("matches create", e);
+  } catch {
     return NextResponse.json(
       { message: "Erro ao criar partida." },
       { status: 500 }

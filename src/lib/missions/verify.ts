@@ -80,7 +80,7 @@ export async function verifyAndCompleteMissions(userId: string): Promise<{ compl
         break;
       }
       case "jogador em equipe": {
-        const matchWith10 = await prisma.gameMatchUser.findFirst({
+        const match5v5 = await prisma.gameMatchUser.findFirst({
           where: {
             userId,
             gameMatch: {
@@ -95,7 +95,7 @@ export async function verifyAndCompleteMissions(userId: string): Promise<{ compl
             },
           },
         });
-        passed = (matchWith10?.gameMatch._count.participants ?? 0) >= 10;
+        passed = (match5v5?.gameMatch._count.participants ?? 0) >= 5;
         break;
       }
       case "3 partidas na semana": {

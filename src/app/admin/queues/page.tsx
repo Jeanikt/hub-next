@@ -79,7 +79,7 @@ export default function AdminQueuesPage() {
               <div className="flex items-center gap-2">
                 <span className="flex items-center gap-1.5 text-sm text-[var(--hub-accent)]">
                   <Users size={18} />
-                  {q.count}/10 · faltam {q.players_needed}
+                  {q.count}/5 · faltam {q.players_needed}
                 </span>
                 <button
                   type="button"

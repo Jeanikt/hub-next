@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 
-// Evita múltiplas instâncias em dev (HMR)
+// Singleton: uma única instância por process (evita centenas de conexões em serverless/múltiplos workers).
+// Em produção, use DATABASE_URL com ?connection_limit=10 (ou menor) para limitar conexões por instância.
 declare global {
   // eslint-disable-next-line no-var
   var prisma: PrismaClient | undefined;
@@ -9,10 +10,8 @@ declare global {
 export const prisma =
   global.prisma ??
   new PrismaClient({
-    log: ["error", "warn"],
+    log: process.env.NODE_ENV === "production" ? ["error"] : ["error", "warn"],
   });
 
-if (process.env.NODE_ENV !== "production") {
-  global.prisma = prisma;
-}
+global.prisma = prisma;
 
