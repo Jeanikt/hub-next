@@ -52,12 +52,21 @@ export async function GET(request: NextRequest) {
   }
 }
 
-/** POST /api/matches – criar partida (custom, competitive, practice) – auth */
+/** POST /api/matches – criar partida (custom, competitive, practice) – auth. Desativado por padrão; admin pode ativar. */
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ message: "Não autenticado." }, { status: 401 });
+    }
+
+    const { getAppSetting } = await import("@/src/lib/redis");
+    const allowCreation = await getAppSetting("allow_custom_matches");
+    if (allowCreation !== "1") {
+      return NextResponse.json(
+        { message: "Criação de partidas está desativada no momento. Apenas um administrador pode reativar." },
+        { status: 403 }
+      );
     }
 
     const body = await request.json().catch(() => ({}));

@@ -46,6 +46,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: "Não autenticado." }, { status: 401 });
     }
 
+    const { getAppSetting } = await import("@/src/lib/redis");
+    const queuesDisabled = await getAppSetting("queues_disabled");
+    if (queuesDisabled === "1") {
+      return NextResponse.json(
+        { message: "As filas estão desativadas no momento. Tente mais tarde." },
+        { status: 503 }
+      );
+    }
+
     const body = await request.json().catch(() => ({}));
     const queue_type = body.queue_type as string | undefined;
 

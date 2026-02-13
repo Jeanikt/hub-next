@@ -61,3 +61,28 @@ export async function invalidateQueueStatusCache(): Promise<void> {
 export async function resetQueueCache(): Promise<void> {
   await invalidateQueueStatusCache();
 }
+
+const SETTINGS_PREFIX = "hub:setting:";
+
+/** Lê configuração de app (ex.: allow_custom_matches, queues_disabled). Retorna null se não existir. */
+export async function getAppSetting(key: string): Promise<string | null> {
+  const client = await getClient();
+  if (!client) return null;
+  try {
+    const v = await client.get(SETTINGS_PREFIX + key);
+    return typeof v === "string" ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Define configuração de app (valor string, ex. "1" ou "0"). */
+export async function setAppSetting(key: string, value: string): Promise<void> {
+  const client = await getClient();
+  if (!client) return;
+  try {
+    await client.set(SETTINGS_PREFIX + key, value);
+  } catch {
+    // ignore
+  }
+}

@@ -23,7 +23,7 @@ type Peer = {
   isOnline?: boolean;
 };
 
-const POLL_INTERVAL_MS = 3500;
+const POLL_INTERVAL_MS = 10000;
 
 export default function MessagesPage() {
   const params = useParams();

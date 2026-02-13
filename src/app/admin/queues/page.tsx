@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Users, ListOrdered } from "lucide-react";
+import { Users, Trash2, Loader2 } from "lucide-react";
 
 type QueueEntry = {
   type: string;
@@ -13,14 +13,34 @@ type QueueEntry = {
 export default function AdminQueuesPage() {
   const [data, setData] = useState<QueueEntry[] | null>(null);
   const [loading, setLoading] = useState(true);
+  const [clearing, setClearing] = useState<string | null>(null);
 
-  useEffect(() => {
+  const load = () => {
+    setLoading(true);
     fetch("/api/admin/queues", { credentials: "include" })
       .then((r) => r.json())
       .then((d) => setData(d.data ?? null))
       .catch(() => setData(null))
       .finally(() => setLoading(false));
-  }, []);
+  };
+
+  useEffect(() => load(), []);
+
+  const clearQueue = async (queueType?: string) => {
+    const key = queueType ?? "all";
+    setClearing(key);
+    try {
+      const res = await fetch("/api/admin/queues/clear", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(queueType ? { queueType } : {}),
+      });
+      if (res.ok) load();
+    } finally {
+      setClearing(null);
+    }
+  };
 
   if (loading) {
     return <p className="text-[var(--hub-text-muted)]">Carregando filas...</p>;
@@ -32,23 +52,45 @@ export default function AdminQueuesPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-black uppercase tracking-tight text-[var(--hub-text)]">
-        Filas competitivas
-      </h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-black uppercase tracking-tight text-[var(--hub-text)]">
+          Filas competitivas
+        </h1>
+        <button
+          type="button"
+          disabled={clearing === "all" || data.every((q) => q.count === 0)}
+          onClick={() => clearQueue()}
+          className="flex items-center gap-2 rounded-lg border border-[var(--hub-accent-red)] bg-[var(--hub-bg-card)] px-3 py-2 text-sm font-medium text-[var(--hub-accent-red)] hover:bg-[var(--hub-accent-red)]/10 disabled:opacity-50"
+        >
+          {clearing === "all" ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+          Esvaziar todas
+        </button>
+      </div>
       <div className="grid gap-4 md:grid-cols-3">
         {data.map((q) => (
           <div
             key={q.type}
             className="rounded-xl border border-[var(--hub-border)] bg-[var(--hub-bg-card)] overflow-hidden"
           >
-            <div className="border-b border-[var(--hub-border)] bg-[var(--hub-bg-elevated)] px-4 py-3 flex items-center justify-between">
+            <div className="border-b border-[var(--hub-border)] bg-[var(--hub-bg-elevated)] px-4 py-3 flex items-center justify-between gap-2">
               <span className="font-bold uppercase tracking-wider text-[var(--hub-text)]">
                 {q.type.replace("_", " ")}
               </span>
-              <span className="flex items-center gap-1.5 text-sm text-[var(--hub-accent)]">
-                <Users size={18} />
-                {q.count}/10 · faltam {q.players_needed}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="flex items-center gap-1.5 text-sm text-[var(--hub-accent)]">
+                  <Users size={18} />
+                  {q.count}/10 · faltam {q.players_needed}
+                </span>
+                <button
+                  type="button"
+                  disabled={clearing === q.type || clearing === "all" || q.count === 0}
+                  onClick={() => clearQueue(q.type)}
+                  className="rounded p-1.5 text-[var(--hub-text-muted)] hover:bg-[var(--hub-accent-red)]/20 hover:text-[var(--hub-accent-red)] disabled:opacity-50"
+                  title="Esvaziar esta fila"
+                >
+                  {clearing === q.type ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                </button>
+              </div>
             </div>
             <div className="p-3">
               {q.players.length === 0 ? (

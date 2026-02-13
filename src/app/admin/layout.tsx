@@ -8,7 +8,8 @@ import {
   ListOrdered,
   MessageSquare,
   Flag,
-  Shield,
+  Settings,
+  Gamepad2,
 } from "lucide-react";
 
 export default async function AdminLayout({
@@ -47,6 +48,13 @@ export default async function AdminLayout({
           Filas
         </Link>
         <Link
+          href="/admin/matches"
+          className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-[var(--hub-text-muted)] hover:bg-[var(--hub-bg-elevated)] hover:text-[var(--hub-text)]"
+        >
+          <Gamepad2 size={18} />
+          Partidas
+        </Link>
+        <Link
           href="/admin/tickets"
           className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-[var(--hub-text-muted)] hover:bg-[var(--hub-bg-elevated)] hover:text-[var(--hub-text)]"
         >
@@ -59,6 +67,13 @@ export default async function AdminLayout({
         >
           <Flag size={18} />
           Reports
+        </Link>
+        <Link
+          href="/admin/settings"
+          className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-[var(--hub-text-muted)] hover:bg-[var(--hub-bg-elevated)] hover:text-[var(--hub-text)]"
+        >
+          <Settings size={18} />
+          Configurações
         </Link>
       </div>
       {children}

@@ -54,7 +54,8 @@ export default function MissionsPage() {
     weekly: <Trophy size={20} className="text-amber-400" />,
     one_time: <Target size={20} className="text-[var(--hub-accent-cyan)]" />,
   };
-  const completedCount = missions.filter((m) => m.completed).length;
+  const available = missions.filter((m) => !m.completed);
+  const completed = missions.filter((m) => m.completed);
 
   return (
     <div className="space-y-8">
@@ -71,13 +72,18 @@ export default function MissionsPage() {
         </p>
         {missions.length > 0 && (
           <p className="mt-2 text-xs text-[var(--hub-text-muted)]">
-            <strong className="text-[var(--hub-text)]">{completedCount}</strong> de {missions.length} concluídas
+            <strong className="text-[var(--hub-text)]">{completed.length}</strong> concluídas · <strong className="text-[var(--hub-text)]">{available.length}</strong> disponíveis
           </p>
         )}
       </header>
 
-      <div className="grid gap-5 md:grid-cols-2">
-        {missions.map((m) => (
+      {available.length > 0 && (
+        <>
+          <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--hub-text-muted)]">
+            Missões disponíveis
+          </h2>
+          <div className="grid gap-5 md:grid-cols-2">
+        {available.map((m) => (
           <article
             key={m.id}
             className={`relative overflow-hidden rounded-2xl border-2 p-6 clip-card transition-all duration-300 hover:shadow-lg ${
@@ -126,7 +132,49 @@ export default function MissionsPage() {
             )}
           </article>
         ))}
-      </div>
+          </div>
+        </>
+      )}
+
+      {completed.length > 0 && (
+        <>
+          <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--hub-text-muted)] pt-4 border-t border-[var(--hub-border)]">
+            Concluídas
+          </h2>
+          <div className="grid gap-5 md:grid-cols-2">
+            {completed.map((m) => (
+              <article
+                key={m.id}
+                className="relative overflow-hidden rounded-2xl border-2 border-[var(--hub-accent)]/30 bg-[var(--hub-accent)]/10 p-6 clip-card"
+              >
+                <div className="absolute right-0 top-0 h-24 w-24 opacity-10" aria-hidden>
+                  <CheckCircle2 className="text-[var(--hub-accent)]" size={96} strokeWidth={1.5} />
+                </div>
+                <div className="relative flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-2 rounded-lg bg-[var(--hub-bg)]/80 px-2.5 py-1.5">
+                    {typeIcon[m.type] ?? <Target size={18} />}
+                    <span className="text-xs font-bold uppercase tracking-wider text-[var(--hub-text-muted)]">
+                      {typeLabel[m.type] ?? m.type}
+                    </span>
+                  </div>
+                  <span className="flex items-center gap-1.5 rounded-xl bg-[var(--hub-accent)]/25 px-3 py-1.5 text-sm font-bold text-[var(--hub-accent)]">
+                    <CheckCircle2 size={20} strokeWidth={2.5} />
+                    Concluída
+                  </span>
+                </div>
+                <h2 className="relative mt-4 text-lg font-bold text-[var(--hub-text)]">{m.title}</h2>
+                {m.description && (
+                  <p className="relative mt-2 text-sm text-[var(--hub-text-muted)] leading-relaxed">{m.description}</p>
+                )}
+                <p className="relative mt-4 flex items-center gap-2 text-sm font-medium text-[var(--hub-accent)]">
+                  <CheckCircle2 size={18} />
+                  Você ganhou <strong>+{m.xpReward} XP</strong>.
+                </p>
+              </article>
+            ))}
+          </div>
+        </>
+      )}
 
       {missions.length === 0 && (
         <div className="rounded-2xl border border-[var(--hub-border)] bg-[var(--hub-bg-card)] p-10 text-center clip-card">

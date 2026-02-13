@@ -126,7 +126,7 @@ export function NotificationBell() {
             onClick={() => setOpen(false)}
           />
           <div
-            className="absolute right-0 top-full z-50 mt-2 w-[360px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-[var(--hub-border)] bg-[var(--hub-bg-card)] shadow-2xl"
+            className="absolute left-full top-0 z-50 ml-2 w-[360px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-[var(--hub-border)] bg-[var(--hub-bg-card)] shadow-2xl"
             role="dialog"
             aria-label="Notificações"
           >
