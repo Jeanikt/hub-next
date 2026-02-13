@@ -159,41 +159,55 @@ Sem Pusher/Redis o app continua funcionando: filas usam polling; cache de status
 
 ### Configurando os crons no Dokploy
 
-Use **Schedule Jobs** do Dokploy para chamar as APIs de cron via HTTP. O ideal é usar um **Server Job** (no host onde o app está) ou **Dokploy Server Job**, com um script que faz `curl` na URL pública do app.
+Use **Schedule Jobs** do Dokploy para chamar as APIs de cron via HTTP.
 
 1. No painel do Dokploy: **Schedule** (ou **Schedule Jobs**) → **Create**.
-2. Escolha o tipo:
-   - **Server Job** – se o app está em um servidor gerenciado pelo Dokploy (o script roda no host e pode usar `curl`).
-   - **Dokploy Server Job** – script roda dentro do container do Dokploy; o host precisa conseguir acessar a URL do app (ex.: `https://seu-dominio.com`).
-3. Para cada cron, crie um job:
+2. Escolha o tipo de job:
+   - **Server Job** ou **Dokploy Server Job** (recomendado): roda no host ou no container do Dokploy; use `curl` na URL pública do app.
+   - **Application Job** / **Compose Job**: roda *dentro* do container da aplicação; a imagem Next.js costuma ter **apenas `sh`**, não `bash`. Use **Shell Type: Sh** e um comando que exista na imagem (ex.: `curl` se estiver instalado, ou veja alternativa abaixo).
 
-**Job 1 – Check matches (a cada 3–5 minutos)**
+3. **Importante:** troque `SEU_CRON_SECRET` pelo valor real da variável `CRON_SECRET` (ou `CRON_API_KEY`) do `.env` do app. Nunca deixe o literal `CRON_SECRET` na URL.
 
-- **Nome:** ex. `Hub Check Matches`
-- **Schedule (cron):** `*/5 * * * *` (a cada 5 minutos) ou `*/3 * * * *` (a cada 3 minutos).
-- **Script:**
+---
 
-```bash
-#!/bin/bash
-curl -s -o /dev/null -w "%{http_code}" "https://SEU_DOMINIO/api/cron/check-matches?secret=SEU_CRON_SECRET"
-```
+**Job 1 – Check matches (a cada 5 minutos)**
 
-Substitua `SEU_DOMINIO` e `SEU_CRON_SECRET` pelo domínio do app e pelo valor de `CRON_SECRET` (ou `CRON_API_KEY`) do `.env`.
+| Campo | Valor |
+|-------|--------|
+| **Task Name** | Check matches |
+| **Schedule** | `*/5 * * * *` |
+| **Shell Type** | **Sh** (se for job dentro do container da app; muitos containers não têm `bash`) |
+| **Command** | `curl -s "https://www.hubexpresso.com/api/cron/check-matches?secret=SEU_CRON_SECRET"` |
 
-**Job 2 – Sync ELO (a cada 6–12 horas)**
+Substitua `SEU_CRON_SECRET` pelo valor real do seu `.env`.
 
-- **Nome:** ex. `Hub Sync ELO`
-- **Schedule (cron):** `0 */6 * * *` (a cada 6 horas) ou `0 */12 * * *` (a cada 12 horas).
-- **Script:**
+**Se o container não tiver `curl`** (erro `curl: not found`), use **Node** (a imagem Next.js tem Node):
 
-```bash
-#!/bin/bash
-curl -s -o /dev/null -w "%{http_code}" "https://SEU_DOMINIO/api/cron/sync-elo?secret=SEU_CRON_SECRET"
-```
+| Campo | Valor |
+|-------|--------|
+| **Shell Type** | **Sh** |
+| **Command** | `node -e "fetch('https://www.hubexpresso.com/api/cron/check-matches?secret=SEU_CRON_SECRET').then(r=>r.json()).then(console.log).catch(e=>console.error(e.message))"` |
 
-4. Salve e acompanhe em **Logs** se as execuções retornam HTTP 200.
+Ou crie um **Server Job** / **Dokploy Server Job** (fora do container da app) e use o comando `curl` acima.
 
-Se o **Server Job** não tiver `curl` no host, use **Dokploy Server Job** e garanta que o container Dokploy consiga resolver e acessar a URL do app (por exemplo, usando o domínio público com HTTPS).
+---
+
+**Job 2 – Sync ELO (a cada 6 horas)**
+
+| Campo | Valor |
+|-------|--------|
+| **Task Name** | Sync ELO |
+| **Schedule** | `0 */6 * * *` |
+| **Shell Type** | **Sh** (se for job dentro do container da app) |
+| **Command** | `curl -s "https://www.hubexpresso.com/api/cron/sync-elo?secret=SEU_CRON_SECRET"` |
+
+Sem `curl`, use Node: `node -e "fetch('https://www.hubexpresso.com/api/cron/sync-elo?secret=SEU_CRON_SECRET').then(r=>r.json()).then(console.log).catch(e=>console.error(e.message))"`
+
+---
+
+4. Salve e confira nos **Logs** do job se a execução retorna resposta HTTP 200 (ou corpo JSON com `ok: true`).
+
+**Erro comum:** `exec: "bash": executable file not found` → troque **Shell Type** de **Bash** para **Sh**.
 
 ---
 

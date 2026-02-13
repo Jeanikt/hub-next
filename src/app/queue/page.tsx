@@ -39,7 +39,7 @@ const QUEUE_TYPES = [
   {
     id: "low_elo",
     label: "FILA LOW ELO",
-    desc: "Até Gold (pontos 0–7). Disponível para todos os elos iniciais.",
+    desc: "Até Platina (pontos 0–8). Do Ferro ao Platina 1.",
     color: "from-[#0d9488]/30 to-[#0d9488]/5",
     borderColor: "border-teal-500/40",
     accent: "text-teal-400",
@@ -47,7 +47,7 @@ const QUEUE_TYPES = [
   {
     id: "high_elo",
     label: "FILA HIGH ELO",
-    desc: "Plat ou acima (pontos 8–20). Do Diamond ao Radiante.",
+    desc: "Diamante ou acima (pontos 11–20). Do Diamond 1 ao Radiante.",
     color: "from-[var(--hub-accent-red)]/25 to-[var(--hub-accent-red)]/5",
     borderColor: "border-red-500/40",
     accent: "text-red-400",
