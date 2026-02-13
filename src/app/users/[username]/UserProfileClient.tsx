@@ -361,7 +361,7 @@ export default function UserProfileClient({ username }: { username: string }) {
         </div>
         <div className="rounded-2xl border border-[var(--hub-border)] bg-[var(--hub-bg-card)] p-5 clip-card">
           <p className="text-xs font-bold uppercase tracking-wider text-[var(--hub-text-muted)]">
-            Campeão favorito
+            Agente favorito
           </p>
           <p className="mt-2 font-medium text-[var(--hub-text)]">
             {profile.favoriteChampion ?? "—"}
@@ -369,7 +369,7 @@ export default function UserProfileClient({ username }: { username: string }) {
         </div>
         <div className="rounded-2xl border border-[var(--hub-border)] bg-[var(--hub-bg-card)] p-5 clip-card sm:col-span-2">
           <p className="text-xs font-bold uppercase tracking-wider text-[var(--hub-text-muted)]">
-            Maior winrate
+            Agente com maior winrate
           </p>
           <p className="mt-2 flex items-center gap-2 font-medium text-[var(--hub-text)]">
             <Trophy size={18} className="text-amber-400" />

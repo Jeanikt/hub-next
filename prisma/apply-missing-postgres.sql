@@ -42,6 +42,18 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'isOnline') THEN
     ALTER TABLE "users" ADD COLUMN "isOnline" BOOLEAN NOT NULL DEFAULT false;
   END IF;
+  -- CPF (hash para unicidade, valor criptografado)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'cpfHash') THEN
+    ALTER TABLE "users" ADD COLUMN "cpfHash" TEXT;
+    CREATE UNIQUE INDEX IF NOT EXISTS "users_cpfHash_key" ON "users"("cpfHash");
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'cpfEncrypted') THEN
+    ALTER TABLE "users" ADD COLUMN "cpfEncrypted" TEXT;
+  END IF;
+  -- Garantir unicidade de riotAccount (evitar duas contas com mesmo Riot)
+  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE tablename = 'users' AND indexname = 'users_riotAccount_key') THEN
+    CREATE UNIQUE INDEX "users_riotAccount_key" ON "users"("riotAccount") WHERE "riotAccount" IS NOT NULL;
+  END IF;
 END $$;
 
 -- 2) Tabela missions

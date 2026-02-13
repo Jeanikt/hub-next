@@ -52,7 +52,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // 3) Buscar rank/MMR e converter para pontos (elo GC 0–20)
+    // 3) Buscar ELO real na Riot e salvar para liberação de filas (low_elo, high_elo, inclusive)
     const mmrData = await getMMR(riotId, tagline);
     const currentData = mmrData?.data?.current_data;
     const rankLabel = currentData?.currenttier_patched ?? null;

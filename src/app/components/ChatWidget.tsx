@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { MessageCircle, X, User, ChevronRight } from "lucide-react";
 
 type Friend = {
@@ -14,11 +14,29 @@ type Friend = {
   isOnline: boolean;
 };
 
+const UNREAD_POLL_MS = 30000;
+
 export function ChatWidget() {
   const { data: session, status } = useSession();
   const [open, setOpen] = useState(false);
   const [friends, setFriends] = useState<Friend[]>([]);
   const [loading, setLoading] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const fetchUnread = useCallback(() => {
+    if (status !== "authenticated") return;
+    fetch("/api/friend-messages/unread-count", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : { count: 0 }))
+      .then((data) => setUnreadCount(data.count ?? 0))
+      .catch(() => setUnreadCount(0));
+  }, [status]);
+
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    fetchUnread();
+    const interval = setInterval(fetchUnread, UNREAD_POLL_MS);
+    return () => clearInterval(interval);
+  }, [status, fetchUnread]);
 
   useEffect(() => {
     if (open && status === "authenticated") {
@@ -27,9 +45,12 @@ export function ChatWidget() {
         .then((r) => (r.ok ? r.json() : { friends: [] }))
         .then((data) => setFriends(data.friends ?? []))
         .catch(() => setFriends([]))
-        .finally(() => setLoading(false));
+        .finally(() => {
+          setLoading(false);
+          fetchUnread();
+        });
     }
-  }, [open, status]);
+  }, [open, status, fetchUnread]);
 
   if (status !== "authenticated" || !session?.user) return null;
 
@@ -116,10 +137,15 @@ export function ChatWidget() {
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-[var(--hub-accent)]/40 bg-[var(--hub-bg-card)] text-[var(--hub-accent)] shadow-lg transition-all hover:scale-105 hover:border-[var(--hub-accent)] hover:shadow-[var(--hub-accent)]/20"
-        aria-label={open ? "Fechar chat" : "Abrir chat"}
+        className="relative flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-[var(--hub-accent)]/40 bg-[var(--hub-bg-card)] text-[var(--hub-accent)] shadow-lg transition-all hover:scale-105 hover:border-[var(--hub-accent)] hover:shadow-[var(--hub-accent)]/20"
+        aria-label={open ? "Fechar chat" : unreadCount > 0 ? `${unreadCount} mensagens não lidas` : "Abrir chat"}
       >
         <MessageCircle size={26} />
+        {unreadCount > 0 && (
+          <span className="absolute -right-1 -top-1 flex h-6 min-w-6 items-center justify-center rounded-full bg-[var(--hub-accent)] px-1.5 text-xs font-bold text-white shadow-md ring-2 ring-[var(--hub-bg-card)]">
+            {unreadCount > 99 ? "99+" : unreadCount}
+          </span>
+        )}
       </button>
     </div>
   );

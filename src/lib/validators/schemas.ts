@@ -68,9 +68,17 @@ export const adminBanSchema = z.object({
   banned_until: z.string().datetime().optional().nullable(),
 });
 
+/** String com 11 dígitos (CPF normalizado); validação de dígitos verificadores feita no backend. */
+export const cpfRawSchema = z
+  .string()
+  .min(1, "CPF é obrigatório")
+  .transform((s) => s.replace(/\D/g, ""))
+  .refine((s) => s.length === 11, "CPF deve ter 11 dígitos");
+
 export const onboardingProfileSchema = z.object({
   name: z.string().min(1).max(100).trim(),
   username: z.string().min(2).max(30).regex(/^[a-zA-Z0-9_]+$/, "Apenas letras, números e _"),
+  cpf: cpfRawSchema,
 });
 
 export const onboardingRiotIdSchema = z.object({

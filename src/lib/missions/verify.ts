@@ -35,19 +35,23 @@ export async function verifyAndCompleteMissions(userId: string): Promise<{ compl
   if (!user) return { completed };
   const completedSet = new Set(completedMissions.map((c) => c.missionId));
 
+  /** Título normalizado para comparação (evita falha por diferença de capitalização/trim). */
+  const norm = (t: string) => t.trim().toLowerCase();
+
   for (const mission of missions) {
     if (completedSet.has(mission.id)) continue;
 
     let passed = false;
-    switch (mission.title) {
-      case "Perfil completo":
+    const titleNorm = norm(mission.title);
+    switch (titleNorm) {
+      case "perfil completo":
         passed =
           !!user.name?.trim() &&
           !!user.username?.trim() &&
           !!user.riotId?.trim() &&
           !!user.tagline?.trim();
         break;
-      case "Adicione um amigo": {
+      case "adicione um amigo": {
         const acceptedCount = await prisma.friend.count({
           where: {
             status: "accepted",
@@ -57,7 +61,7 @@ export async function verifyAndCompleteMissions(userId: string): Promise<{ compl
         passed = acceptedCount >= 1;
         break;
       }
-      case "Primeira vitória do dia": {
+      case "primeira vitória do dia": {
         const winToday = await prisma.gameMatchUser.findFirst({
           where: {
             userId,
@@ -75,7 +79,7 @@ export async function verifyAndCompleteMissions(userId: string): Promise<{ compl
           winToday.gameMatch.winnerTeam === winToday.team;
         break;
       }
-      case "Jogador em equipe": {
+      case "jogador em equipe": {
         const matchWith10 = await prisma.gameMatchUser.findFirst({
           where: {
             userId,
@@ -120,7 +124,7 @@ export async function verifyAndCompleteMissions(userId: string): Promise<{ compl
         passed = countMonth >= 5;
         break;
       }
-      case "Convide 10 amigos": {
+      case "convide 10 amigos": {
         const referralsCount = await prisma.referral.count({
           where: { inviterId: userId },
         });

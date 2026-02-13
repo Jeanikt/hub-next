@@ -10,11 +10,20 @@ export default function OnboardingPage() {
   const [step, setStep] = useState(1);
   const [name, setName] = useState(session?.user?.name ?? "");
   const [username, setUsername] = useState("");
+  const [cpf, setCpf] = useState("");
   const [riotId, setRiotId] = useState("");
   const [tagline, setTagline] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<{ name?: string[]; username?: string[]; riotId?: string[]; tagline?: string[] }>({});
+  const [fieldErrors, setFieldErrors] = useState<{ name?: string[]; username?: string[]; cpf?: string[]; riotId?: string[]; tagline?: string[] }>({});
+
+  function formatCpfInput(value: string) {
+    const digits = value.replace(/\D/g, "").slice(0, 11);
+    if (digits.length <= 3) return digits;
+    if (digits.length <= 6) return `${digits.slice(0, 3)}.${digits.slice(3)}`;
+    if (digits.length <= 9) return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
+    return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
+  }
 
   if (status === "loading") {
     return (
@@ -37,7 +46,11 @@ export default function OnboardingPage() {
       const res = await fetch("/api/onboarding/profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name.trim(), username: username.trim() }),
+        body: JSON.stringify({
+          name: name.trim(),
+          username: username.trim(),
+          cpf: cpf.replace(/\D/g, ""),
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -117,7 +130,7 @@ export default function OnboardingPage() {
               Crie seu perfil
             </h2>
             <p className="text-[var(--hub-text-muted)] mb-6 text-sm">
-              Escolha um nome de exibição e um @username único.
+              Nome, @username e CPF (uma conta por pessoa; dados criptografados).
             </p>
             <div className="space-y-4">
               <div>
@@ -143,8 +156,26 @@ export default function OnboardingPage() {
                 <p className="text-xs text-gray-500 mt-1">Letras, números e _ apenas.</p>
                 {fieldErrors.username?.[0] && <p className="mt-1 text-sm text-red-400">{fieldErrors.username[0]}</p>}
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">CPF *</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  value={cpf}
+                  onChange={(e) => {
+                    setCpf(formatCpfInput(e.target.value));
+                    setFieldErrors((prev) => ({ ...prev, cpf: undefined }));
+                  }}
+                  placeholder="000.000.000-00"
+                  maxLength={14}
+                  className={`w-full px-4 py-3 bg-black/40 border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[var(--hub-accent)] ${fieldErrors.cpf ? "border-red-500" : "border-[var(--hub-border)]"}`}
+                />
+                <p className="text-xs text-gray-500 mt-1">Apenas uma conta por CPF. Seus dados são criptografados.</p>
+                {fieldErrors.cpf?.[0] && <p className="mt-1 text-sm text-red-400">{fieldErrors.cpf[0]}</p>}
+              </div>
             </div>
-            {error && !fieldErrors.name?.length && !fieldErrors.username?.length && <p className="mt-2 text-sm text-red-400">{error}</p>}
+            {error && !fieldErrors.name?.length && !fieldErrors.username?.length && !fieldErrors.cpf?.length && <p className="mt-2 text-sm text-red-400">{error}</p>}
             <div className="flex justify-between pt-6 border-t border-[var(--hub-border)] mt-6">
               <button
                 type="button"
@@ -157,7 +188,7 @@ export default function OnboardingPage() {
               <button
                 type="button"
                 onClick={saveProfile}
-                disabled={loading || !name.trim() || !username.trim()}
+                disabled={loading || !name.trim() || !username.trim() || cpf.replace(/\D/g, "").length !== 11}
                 className="px-8 py-3 rounded-lg font-bold uppercase tracking-wider bg-[var(--hub-accent)] hover:opacity-90 text-white disabled:opacity-50 disabled:cursor-not-allowed transition clip-button"
               >
                 {loading ? "Salvando..." : "Continuar"}

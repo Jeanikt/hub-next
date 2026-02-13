@@ -53,7 +53,7 @@ model User {
   image                  String?
   password               String?
   username               String?                @unique
-  riotAccount            String?
+  riotAccount            String?                @unique
   riotId                 String?
   tagline                String?
   rank                   String?
@@ -75,6 +75,10 @@ model User {
   favoriteChampion       String?
   bestWinrateChampion    String?
   inviteCode             String?                @unique
+  /** Hash (SHA-256) do CPF normalizado; usado apenas para impedir duplicidade de contas. */
+  cpfHash                String?                @unique
+  /** CPF criptografado (AES-256-GCM); dados sensíveis, nunca logar ou expor. */
+  cpfEncrypted           String?
   createdAt              DateTime               @default(now())
   updatedAt              DateTime               @updatedAt
   accounts               Account[]

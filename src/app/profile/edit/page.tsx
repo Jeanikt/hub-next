@@ -109,7 +109,7 @@ export default function ProfileEditPage() {
           Editar perfil
         </h1>
         <p className="mt-1 text-sm text-[var(--hub-text-muted)]">
-          Nome, username, foto, background, funções na fila e campeão favorito.
+          Nome, username, foto, background, funções na fila e agente favorito.
         </p>
       </header>
 
@@ -286,7 +286,7 @@ export default function ProfileEditPage() {
             </h2>
             <div>
               <label className="block text-sm font-medium text-[var(--hub-text-muted)] mb-1.5">
-                Campeão favorito
+                Agente favorito
               </label>
                 <input
                   type="text"

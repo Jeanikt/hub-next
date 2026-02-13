@@ -1,13 +1,22 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/src/lib/auth";
 import { prisma } from "@/src/lib/prisma";
+import { verifyAndCompleteMissions } from "@/src/lib/missions/verify";
 
-/** GET /api/missions – lista missões ativas com status de conclusão do usuário */
+/** GET /api/missions – lista missões ativas com status de conclusão do usuário. Revalida conclusões ao listar (ex.: Perfil completo). */
 export async function GET() {
   const session = await auth();
   const userId = session?.user?.id ?? null;
 
   try {
+    if (userId) {
+      try {
+        await verifyAndCompleteMissions(userId);
+      } catch {
+        // não falha a listagem
+      }
+    }
+
     const missions = await prisma.mission.findMany({
       where: { isActive: true },
       orderBy: [{ type: "asc" }, { createdAt: "asc" }],
