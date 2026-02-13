@@ -120,7 +120,7 @@ export default function AdminSettingsPage() {
     }
   };
 
-  const BADGE_LABELS: Record<string, string> = { dev: "Dev", admin: "Admin", mod: "Moderação", streamer: "Streamer" };
+  const BADGE_LABELS: Record<string, string> = { dev: "Dev", admin: "Admin", mod: "Moderação", streamer: "Streamer", pro: "Pro Player", coach: "Coach" };
 
   const update = async (key: keyof SettingsState, value: "1" | "0") => {
     const previous = settings ? { ...settings } : null;
@@ -313,7 +313,7 @@ export default function AdminSettingsPage() {
             Selos e verificação
           </p>
           <p className="text-xs text-[var(--hub-text-muted)] mt-0.5">
-            Atribua selos (Dev, Admin, Moderação, Streamer) e selo verificado ao lado do nome. Busque por nome ou @username.
+            Atribua selos (Dev, Admin, Moderação, Streamer, Pro Player, Coach) e selo verificado ao lado do nome. Busque por nome ou @username.
           </p>
         </div>
         <div className="p-4 space-y-4">
@@ -374,6 +374,8 @@ export default function AdminSettingsPage() {
                     <option value="admin">Admin</option>
                     <option value="mod">Moderação</option>
                     <option value="streamer">Streamer</option>
+                    <option value="pro">Pro Player</option>
+                    <option value="coach">Coach</option>
                   </select>
                 </label>
                 <label className="flex items-center gap-2 text-sm text-[var(--hub-text)] cursor-pointer">
