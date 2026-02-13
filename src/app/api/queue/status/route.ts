@@ -5,8 +5,8 @@ import { getAllowedQueues } from "@/src/lib/rankPoints";
 import { getQueueStatusCache, setQueueStatusCache } from "@/src/lib/redis";
 
 const QUEUE_TYPES = ["low_elo", "high_elo", "inclusive"] as const;
-/** 5v5 = 5 jogadores por partida. */
-const PLAYERS_NEEDED = 5;
+/** 5v5 = 10 jogadores por partida (5 por time). */
+const PLAYERS_NEEDED = 10;
 
 async function computeQueues(queueTypeParam: string | null) {
   const queues: Record<string, { count: number; players: unknown[]; players_needed: number; estimated_time: string }> = {};
@@ -46,7 +46,7 @@ async function computeQueues(queueTypeParam: string | null) {
 
     let estimated_time = "Indisponível";
     if (count >= 9) estimated_time = "Menos de 1 minuto";
-    else if (count >= 5) estimated_time = "2-5 minutos";
+    else if (count >= 6) estimated_time = "2-5 minutos";
     else estimated_time = "5+ minutos";
 
     queues[type] = {
@@ -150,7 +150,7 @@ export async function GET(request: NextRequest) {
 
     const status = queueTypeParam ? queues[queueTypeParam] ?? {} : queues;
 
-    return NextResponse.json({
+    const body = {
       status: queueTypeParam ? status : queues,
       inQueue,
       currentQueue,
@@ -159,7 +159,12 @@ export async function GET(request: NextRequest) {
       allowed_queues,
       matchFound,
       matchId,
-    });
+    };
+    const headers: HeadersInit = {};
+    if (!session?.user?.id) {
+      headers["Cache-Control"] = "public, s-maxage=3, stale-while-revalidate=5";
+    }
+    return NextResponse.json(body, { headers });
   } catch (e) {
     console.error("queue status", e);
     return NextResponse.json(

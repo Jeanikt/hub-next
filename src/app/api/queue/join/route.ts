@@ -7,13 +7,13 @@ import { randomUUID } from "crypto";
 import { ROLE_IDS } from "@/src/lib/roles";
 
 const VALID_TYPES = ["low_elo", "high_elo", "inclusive"] as const;
-/** 5v5 = 5 jogadores por partida (2 vs 3 ou 3 vs 2). */
-const PLAYERS_NEEDED = 5;
+/** 5v5 = 10 jogadores por partida (5 vs 5). */
+const PLAYERS_NEEDED = 10;
 
-const RED_SIZE = 2;
-const BLUE_SIZE = 3;
+const RED_SIZE = 5;
+const BLUE_SIZE = 5;
 
-/** Agrupa 5 jogadores em dois times (red/blue): no máximo um por função primária por time. */
+/** Agrupa 10 jogadores em dois times (red/blue): no máximo um por função primária por time quando possível. */
 function assignTeamsByRole<T extends { userId: string; user: { primaryRole: string | null } }>(
   entries: T[]
 ): T[][] {
@@ -140,7 +140,7 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      for (let i = 0; i < PLAYERS_NEEDED; i++) {
+      for (let i = 0; i < PLAYERS_NEEDED && i < orderedEntries.length; i++) {
         const team = i < RED_SIZE ? "red" : "blue";
         const role = i === 0 ? "creator" : orderedEntries[i].user.primaryRole ?? "player";
         await prisma.gameMatchUser.create({

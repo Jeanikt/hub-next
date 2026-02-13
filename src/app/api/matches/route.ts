@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
         matchId: randomUUID(),
         type,
         status: "pending",
-        maxPlayers: 5,
+        maxPlayers: 10,
         creatorId: session.user.id,
         settings: JSON.stringify({
           mode: type,

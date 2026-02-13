@@ -62,7 +62,7 @@ const QUEUE_TYPES = [
   },
 ] as const;
 
-const PLAYERS_NEEDED = 5;
+const PLAYERS_NEEDED = 10;
 
 function PlayerChip({ p, position }: { p: QueuePlayer; position: number }) {
   const alias = getQueueAliasFromId(p.id);
@@ -117,7 +117,7 @@ export default function QueuePage() {
 
   useEffect(() => {
     fetchStatus();
-    const interval = setInterval(fetchStatus, 8000);
+    const interval = setInterval(fetchStatus, 15000);
     return () => clearInterval(interval);
   }, []);
 
