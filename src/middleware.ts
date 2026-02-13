@@ -91,7 +91,7 @@ export async function middleware(request: NextRequest) {
 
   if (pathname.startsWith("/admin") && loggedIn) {
     const email = ((token as { email?: string })?.email ?? null)?.toLowerCase();
-    const raw = process.env.ALLOWED_ADMIN_EMAIL ?? "jeandev003@gmail.com,yagobtelles@gmail.com";
+    const raw = process.env.ALLOWED_ADMIN_EMAIL ?? "jeandev003@gmail.com,yagobtelles@gmail.com,santiagosslemes@gmail.com";
     const allowedSet = new Set(raw.split(",").map((e) => e.trim().toLowerCase()).filter(Boolean));
     if (!email || !allowedSet.has(email)) {
       return setRefCookie(NextResponse.redirect(new URL("/dashboard", request.url)));
