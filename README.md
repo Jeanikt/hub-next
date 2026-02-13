@@ -153,7 +153,9 @@ hub-next/
 
 Sem Pusher/Redis o app continua funcionando: filas usam polling; cache de status da fila fica desativado.
 
-**Cron – Sync ELO:** para atualizar o ELO de todos os usuários com conta Riot em background, agende uma requisição para `GET /api/cron/sync-elo` passando o segredo em query (`?secret=SEU_CRON_SECRET`) ou no header `Authorization: Bearer SEU_CRON_SECRET`. Ex.: a cada 6–12 horas (Dokploy, Vercel Cron, cron do SO, etc.).
+**Cron – Sync ELO:** para atualizar o ELO de todos os usuários com conta Riot em background, agende uma requisição para `GET /api/cron/sync-elo` passando o segredo em query ou no header `Authorization: Bearer ...`. Ex.: a cada 6–12 horas.
+
+**Cron – Check matches:** para sincronizar partidas pendentes com o resultado do jogo (Valorant/API Henrik), agende `GET /api/cron/check-matches` com o mesmo segredo. Recomendado a cada 3–5 minutos para que, quando a partida for encerrada no jogo, o site atualize com vencedor, K/D/A e variação de ELO.
 
 ---
 

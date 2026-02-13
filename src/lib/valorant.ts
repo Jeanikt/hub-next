@@ -52,13 +52,33 @@ export async function getMatchlist(
   }
 }
 
-/** Última partida customizada */
+/** Última partida customizada (cache 5min). Para sincronização use getLastCustomMatchFresh. */
 export async function getLastCustomMatch(
   name: string,
   tag: string,
   region = "br",
   platform = "pc"
-): Promise<{ data?: ValorantMatch; error?: string } | null> {
+): Promise<{ data?: ValorantMatch | ValorantMatch[]; error?: string } | null> {
+  return getLastCustomMatchInternal(name, tag, region, platform, 300);
+}
+
+/** Última partida customizada sem cache (para cron de sync). */
+export async function getLastCustomMatchFresh(
+  name: string,
+  tag: string,
+  region = "br",
+  platform = "pc"
+): Promise<{ data?: ValorantMatch | ValorantMatch[]; error?: string } | null> {
+  return getLastCustomMatchInternal(name, tag, region, platform, 0);
+}
+
+async function getLastCustomMatchInternal(
+  name: string,
+  tag: string,
+  region: string,
+  platform: string,
+  revalidate: number
+): Promise<{ data?: ValorantMatch | ValorantMatch[]; error?: string } | null> {
   try {
     const url = new URL(
       `${BASE_URL}/v4/matches/${region}/${platform}/${encodeURIComponent(name)}/${encodeURIComponent(tag)}`
@@ -67,7 +87,7 @@ export async function getLastCustomMatch(
     url.searchParams.set("size", "1");
     const res = await fetch(url.toString(), {
       headers: getHeaders(),
-      next: { revalidate: 300 },
+      next: { revalidate },
     });
     if (!res.ok) {
       return { error: `API ${res.status}` };
@@ -79,6 +99,57 @@ export async function getLastCustomMatch(
     return null;
   }
 }
+
+/** Detalhes de uma partida por ID (v4). Retorna metadata, teams (has_won, rounds_won), players (name, tag, team, stats). */
+export async function getMatchByMatchId(
+  region: string,
+  matchId: string
+): Promise<{ data?: ValorantMatchDetails; error?: string } | null> {
+  try {
+    const res = await fetch(
+      `${BASE_URL}/v4/match/${region}/${encodeURIComponent(matchId)}`,
+      { headers: getHeaders(), next: { revalidate: 0 } }
+    );
+    if (!res.ok) {
+      return { error: `API ${res.status}` };
+    }
+    const data = await res.json();
+    return data;
+  } catch (e) {
+    console.error("Valorant getMatchByMatchId", e);
+    return null;
+  }
+}
+
+/** Estrutura esperada da resposta v4 match (teams, players com stats) */
+export type ValorantMatchDetails = {
+  metadata?: {
+    matchid?: string;
+    match_id?: string;
+    game_length?: number;
+    game_length_in_ms?: number;
+    rounds_played?: number;
+    is_completed?: boolean;
+    [key: string]: unknown;
+  };
+  teams?: {
+    red?: { has_won?: boolean; rounds_won?: number; rounds_lost?: number; [key: string]: unknown };
+    blue?: { has_won?: boolean; rounds_won?: number; rounds_lost?: number; [key: string]: unknown };
+  };
+  players?: {
+    all_players?: Array<{
+      puuid?: string;
+      name?: string;
+      tag?: string;
+      team?: string;
+      stats?: { kills?: number; deaths?: number; assists?: number; score?: number; [key: string]: unknown };
+      [key: string]: unknown;
+    }>;
+    red?: unknown[];
+    blue?: unknown[];
+  };
+  [key: string]: unknown;
+};
 
 /** Dados da conta Riot por nome#tag */
 export async function getAccount(

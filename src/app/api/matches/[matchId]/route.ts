@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/src/lib/prisma";
 import { auth } from "@/src/lib/auth";
+import { isAllowedAdmin } from "@/src/lib/admin";
 
 type Params = { params: Promise<{ matchId: string }> };
 
@@ -9,6 +10,7 @@ export async function GET(request: NextRequest, { params }: Params) {
   try {
     const { matchId } = await params;
     const session = await auth();
+    const isAdmin = session ? isAllowedAdmin(session) : false;
 
     const match = await prisma.gameMatch.findUnique({
       where: { matchId },
@@ -53,6 +55,7 @@ export async function GET(request: NextRequest, { params }: Params) {
       isFull: match.participants.length >= match.maxPlayers,
       userInMatch,
       isCreator,
+      isAdmin,
     });
   } catch (e) {
     console.error("match show", e);
