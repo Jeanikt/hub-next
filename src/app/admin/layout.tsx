@@ -10,6 +10,7 @@ import {
   Flag,
   Settings,
   Gamepad2,
+  Target,
 } from "lucide-react";
 
 export default async function AdminLayout({
@@ -67,6 +68,13 @@ export default async function AdminLayout({
         >
           <Flag size={18} />
           Reports
+        </Link>
+        <Link
+          href="/admin/missions"
+          className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-[var(--hub-text-muted)] hover:bg-[var(--hub-bg-elevated)] hover:text-[var(--hub-text)]"
+        >
+          <Target size={18} />
+          Missões
         </Link>
         <Link
           href="/admin/settings"

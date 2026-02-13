@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/src/lib/auth";
 import { prisma } from "@/src/lib/prisma";
+import { createNotification } from "@/src/lib/notifications";
 
 /** POST /api/profile/like – curte ou descurte um perfil (targetUserId no body) */
 export async function POST(request: NextRequest) {
@@ -41,6 +42,11 @@ export async function POST(request: NextRequest) {
 
   await prisma.profileLike.create({
     data: { userId: session.user.id, targetUserId },
+  });
+  await createNotification(targetUserId, {
+    type: "profile_like",
+    title: "Alguém curtiu seu perfil",
+    body: null,
   });
   const count = await prisma.profileLike.count({ where: { targetUserId } });
   return NextResponse.json({ liked: true, likesCount: count });

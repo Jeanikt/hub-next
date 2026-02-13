@@ -48,6 +48,8 @@ export async function GET(request: NextRequest) {
           image: true,
           elo: true,
           rank: true,
+          riotId: true,
+          tagline: true,
           isOnline: true,
           lastLoginAt: true,
           isBanned: true,

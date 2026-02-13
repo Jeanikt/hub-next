@@ -9,6 +9,7 @@ export type NotificationType =
   | "friend_accepted"
   | "mission_completed"
   | "match_found"
+  | "profile_like"
   | "generic";
 
 export async function createNotification(

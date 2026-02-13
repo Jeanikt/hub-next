@@ -9,6 +9,9 @@ type User = {
   username: string | null;
   email: string | null;
   elo: number;
+  rank: string | null;
+  riotId: string | null;
+  tagline: string | null;
   isOnline: boolean;
   isBanned: boolean;
   bannedUntil: string | null;
@@ -35,6 +38,7 @@ export default function AdminUsersPage() {
   const [banModal, setBanModal] = useState<{ user: User } | null>(null);
   const [banReason, setBanReason] = useState("Violação das regras");
   const [banDuration, setBanDuration] = useState<string>("24h");
+  const [syncingElo, setSyncingElo] = useState<string | null>(null);
 
   function fetchUsers() {
     const params = new URLSearchParams();
@@ -107,6 +111,27 @@ export default function AdminUsersPage() {
     }
   }
 
+  async function syncUserElo(user: User) {
+    if (!user.riotId || !user.tagline) return;
+    setSyncingElo(user.id);
+    try {
+      const res = await fetch(`/api/admin/users/${user.id}/sync-elo`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setUsers((prev) =>
+          prev.map((u) => (u.id === user.id ? { ...u, elo: data.elo ?? u.elo, rank: data.rank ?? u.rank } : u))
+        );
+      } else {
+        alert(data.message ?? "Erro ao sincronizar ELO.");
+      }
+    } finally {
+      setSyncingElo(null);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="border-l-4 border-[var(--hub-accent)] pl-6 py-2">
@@ -149,7 +174,17 @@ export default function AdminUsersPage() {
                       <span className="text-[var(--hub-text-muted)]">Offline</span>
                     )}
                   </td>
-                  <td className="p-3 flex gap-2">
+                  <td className="p-3 flex flex-wrap gap-2 items-center">
+                    {u.riotId && u.tagline && (
+                      <button
+                        type="button"
+                        onClick={() => syncUserElo(u)}
+                        disabled={syncingElo === u.id}
+                        className="text-xs text-[var(--hub-accent)] hover:underline disabled:opacity-50"
+                      >
+                        {syncingElo === u.id ? "Sincronizando…" : "Atualizar ELO"}
+                      </button>
+                    )}
                     {u.isBanned || u.bannedUntil ? (
                       <button
                         onClick={() => unban(u.id)}

@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useCallback, useEffect, useState } from "react";
-import { Bell, UserPlus, MessageCircle, Trophy, Zap } from "lucide-react";
+import { Bell, UserPlus, MessageCircle, Trophy, Zap, Heart } from "lucide-react";
+import { useToast } from "@/src/app/context/ToastContext";
 
 type Notif = {
   id: string;
@@ -21,6 +22,8 @@ function iconForType(type: string) {
   if (t.includes("amizade") || t.includes("friend")) return <UserPlus size={16} className="shrink-0 text-[var(--hub-accent)]" />;
   if (t.includes("mensagem") || t.includes("message")) return <MessageCircle size={16} className="shrink-0 text-[var(--hub-accent)]" />;
   if (t.includes("partida") || t.includes("match") || t.includes("vitória")) return <Trophy size={16} className="shrink-0 text-amber-400" />;
+  if (t === "profile_like" || t.includes("curtiu")) return <Heart size={16} className="shrink-0 text-[var(--hub-accent-red)]" />;
+  if (t === "mission_completed" || t.includes("missão")) return <Zap size={16} className="shrink-0 text-amber-400" />;
   return <Zap size={16} className="shrink-0 text-[var(--hub-text-muted)]" />;
 }
 
@@ -34,8 +37,11 @@ function formatTime(createdAt: string) {
   return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
 }
 
+const TOAST_TYPES = new Set(["mission_completed", "profile_like"]);
+
 export function NotificationBell() {
   const { data: session, status } = useSession();
+  const { addToast } = useToast();
   const [list, setList] = useState<Notif[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -45,10 +51,21 @@ export function NotificationBell() {
     setLoading(true);
     fetch("/api/notifications", { credentials: "include" })
       .then((r) => (r.ok ? r.json() : { data: [] }))
-      .then((json) => setList(json.data ?? []))
+      .then((json) => {
+        const next = json.data ?? [];
+        setList((prev) => {
+          const prevIds = new Set(prev.map((n) => n.id));
+          next.forEach((n: Notif) => {
+            if (!prevIds.has(n.id) && TOAST_TYPES.has(n.type)) {
+              addToast({ title: n.title, body: n.body ?? undefined, type: n.type });
+            }
+          });
+          return next;
+        });
+      })
       .catch(() => setList([]))
       .finally(() => setLoading(false));
-  }, [status]);
+  }, [status, addToast]);
 
   useEffect(() => {
     if (status !== "authenticated") return;
@@ -72,6 +89,9 @@ export function NotificationBell() {
               );
             });
           } else if (data?.id) {
+            if (TOAST_TYPES.has(data.type)) {
+              addToast({ title: data.title ?? "Notificação", body: data.body ?? undefined, type: data.type });
+            }
             setList((prev) => [data, ...prev.filter((n) => n.id !== data.id)]);
           }
         } catch {

@@ -10,6 +10,8 @@ import {
   ListOrdered,
   MessageSquare,
   ChevronRight,
+  Settings,
+  Target,
 } from "lucide-react";
 
 type Stats = {
@@ -107,7 +109,7 @@ export default function AdminDashboardPage() {
         ))}
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Link
           href="/admin/queues"
           className="flex items-center justify-between rounded-xl border border-[var(--hub-border)] bg-[var(--hub-bg-card)] p-5 transition hover:border-[var(--hub-accent)]/40"
@@ -115,8 +117,8 @@ export default function AdminDashboardPage() {
           <div className="flex items-center gap-3">
             <ListOrdered size={24} className="text-[var(--hub-accent)]" />
             <div>
-              <p className="font-bold text-[var(--hub-text)]">Filas competitivas</p>
-              <p className="text-sm text-[var(--hub-text-muted)]">Ver jogadores em cada fila</p>
+              <p className="font-bold text-[var(--hub-text)]">Filas</p>
+              <p className="text-sm text-[var(--hub-text-muted)]">Jogadores em fila</p>
             </div>
           </div>
           <ChevronRight size={20} className="text-[var(--hub-text-muted)]" />
@@ -129,7 +131,33 @@ export default function AdminDashboardPage() {
             <MessageSquare size={24} className="text-[var(--hub-accent)]" />
             <div>
               <p className="font-bold text-[var(--hub-text)]">Tickets</p>
-              <p className="text-sm text-[var(--hub-text-muted)]">Suporte e reclamações</p>
+              <p className="text-sm text-[var(--hub-text-muted)]">Suporte</p>
+            </div>
+          </div>
+          <ChevronRight size={20} className="text-[var(--hub-text-muted)]" />
+        </Link>
+        <Link
+          href="/admin/missions"
+          className="flex items-center justify-between rounded-xl border border-[var(--hub-border)] bg-[var(--hub-bg-card)] p-5 transition hover:border-[var(--hub-accent)]/40"
+        >
+          <div className="flex items-center gap-3">
+            <Target size={24} className="text-[var(--hub-accent)]" />
+            <div>
+              <p className="font-bold text-[var(--hub-text)]">Missões</p>
+              <p className="text-sm text-[var(--hub-text-muted)]">Ativar/desativar</p>
+            </div>
+          </div>
+          <ChevronRight size={20} className="text-[var(--hub-text-muted)]" />
+        </Link>
+        <Link
+          href="/admin/settings"
+          className="flex items-center justify-between rounded-xl border border-[var(--hub-border)] bg-[var(--hub-bg-card)] p-5 transition hover:border-[var(--hub-accent)]/40"
+        >
+          <div className="flex items-center gap-3">
+            <Settings size={24} className="text-[var(--hub-accent)]" />
+            <div>
+              <p className="font-bold text-[var(--hub-text)]">Configurações</p>
+              <p className="text-sm text-[var(--hub-text-muted)]">Filas, partidas, ELO</p>
             </div>
           </div>
           <ChevronRight size={20} className="text-[var(--hub-text-muted)]" />

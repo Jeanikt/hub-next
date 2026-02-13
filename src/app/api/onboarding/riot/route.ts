@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/src/lib/auth";
 import { prisma } from "@/src/lib/prisma";
-import { getAccount, getMMR } from "@/src/lib/valorant";
+import { getAccount, getMMR, getRankLabelFromMMR } from "@/src/lib/valorant";
 import { getRankPointsFromTier } from "@/src/lib/rankPoints";
 import { onboardingRiotIdSchema } from "@/src/lib/validators/schemas";
 import { verifyAndCompleteMissions } from "@/src/lib/missions/verify";
@@ -54,8 +54,7 @@ export async function POST(req: Request) {
 
     // 3) Buscar ELO real na Riot e definir pontos iniciais (0–20) para filas e ranking
     const mmrData = await getMMR(riotId, tagline);
-    const currentData = mmrData?.data?.current_data;
-    const rankLabel = currentData?.currenttierpatched ?? null;
+    const rankLabel = getRankLabelFromMMR(mmrData);
     const rankPoints = rankLabel != null ? getRankPointsFromTier(rankLabel) : 0;
 
     await prisma.user.update({

@@ -4,6 +4,7 @@
  */
 import { prisma } from "@/src/lib/prisma";
 import { levelFromXp } from "@/src/lib/xpLevel";
+import { createNotification } from "@/src/lib/notifications";
 
 const NOW = new Date();
 const START_OF_DAY = new Date(NOW.getFullYear(), NOW.getMonth(), NOW.getDate());
@@ -151,6 +152,11 @@ export async function verifyAndCompleteMissions(userId: string): Promise<{ compl
       completed.push(mission.id);
       (user as { xp: number }).xp = newXp;
       (user as { level: number }).level = newLevel;
+      await createNotification(userId, {
+        type: "mission_completed",
+        title: `Missão concluída: ${mission.title}`,
+        body: `+${mission.xpReward} XP`,
+      });
     }
   }
 

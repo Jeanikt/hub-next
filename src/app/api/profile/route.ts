@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/src/lib/auth";
 import { prisma } from "@/src/lib/prisma";
-import { getAccount, getMMR } from "@/src/lib/valorant";
+import { getAccount, getMMR, getRankLabelFromMMR } from "@/src/lib/valorant";
 import { getRankPointsFromTier } from "@/src/lib/rankPoints";
 import { verifyAndCompleteMissions } from "@/src/lib/missions/verify";
 import { z } from "zod";
@@ -106,8 +106,7 @@ export async function PATCH(request: NextRequest) {
 
       // Pontos (0–20) baseados no ELO/rank retornado pela API Riot
       const mmrData = await getMMR(riotId, tagline);
-      const currentData = mmrData?.data?.current_data;
-      const rankLabel = currentData?.currenttierpatched ?? null;
+      const rankLabel = getRankLabelFromMMR(mmrData);
       const rankPoints = rankLabel != null ? getRankPointsFromTier(rankLabel) : 0;
 
       updateData.riotId = riotId;

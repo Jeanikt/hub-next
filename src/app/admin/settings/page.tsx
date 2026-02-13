@@ -59,9 +59,10 @@ export default function AdminSettingsPage() {
     }
   };
 
+  const normalize = (v: unknown): "0" | "1" => (v === "1" || v === 1 ? "1" : "0");
+
   const update = async (key: keyof SettingsState, value: "1" | "0") => {
     const previous = settings ? { ...settings } : null;
-    setSettings((s) => (s ? { ...s, [key]: value } : s));
     setSaving(key);
     try {
       const res = await fetch("/api/admin/settings", {
@@ -71,8 +72,12 @@ export default function AdminSettingsPage() {
         body: JSON.stringify({ [key]: value }),
       });
       const data = await res.json();
-      if (res.ok && (data.allow_custom_matches !== undefined || data.queues_disabled !== undefined)) {
-        setSettings((s) => (s ? { ...s, ...data } : s));
+      if (res.ok) {
+        const next: SettingsState = {
+          allow_custom_matches: normalize(data.allow_custom_matches ?? previous?.allow_custom_matches ?? "0"),
+          queues_disabled: normalize(data.queues_disabled ?? previous?.queues_disabled ?? "0"),
+        };
+        setSettings(next);
       } else if (previous) setSettings(previous);
     } catch {
       if (previous) setSettings(previous);

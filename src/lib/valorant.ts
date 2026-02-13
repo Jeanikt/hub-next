@@ -104,7 +104,7 @@ export async function validateRiotAccount(name: string, tag: string): Promise<bo
   return data != null && !("error" in data && data.error);
 }
 
-/** Resposta MMR v2 – current_data com rank atual */
+/** Resposta MMR v2 – current_data com rank atual. API Henrik retorna currenttier_patched (com underscore). */
 export type ValorantMMRData = {
   status?: number;
   data?: {
@@ -112,6 +112,9 @@ export type ValorantMMRData = {
     tag?: string;
     current_data?: {
       currenttier?: number;
+      /** Nome oficial da API (v2): "Gold 1", "Diamond 2", etc. */
+      currenttier_patched?: string;
+      /** Fallback se a API retornar sem underscore */
       currenttierpatched?: string;
       elo?: number;
       ranking_in_tier?: number;
@@ -121,6 +124,16 @@ export type ValorantMMRData = {
     [key: string]: unknown;
   };
 };
+
+/** Extrai o label do rank de current_data (aceita currenttier_patched ou currenttierpatched). */
+export function getRankLabelFromMMR(mmr: ValorantMMRData | null): string | null {
+  const cur = mmr?.data?.current_data;
+  if (!cur) return null;
+  const label = (cur.currenttier_patched ?? cur.currenttierpatched) as string | undefined;
+  const s = label != null ? String(label).trim() : "";
+  if (s === "" || s.toLowerCase() === "unranked") return "Unranked";
+  return s;
+}
 
 /**
  * Busca MMR/rank atual do jogador (API v2).
@@ -155,10 +168,8 @@ export async function getMMRWithRegionFallback(
 ): Promise<ValorantMMRData | null> {
   for (const region of MMR_REGIONS) {
     const data = await getMMR(name, tag, region);
-    const hasRank =
-      data?.data?.current_data?.currenttierpatched != null &&
-      String(data.data.current_data.currenttierpatched).trim() !== "";
-    if (hasRank) return data;
+    const label = getRankLabelFromMMR(data);
+    if (label != null && label !== "") return data;
   }
   return null;
 }

@@ -149,8 +149,11 @@ hub-next/
 | `UPSTASH_REDIS_REST_URL` | Não | URL REST Upstash Redis |
 | `UPSTASH_REDIS_REST_TOKEN` | Não | Token Upstash Redis |
 | `NEXT_PUBLIC_APP_NAME` | Não | Nome exibido no layout (padrão: HUBEXPRESSO) |
+| `CRON_SECRET` ou `CRON_API_KEY` | Não | Segredo para chamar o cron de sync ELO (`GET /api/cron/sync-elo?secret=...` ou `Authorization: Bearer ...`) |
 
 Sem Pusher/Redis o app continua funcionando: filas usam polling; cache de status da fila fica desativado.
+
+**Cron – Sync ELO:** para atualizar o ELO de todos os usuários com conta Riot em background, agende uma requisição para `GET /api/cron/sync-elo` passando o segredo em query (`?secret=SEU_CRON_SECRET`) ou no header `Authorization: Bearer SEU_CRON_SECRET`. Ex.: a cada 6–12 horas (Dokploy, Vercel Cron, cron do SO, etc.).
 
 ---
 
