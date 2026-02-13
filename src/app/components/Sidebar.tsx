@@ -26,6 +26,8 @@ import {
   X,
   ChevronRight,
   MapPin,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { NotificationBell } from "./NotificationBell";
 
@@ -59,6 +61,8 @@ export function Sidebar() {
   const router = useRouter();
   const { data: session, status } = useSession();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [publicOpen, setPublicOpen] = useState(true);
+  const [accountOpen, setAccountOpen] = useState(true);
 
   useEffect(() => {
     if (status !== "authenticated" || pathname === "/banned") return;
@@ -100,7 +104,7 @@ export function Sidebar() {
       <Link
         href={href}
         onClick={closeMobile}
-        className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+        className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
           active
             ? "bg-[var(--hub-accent)]/15 text-[var(--hub-accent)] border border-[var(--hub-border-accent)]"
             : "text-[var(--hub-text-muted)] hover:bg-[var(--hub-bg-elevated)] hover:text-[var(--hub-text)] border border-transparent"
@@ -131,26 +135,44 @@ export function Sidebar() {
         {session?.user && <NotificationBell />}
       </div>
 
-      <nav className="flex-1 overflow-y-auto p-3 space-y-1">
-        <p className="px-3 mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--hub-text-muted)]">
-          Público
-        </p>
-        {PUBLIC_LINKS.map((item) => (
-          <NavLink key={item.href} href={item.href} label={item.label} icon={item.icon} />
-        ))}
+      <nav className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-2 space-y-0.5">
+        <button
+          type="button"
+          onClick={() => setPublicOpen((o) => !o)}
+          className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--hub-text-muted)] hover:bg-[var(--hub-bg-elevated)]"
+        >
+          <span>Público</span>
+          {publicOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+        </button>
+        {publicOpen && (
+          <div className="space-y-0.5 pl-1">
+            {PUBLIC_LINKS.map((item) => (
+              <NavLink key={item.href} href={item.href} label={item.label} icon={item.icon} />
+            ))}
+          </div>
+        )}
 
         {session?.user && (
           <>
-            <p className="px-3 mt-6 mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--hub-text-muted)]">
-              Conta
-            </p>
-            {AUTH_LINKS.map((item) => (
-              <NavLink key={item.href} href={item.href} label={item.label} icon={item.icon} />
-            ))}
-            {(session.user.isSuperAdmin ?? session.user.isAdmin) &&
-              ADMIN_LINKS.map((item) => (
-                <NavLink key={item.href} href={item.href} label={item.label} icon={item.icon} />
-              ))}
+            <button
+              type="button"
+              onClick={() => setAccountOpen((o) => !o)}
+              className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 mt-3 text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--hub-text-muted)] hover:bg-[var(--hub-bg-elevated)]"
+            >
+              <span>Conta</span>
+              {accountOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </button>
+            {accountOpen && (
+              <div className="space-y-0.5 pl-1">
+                {AUTH_LINKS.map((item) => (
+                  <NavLink key={item.href} href={item.href} label={item.label} icon={item.icon} />
+                ))}
+                {(session.user.isSuperAdmin ?? session.user.isAdmin) &&
+                  ADMIN_LINKS.map((item) => (
+                    <NavLink key={item.href} href={item.href} label={item.label} icon={item.icon} />
+                  ))}
+              </div>
+            )}
           </>
         )}
       </nav>

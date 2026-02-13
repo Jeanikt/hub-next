@@ -52,7 +52,10 @@ export async function GET(request: NextRequest) {
         : {}),
     }));
 
-    return NextResponse.json({ items: list });
+    return NextResponse.json({
+      items: list,
+      ...(session?.user?.id && { isAdmin: admin }),
+    });
   } catch {
     return NextResponse.json({ error: "Erro ao listar roadmap." }, { status: 500 });
   }

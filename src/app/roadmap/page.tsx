@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useSession } from "next-auth/react";
 import {
   MapPin,
@@ -10,6 +10,7 @@ import {
   AlertTriangle,
   Send,
   GripVertical,
+  RefreshCw,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -45,6 +46,8 @@ export default function RoadmapPage() {
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [movingId, setMovingId] = useState<string | null>(null);
 
+  const fetchedForUser = useRef<string | null>(null);
+
   const fetchRoadmap = useCallback(async () => {
     setLoading(true);
     try {
@@ -52,18 +55,18 @@ export default function RoadmapPage() {
       const res = await fetch(`/api/roadmap${adminParam}`, { credentials: "include" });
       const data = await res.json();
       if (data.items) setItems(data.items);
-      if (session?.user && res.ok) {
-        const me = await fetch("/api/me", { credentials: "include" }).then((r) => (r.ok ? r.json() : null));
-        setIsAdmin(me?.isAdmin === true);
-      }
+      if (res.ok && data.isAdmin !== undefined) setIsAdmin(data.isAdmin === true);
     } finally {
       setLoading(false);
     }
-  }, [session?.user]);
+  }, []);
 
   useEffect(() => {
+    const userId = session?.user?.id ?? null;
+    if (userId === fetchedForUser.current) return;
+    fetchedForUser.current = userId;
     fetchRoadmap();
-  }, [fetchRoadmap]);
+  }, [session?.user?.id, fetchRoadmap]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -177,14 +180,25 @@ export default function RoadmapPage() {
 
   return (
     <div className="space-y-6">
-      <header className="border-l-4 border-[var(--hub-accent)] pl-6 py-2">
-        <h1 className="text-2xl md:text-3xl font-black uppercase tracking-tight text-[var(--hub-text)] flex items-center gap-2">
-          <MapPin size={28} />
-          Roadmap
-        </h1>
-        <p className="text-sm text-[var(--hub-text-muted)] mt-1">
-          Sugira features, correções e melhorias. A comunidade curte; o admin organiza e prioriza.
-        </p>
+      <header className="border-l-4 border-[var(--hub-accent)] pl-6 py-2 flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-black uppercase tracking-tight text-[var(--hub-text)] flex items-center gap-2">
+            <MapPin size={28} />
+            Roadmap
+          </h1>
+          <p className="text-sm text-[var(--hub-text-muted)] mt-1">
+            Sugira features, correções e melhorias. A comunidade curte; o admin organiza e prioriza.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => fetchRoadmap()}
+          disabled={loading}
+          className="flex items-center gap-2 rounded-lg border border-[var(--hub-border)] bg-[var(--hub-bg-card)] px-3 py-2 text-sm font-medium text-[var(--hub-text-muted)] hover:text-[var(--hub-text)] hover:bg-[var(--hub-bg-elevated)] disabled:opacity-50"
+        >
+          <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
+          Atualizar
+        </button>
       </header>
 
       <div className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-4 flex gap-3">
