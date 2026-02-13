@@ -56,3 +56,8 @@ export async function invalidateQueueStatusCache(): Promise<void> {
     // ignore
   }
 }
+
+/** Limpa o cache da fila (útil para debug/reset). O Redis neste app só armazena hub:queue:status com TTL 3s. */
+export async function resetQueueCache(): Promise<void> {
+  await invalidateQueueStatusCache();
+}

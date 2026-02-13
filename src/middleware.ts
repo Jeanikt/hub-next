@@ -66,9 +66,13 @@ export async function middleware(request: NextRequest) {
     return res;
   };
 
+  // Em produção (HTTPS) o NextAuth usa cookie __Secure-authjs.session-token;
+  // getToken precisa de secureCookie: true para ler o mesmo nome.
+  const isSecure = request.nextUrl.protocol === "https:";
   const token = await getToken({
     req: request,
     secret: process.env.NEXTAUTH_SECRET,
+    secureCookie: isSecure,
   });
 
   const loggedIn = !!token;
