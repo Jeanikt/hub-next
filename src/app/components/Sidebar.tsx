@@ -25,11 +25,13 @@ import {
   Menu,
   X,
   ChevronRight,
+  MapPin,
 } from "lucide-react";
 import { NotificationBell } from "./NotificationBell";
 
 const PUBLIC_LINKS = [
   { href: "/", label: "Início", icon: Home },
+  { href: "/roadmap", label: "Roadmap", icon: MapPin },
   { href: "/leaderboard", label: "Ranking", icon: Trophy },
   { href: "/users", label: "Jogadores", icon: Users },
   { href: "/tournaments", label: "Torneios", icon: Swords },

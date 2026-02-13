@@ -97,6 +97,8 @@ model User {
   referredBy             Referral?              @relation("ReferredBy")
   referralsSent          Referral[]             @relation("ReferralsSent")
   reports                Report[]
+  roadmapItems           RoadmapItem[]
+  roadmapLikes           RoadmapLike[]
   sessions               Session[]
   supportTicketMessages  SupportTicketMessage[]
   supportTickets         SupportTicket[]
@@ -335,5 +337,34 @@ model SupportTicketMessage {
   @@index([ticketId, timestamp])
   @@index([userId, timestamp])
   @@map("support_ticket_messages")
+}
+
+model RoadmapItem {
+  id          String       @id @default(cuid())
+  authorId    String
+  title       String
+  description String?      @db.Text
+  status      String       @default("suggestion")
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  author      User         @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  likes       RoadmapLike[]
+
+  @@index([status])
+  @@index([authorId])
+  @@map("roadmap_items")
+}
+
+model RoadmapLike {
+  id            String      @id @default(cuid())
+  userId        String
+  roadmapItemId String
+  createdAt     DateTime    @default(now())
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roadmapItem   RoadmapItem @relation(fields: [roadmapItemId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roadmapItemId])
+  @@index([roadmapItemId])
+  @@map("roadmap_likes")
 }
 
