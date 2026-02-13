@@ -3,7 +3,7 @@ import { prisma } from "@/src/lib/prisma";
 import { auth } from "@/src/lib/auth";
 import { isAllowedAdmin } from "@/src/lib/admin";
 
-const BADGE_VALUES = ["dev", "admin", "mod", "streamer"] as const;
+const BADGE_VALUES = ["dev", "admin", "mod", "streamer", "coach", "pro"] as const;
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -32,7 +32,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
         updateData.profileBadge = profileBadgeRaw;
       } else {
         return NextResponse.json(
-          { message: "profileBadge deve ser: dev, admin, mod, streamer ou vazio." },
+          { message: "profileBadge deve ser: dev, pro, coach, admin, mod, streamer ou vazio." },
           { status: 422 }
         );
       }

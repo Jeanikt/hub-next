@@ -220,7 +220,7 @@ export default function UserProfileClient({ username }: { username: string }) {
                 )}
                 {(profile.profileBadge ?? null) && (
                   <span className="rounded bg-[var(--hub-bg-elevated)] border border-[var(--hub-border)] px-2 py-0.5 text-xs font-bold uppercase tracking-wider text-[var(--hub-text-muted)]">
-                    {profile.profileBadge === "dev" ? "Dev" : profile.profileBadge === "admin" ? "Admin" : profile.profileBadge === "mod" ? "Moderação" : profile.profileBadge === "streamer" ? "Streamer" : profile.profileBadge}
+                    {profile.profileBadge === "dev" ? "Dev" : profile.profileBadge === "admin" ? "Admin" : profile.profileBadge === "mod" ? "Moderação" : profile.profileBadge === "streamer" ? "Streamer" : profile.profileBadge === "coach" ? "Coach" : profile.profileBadge === "pro" ? "Pro Player" : profile.profileBadge}
                   </span>
                 )}
               </h1>
