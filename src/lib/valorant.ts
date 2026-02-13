@@ -112,7 +112,7 @@ export type ValorantMMRData = {
     tag?: string;
     current_data?: {
       currenttier?: number;
-      currenttier_patched?: string;
+      currenttierpatched?: string;
       elo?: number;
       ranking_in_tier?: number;
       mmr_change_to_last_game?: number;
@@ -124,7 +124,7 @@ export type ValorantMMRData = {
 
 /**
  * Busca MMR/rank atual do jogador (API v2).
- * Região br; retorna rank atual (currenttier_patched) e elo numérico da Riot.
+ * Região br; retorna rank atual (currenttierpatched) e elo numérico da Riot.
  */
 export async function getMMR(
   name: string,
@@ -156,8 +156,8 @@ export async function getMMRWithRegionFallback(
   for (const region of MMR_REGIONS) {
     const data = await getMMR(name, tag, region);
     const hasRank =
-      data?.data?.current_data?.currenttier_patched != null &&
-      String(data.data.current_data.currenttier_patched).trim() !== "";
+      data?.data?.current_data?.currenttierpatched != null &&
+      String(data.data.current_data.currenttierpatched).trim() !== "";
     if (hasRank) return data;
   }
   return null;

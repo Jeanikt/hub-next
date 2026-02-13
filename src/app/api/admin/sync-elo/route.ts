@@ -7,9 +7,9 @@ import { getRankPointsFromTier } from "@/src/lib/rankPoints";
 
 const DELAY_MS = 600;
 
-/** Extrai rank (currenttier_patched) da resposta da API Henrik. Trata vazio como Unranked. */
-function extractRankFromMMR(mmrData: { data?: { current_data?: { currenttier_patched?: string; elo?: number } } } | null): string | null {
-  const label = mmrData?.data?.current_data?.currenttier_patched;
+/** Extrai rank (currenttierpatched) da resposta da API Henrik. Trata vazio como Unranked. */
+function extractRankFromMMR(mmrData: { data?: { current_data?: { currenttierpatched?: string; elo?: number } } } | null): string | null {
+  const label = mmrData?.data?.current_data?.currenttierpatched;
   const s = label != null ? String(label).trim() : "";
   if (s === "" || s.toLowerCase() === "unranked") return "Unranked";
   return s;
