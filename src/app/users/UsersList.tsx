@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { UserPlus, Flag } from "lucide-react";
+import { UserPlus, Flag, BadgeCheck } from "lucide-react";
 import { ReportModal } from "@/src/app/components/ReportModal";
 
 type User = {
@@ -13,6 +13,8 @@ type User = {
   avatarUrl: string | null;
   elo: number;
   level: number;
+  profileBadge?: string | null;
+  isVerified?: boolean;
 };
 
 export function UsersList() {
@@ -87,7 +89,15 @@ export function UsersList() {
                         </span>
                       )}
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-white truncate">{u.username ?? u.name ?? "—"}</p>
+                        <p className="font-semibold text-white truncate flex items-center gap-1.5">
+                          {u.username ?? u.name ?? "—"}
+                          {u.isVerified && <BadgeCheck size={14} className="shrink-0 text-[var(--hub-accent)]" title="Verificado" />}
+                          {u.profileBadge && (
+                            <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[var(--hub-text-muted)] shrink-0">
+                              {u.profileBadge === "dev" ? "Dev" : u.profileBadge === "admin" ? "Admin" : u.profileBadge === "mod" ? "Mod" : u.profileBadge === "streamer" ? "Streamer" : u.profileBadge}
+                            </span>
+                          )}
+                        </p>
                         <p className="text-sm text-[var(--hub-text-muted)]">ELO {u.elo} · Nível {u.level}</p>
                       </div>
                       <span className="text-[var(--hub-accent)] font-mono text-sm shrink-0">→</span>

@@ -14,6 +14,7 @@ import {
   UserPlus,
   MessageCircle,
   Flag,
+  BadgeCheck,
 } from "lucide-react";
 import { ReportModal } from "@/src/app/components/ReportModal";
 
@@ -49,6 +50,8 @@ type Profile = {
   likesCount: number;
   missionsCompletedCount: number;
   xpProgress: XpProgress;
+  profileBadge?: string | null;
+  isVerified?: boolean;
 };
 
 type FriendStatus = "none" | "pending_sent" | "pending_received" | "friends" | "own" | null;
@@ -208,8 +211,18 @@ export default function UserProfileClient({ username }: { username: string }) {
           )}
           <div className="mt-5 flex flex-1 flex-col items-center text-center sm:mt-0 sm:items-start sm:text-left">
             <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
-              <h1 className="text-2xl font-black uppercase tracking-tight text-[var(--hub-text)] sm:text-3xl">
+              <h1 className="text-2xl font-black uppercase tracking-tight text-[var(--hub-text)] sm:text-3xl flex items-center gap-2">
                 {displayName}
+                {profile.isVerified === true && (
+                  <span className="inline-flex items-center rounded-full bg-[var(--hub-accent)]/20 p-1" title="Verificado">
+                    <BadgeCheck size={20} className="text-[var(--hub-accent)]" />
+                  </span>
+                )}
+                {(profile.profileBadge ?? null) && (
+                  <span className="rounded bg-[var(--hub-bg-elevated)] border border-[var(--hub-border)] px-2 py-0.5 text-xs font-bold uppercase tracking-wider text-[var(--hub-text-muted)]">
+                    {profile.profileBadge === "dev" ? "Dev" : profile.profileBadge === "admin" ? "Admin" : profile.profileBadge === "mod" ? "Moderação" : profile.profileBadge === "streamer" ? "Streamer" : profile.profileBadge}
+                  </span>
+                )}
               </h1>
               {profile.isOnline && (
                 <span className="flex items-center gap-1.5 rounded-lg bg-[var(--hub-accent)]/20 px-2.5 py-1 text-xs font-medium text-[var(--hub-accent)]">

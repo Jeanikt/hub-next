@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Settings, Gamepad2, ListOrdered, Loader2, RefreshCw } from "lucide-react";
+import { Settings, Gamepad2, ListOrdered, Loader2, RefreshCw, BadgeCheck, Search, Check } from "lucide-react";
 
 type SettingsState = {
   allow_custom_matches: string;
@@ -18,6 +18,13 @@ export default function AdminSettingsPage() {
     totalWithRiot: number;
     errors?: { userId: string; username?: string | null; reason: string }[];
   } | null>(null);
+
+  const [badgeSearch, setBadgeSearch] = useState("");
+  const [badgeUsers, setBadgeUsers] = useState<{ id: string; username: string | null; name: string | null; profileBadge: string | null; isVerified: boolean }[]>([]);
+  const [badgeSearching, setBadgeSearching] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<{ id: string; username: string | null; name: string | null; profileBadge: string | null; isVerified: boolean } | null>(null);
+  const [badgeSaving, setBadgeSaving] = useState(false);
+  const [badgeForm, setBadgeForm] = useState({ profileBadge: "" as string, isVerified: false });
 
   const load = () => {
     setLoading(true);
@@ -60,6 +67,60 @@ export default function AdminSettingsPage() {
   };
 
   const normalize = (v: unknown): "0" | "1" => (v === "1" || v === 1 ? "1" : "0");
+
+  const searchBadgeUsers = () => {
+    if (!badgeSearch.trim()) return;
+    setBadgeSearching(true);
+    setSelectedUser(null);
+    fetch(`/api/admin/users?search=${encodeURIComponent(badgeSearch.trim())}&perPage=15`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((d) => {
+        const list = Array.isArray(d.data) ? d.data : [];
+        setBadgeUsers(list.map((u: { id: string; username?: string | null; name?: string | null; profileBadge?: string | null; isVerified?: boolean }) => ({
+          id: u.id,
+          username: u.username ?? null,
+          name: u.name ?? null,
+          profileBadge: u.profileBadge ?? null,
+          isVerified: u.isVerified === true,
+        })));
+      })
+      .catch(() => setBadgeUsers([]))
+      .finally(() => setBadgeSearching(false));
+  };
+
+  const openBadgeUser = (u: typeof badgeUsers[0]) => {
+    setSelectedUser(u);
+    setBadgeForm({ profileBadge: u.profileBadge ?? "", isVerified: u.isVerified });
+  };
+
+  const saveBadgeUser = async () => {
+    if (!selectedUser) return;
+    setBadgeSaving(true);
+    try {
+      const res = await fetch(`/api/admin/users/${selectedUser.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          profileBadge: badgeForm.profileBadge || null,
+          isVerified: badgeForm.isVerified,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setBadgeUsers((prev) => prev.map((u) => (u.id === selectedUser.id ? { ...u, profileBadge: badgeForm.profileBadge || null, isVerified: badgeForm.isVerified } : u)));
+        setSelectedUser((prev) => prev ? { ...prev, profileBadge: badgeForm.profileBadge || null, isVerified: badgeForm.isVerified } : null);
+      } else {
+        alert(data.message ?? "Erro ao salvar.");
+      }
+    } catch {
+      alert("Erro ao salvar.");
+    } finally {
+      setBadgeSaving(false);
+    }
+  };
+
+  const BADGE_LABELS: Record<string, string> = { dev: "Dev", admin: "Admin", mod: "Moderação", streamer: "Streamer" };
 
   const update = async (key: keyof SettingsState, value: "1" | "0") => {
     const previous = settings ? { ...settings } : null;
@@ -232,6 +293,109 @@ export default function AdminSettingsPage() {
                   )}
                 </ul>
               ) : null}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-[var(--hub-border)] bg-[var(--hub-bg-card)] overflow-hidden">
+        <div className="border-b border-[var(--hub-border)] px-4 py-3 bg-[var(--hub-bg-elevated)]">
+          <p className="text-sm font-bold text-[var(--hub-text)] flex items-center gap-2">
+            <BadgeCheck size={20} />
+            Selos e verificação
+          </p>
+          <p className="text-xs text-[var(--hub-text-muted)] mt-0.5">
+            Atribua selos (Dev, Admin, Moderação, Streamer) e selo verificado ao lado do nome. Busque por nome ou @username.
+          </p>
+        </div>
+        <div className="p-4 space-y-4">
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--hub-text-muted)]" />
+              <input
+                type="text"
+                value={badgeSearch}
+                onChange={(e) => setBadgeSearch(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && searchBadgeUsers()}
+                placeholder="Nome ou @username"
+                className="w-full rounded-lg border border-[var(--hub-border)] bg-[var(--hub-bg)] pl-9 pr-3 py-2 text-sm text-[var(--hub-text)] placeholder:text-[var(--hub-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--hub-accent)]"
+              />
+            </div>
+            <button
+              type="button"
+              disabled={badgeSearching}
+              onClick={searchBadgeUsers}
+              className="rounded-lg border border-[var(--hub-accent)] bg-[var(--hub-accent)]/20 px-4 py-2 text-sm font-medium text-[var(--hub-accent)] hover:bg-[var(--hub-accent)]/30 disabled:opacity-50"
+            >
+              {badgeSearching ? <Loader2 size={18} className="animate-spin" /> : "Buscar"}
+            </button>
+          </div>
+          {badgeUsers.length > 0 && (
+            <div className="rounded-lg border border-[var(--hub-border)] divide-y divide-[var(--hub-border)] max-h-48 overflow-y-auto">
+              {badgeUsers.map((u) => (
+                <button
+                  type="button"
+                  key={u.id}
+                  onClick={() => openBadgeUser(u)}
+                  className={`w-full flex items-center justify-between gap-2 px-3 py-2.5 text-left text-sm transition-colors ${selectedUser?.id === u.id ? "bg-[var(--hub-accent)]/20 text-[var(--hub-accent)]" : "hover:bg-[var(--hub-bg-elevated)] text-[var(--hub-text)]"}`}
+                >
+                  <span className="truncate">{u.name ?? u.username ?? u.id}</span>
+                  <span className="flex items-center gap-1.5 shrink-0">
+                    {u.isVerified && <Check size={14} className="text-[var(--hub-accent)]" />}
+                    {u.profileBadge && <span className="rounded bg-[var(--hub-bg-elevated)] px-1.5 py-0.5 text-xs">{BADGE_LABELS[u.profileBadge] ?? u.profileBadge}</span>}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+          {selectedUser && (
+            <div className="rounded-lg border border-[var(--hub-border)] bg-[var(--hub-bg)]/80 p-4 space-y-4">
+              <p className="text-sm font-medium text-[var(--hub-text)]">
+                Editar: {selectedUser.name ?? selectedUser.username ?? selectedUser.id}
+              </p>
+              <div className="flex flex-wrap items-center gap-4">
+                <label className="flex items-center gap-2 text-sm text-[var(--hub-text)]">
+                  <span className="text-[var(--hub-text-muted)]">Selos:</span>
+                  <select
+                    value={badgeForm.profileBadge}
+                    onChange={(e) => setBadgeForm((f) => ({ ...f, profileBadge: e.target.value }))}
+                    className="rounded border border-[var(--hub-border)] bg-[var(--hub-bg)] px-2 py-1.5 text-[var(--hub-text)] focus:outline-none focus:ring-2 focus:ring-[var(--hub-accent)]"
+                  >
+                    <option value="">Nenhum</option>
+                    <option value="dev">Dev</option>
+                    <option value="admin">Admin</option>
+                    <option value="mod">Moderação</option>
+                    <option value="streamer">Streamer</option>
+                  </select>
+                </label>
+                <label className="flex items-center gap-2 text-sm text-[var(--hub-text)] cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={badgeForm.isVerified}
+                    onChange={(e) => setBadgeForm((f) => ({ ...f, isVerified: e.target.checked }))}
+                    className="rounded border-[var(--hub-border)] text-[var(--hub-accent)] focus:ring-[var(--hub-accent)]"
+                  />
+                  <span>Selo verificado</span>
+                </label>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  disabled={badgeSaving}
+                  onClick={saveBadgeUser}
+                  className="flex items-center gap-2 rounded-lg border border-[var(--hub-accent)] bg-[var(--hub-accent)]/20 px-4 py-2 text-sm font-medium text-[var(--hub-accent)] hover:bg-[var(--hub-accent)]/30 disabled:opacity-50"
+                >
+                  {badgeSaving ? <Loader2 size={16} className="animate-spin" /> : null}
+                  Salvar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedUser(null)}
+                  className="rounded-lg border border-[var(--hub-border)] px-4 py-2 text-sm text-[var(--hub-text-muted)] hover:bg-[var(--hub-bg-elevated)]"
+                >
+                  Fechar
+                </button>
+              </div>
             </div>
           )}
         </div>

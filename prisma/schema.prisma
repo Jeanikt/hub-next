@@ -63,6 +63,10 @@ model User {
   elo                    Int                    @default(0)
   level                  Int                    @default(1)
   isAdmin                Boolean                @default(false)
+  /// Selo exibido no perfil: dev, admin, mod, streamer (definido por admin em Configurações).
+  profileBadge           String?
+  /// Selo verificado (checkmark) ao lado do nome; definido por admin.
+  isVerified             Boolean                @default(false)
   isBanned               Boolean                @default(false)
   bannedUntil            DateTime?
   banReason              String?

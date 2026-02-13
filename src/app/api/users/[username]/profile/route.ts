@@ -23,6 +23,8 @@ const PROFILE_SELECT_FULL = {
   bestWinrateChampion: true,
   isOnline: true,
   lastLoginAt: true,
+  profileBadge: true,
+  isVerified: true,
 } as const;
 
 const PROFILE_SELECT_MINIMAL = {
@@ -40,6 +42,8 @@ const PROFILE_SELECT_MINIMAL = {
   secondaryRole: true,
   isOnline: true,
   lastLoginAt: true,
+  profileBadge: true,
+  isVerified: true,
 } as const;
 
 /** GET /api/users/[username]/profile – perfil público com estatísticas */

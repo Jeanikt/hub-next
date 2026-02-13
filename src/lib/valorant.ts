@@ -220,11 +220,11 @@ export type ValorantMMRData = {
   };
 };
 
-/** Extrai o label do rank de current_data (aceita currenttier_patched ou currenttierpatched). */
+/** Extrai o label do rank de current_data. Preferir currenttierpatched (sem underscore). */
 export function getRankLabelFromMMR(mmr: ValorantMMRData | null): string | null {
   const cur = mmr?.data?.current_data;
   if (!cur) return null;
-  const label = (cur.currenttier_patched ?? cur.currenttierpatched) as string | undefined;
+  const label = (cur.currenttierpatched ?? cur.currenttier_patched) as string | undefined;
   const s = label != null ? String(label).trim() : "";
   if (s === "" || s.toLowerCase() === "unranked") return "Unranked";
   return s;
