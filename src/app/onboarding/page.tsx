@@ -212,7 +212,7 @@ export default function OnboardingPage() {
                   type="text"
                   value={riotId}
                   onChange={(e) => { setRiotId(e.target.value); setFieldErrors((prev) => ({ ...prev, riotId: undefined })); }}
-                  placeholder="Nome#tag"
+                  placeholder="Nome"
                   className={`w-full px-4 py-3 bg-black/40 border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[var(--hub-accent)] ${fieldErrors.riotId ? "border-red-500" : "border-[var(--hub-border)]"}`}
                 />
                 {fieldErrors.riotId?.[0] && <p className="mt-1 text-sm text-red-400">{fieldErrors.riotId[0]}</p>}
