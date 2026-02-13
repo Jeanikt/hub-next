@@ -49,7 +49,7 @@ const AUTH_LINKS = [
   { href: "/friends", label: "Amigos", icon: UserPlus },
   { href: "/profile", label: "Perfil", icon: User },
   { href: "/notifications", label: "Notificações", icon: Bell },
-  { href: "/support", label: "Suporte", icon: HelpCircle },
+  { href: "https://suporte.hubexpresso.com", label: "Suporte", icon: HelpCircle },
 ] as const;
 
 const ADMIN_LINKS = [
