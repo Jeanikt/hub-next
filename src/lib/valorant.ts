@@ -29,7 +29,7 @@ async function valorantFetch(input: RequestInfo | URL, init?: RequestInit): Prom
 }
 
 export type ValorantMatch = {
-  metadata?: { map?: string; mode?: string; [key: string]: unknown };
+  metadata?: { map?: string; mode?: string;[key: string]: unknown };
   players?: unknown[];
   [key: string]: unknown;
 };
@@ -151,8 +151,8 @@ export type ValorantMatchDetails = {
     [key: string]: unknown;
   };
   teams?: {
-    red?: { has_won?: boolean; rounds_won?: number; rounds_lost?: number; [key: string]: unknown };
-    blue?: { has_won?: boolean; rounds_won?: number; rounds_lost?: number; [key: string]: unknown };
+    red?: { has_won?: boolean; rounds_won?: number; rounds_lost?: number;[key: string]: unknown };
+    blue?: { has_won?: boolean; rounds_won?: number; rounds_lost?: number;[key: string]: unknown };
   };
   players?: {
     all_players?: Array<{
@@ -160,7 +160,7 @@ export type ValorantMatchDetails = {
       name?: string;
       tag?: string;
       team?: string;
-      stats?: { kills?: number; deaths?: number; assists?: number; score?: number; [key: string]: unknown };
+      stats?: { kills?: number; deaths?: number; assists?: number; score?: number;[key: string]: unknown };
       [key: string]: unknown;
     }>;
     red?: unknown[];
@@ -184,15 +184,26 @@ export async function getAccount(
   async function fetchAccount(version: "v1" | "v2"): Promise<ValorantAccount | null> {
     const basePath = `${BASE_URL}/${version}/account/${encodedName}/${encodedTag}`;
     const url = version === "v2" ? `${basePath}?force=true` : basePath;
+
     const res = await valorantFetch(url, {
       headers: getHeaders(),
       next: { revalidate: version === "v2" ? 3600 : 0 },
     });
+
+    const body = (await res.json().catch(() => null)) as any;
     if (!res.ok) return null;
-    const body = (await res.json()) as { status?: number; data?: { puuid?: string; [key: string]: unknown } };
-    if (body?.status !== 1 || !body?.data?.puuid) return null;
-    return { data: body.data };
+
+    const puuid =
+      body?.data?.puuid ?? body?.data?.player?.puuid ?? body?.data?.account?.puuid;
+
+    const status = Number(body?.status);
+    const okStatus = status === 200 || status === 1;
+
+    if (!okStatus || !puuid) return null;
+
+    return { data: { ...body.data, puuid } };
   }
+
 
   try {
     const result = await fetchAccount("v2");
@@ -259,7 +270,7 @@ export async function getMMR(
     );
     if (!res.ok) return null;
     const data = (await res.json()) as ValorantMMRData;
-    if (data?.status !== undefined && data.status !== 1 && data.status !== 404) return null;
+    if (data?.status !== undefined && data.status !== 200 && data.status !== 404) return null;
     return data;
   } catch (e) {
     if (e instanceof Error && e.message === VALORANT_RATE_LIMIT_ERROR) throw e;

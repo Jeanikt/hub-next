@@ -4,11 +4,9 @@ import { prisma } from "@/src/lib/prisma";
 import { getAccount, VALORANT_RATE_LIMIT_ERROR } from "@/src/lib/valorant";
 import { onboardingRiotIdSchema } from "@/src/lib/validators/schemas";
 import { verifyAndCompleteMissions } from "@/src/lib/missions/verify";
+import { syncEloForUser } from "@/src/lib/syncEloIndividual";
 
-/**
- * Onboarding Riot: apenas 1 chamada à API (getAccount) para respeitar 30 req/min.
- * Rank e ELO são preenchidos pelo cron sync-elo ou ao editar perfil.
- */
+
 export async function POST(req: Request) {
   try {
     const session = await auth();
@@ -32,52 +30,63 @@ export async function POST(req: Request) {
     const { riotId, tagline } = parsed.data;
     const riotAccount = `${riotId}#${tagline}`;
 
-    // 1) Verificar se a conta existe na API Riot (nome#tag); 1 chamada para respeitar rate limit
+    // 1) valida existência (1 chamada)
     const accountData = await getAccount(riotId, tagline);
     if (!accountData?.data?.puuid) {
       return NextResponse.json(
-        { message: "Conta Riot não encontrada. Verifique o nome e a tag." },
+        { message: "Conta não encontrada. Verifique o nome e a tag." },
         { status: 422 }
       );
     }
 
-    // 2) Verificar se já está em uso por outro usuário
+    // 2) checar se já está em uso
     const existing = await prisma.user.findFirst({
-      where: {
-        riotAccount,
-        id: { not: session.user.id },
-      },
+      where: { riotAccount, id: { not: session.user.id } },
+      select: { id: true },
     });
     if (existing) {
       return NextResponse.json(
-        { message: "Esta conta Riot já está vinculada a outro usuário." },
+        { message: "Esta conta já está vinculada a outro usuário." },
         { status: 409 }
       );
     }
 
-    // 3) Salvar vínculo; rank/elo serão preenchidos pelo cron sync-elo (ou ao abrir perfil)
+    // 3) salva o básico
     await prisma.user.update({
       where: { id: session.user.id },
-      data: {
-        riotId,
-        tagline,
-        riotAccount,
-        rank: null,
-        elo: 0,
-      },
+      data: { riotId, tagline, riotAccount, rank: null, elo: 0 },
     });
 
+    // 4) sync de rank/elo AGORA (garantido)
+    const sync = await syncEloForUser(riotId, tagline, session.user.id);
+
+    // 5) missões (não precisa bloquear)
     try {
       await verifyAndCompleteMissions(session.user.id);
-    } catch {
-      // não falha a resposta
+    } catch {}
+
+    if (!sync.ok) {
+      if (sync.reason === "many_requests" || sync.reason === VALORANT_RATE_LIMIT_ERROR) {
+        return NextResponse.json(
+          { message: "Muitos usuários vinculando agora. Tente novamente em 1 minuto." },
+          { status: 503 }
+        );
+      }
+
+      // vinculou, mas não conseguiu sincronizar agora
+      return NextResponse.json({
+        ok: true,
+        rank: null,
+        elo: 0,
+        message: "Conta vinculada. Seu rank será atualizado em breve.",
+      });
     }
 
     return NextResponse.json({
       ok: true,
-      rank: null,
-      elo: 0,
-      message: "Conta vinculada. Seu rank será atualizado em breve.",
+      rank: sync.rank,
+      elo: sync.elo,
+      message: "Conta vinculada e rank atualizado.",
     });
   } catch (e) {
     if (e instanceof Error && e.message === VALORANT_RATE_LIMIT_ERROR) {
@@ -88,7 +97,7 @@ export async function POST(req: Request) {
     }
     console.error("POST /api/onboarding/riot", e);
     return NextResponse.json(
-      { message: "Erro ao vincular conta Riot. Tente novamente." },
+      { message: "Erro ao vincular conta. Tente novamente." },
       { status: 500 }
     );
   }
