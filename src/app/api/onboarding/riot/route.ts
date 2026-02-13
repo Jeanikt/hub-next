@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/src/lib/auth";
 import { prisma } from "@/src/lib/prisma";
 import { getAccount, VALORANT_RATE_LIMIT_ERROR } from "@/src/lib/valorant";
-import { onboardingRiotIdSchema, parseRiotIdAndTag } from "@/src/lib/validators/schemas";
+import { onboardingRiotIdSchema } from "@/src/lib/validators/schemas";
 import { verifyAndCompleteMissions } from "@/src/lib/missions/verify";
 
 /**
@@ -30,13 +30,10 @@ export async function POST(req: Request) {
     }
 
     const { riotId, tagline } = parsed.data;
-    const normalized = parseRiotIdAndTag(riotId, tagline);
-    const name = normalized?.name ?? riotId;
-    const tag = normalized?.tag ?? tagline;
-    const riotAccount = `${name}#${tag}`;
+    const riotAccount = `${riotId}#${tagline}`;
 
-    // 1) Verificar se a conta existe na API Riot (1 chamada apenas; evita estourar rate limit)
-    const accountData = await getAccount(name, tag);
+    // 1) Verificar se a conta existe na API Riot (nome#tag); 1 chamada para respeitar rate limit
+    const accountData = await getAccount(riotId, tagline);
     if (!accountData?.data?.puuid) {
       return NextResponse.json(
         { message: "Conta Riot não encontrada. Verifique o nome e a tag." },
@@ -62,8 +59,8 @@ export async function POST(req: Request) {
     await prisma.user.update({
       where: { id: session.user.id },
       data: {
-        riotId: name,
-        tagline: tag,
+        riotId,
+        tagline,
         riotAccount,
         rank: null,
         elo: 0,

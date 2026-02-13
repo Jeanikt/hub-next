@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/src/lib/auth";
 import { prisma } from "@/src/lib/prisma";
 import { getAccount, getMMR, getRankLabelFromMMR, VALORANT_RATE_LIMIT_ERROR } from "@/src/lib/valorant";
-import { parseRiotIdAndTag } from "@/src/lib/validators/schemas";
 import { getRankPointsFromTier } from "@/src/lib/rankPoints";
 import { verifyAndCompleteMissions } from "@/src/lib/missions/verify";
 import { z } from "zod";
@@ -70,30 +69,28 @@ export async function PATCH(request: NextRequest) {
     ...(data.image !== undefined && { image: data.image }),
   };
 
-  // Alteração de conta Riot (aceita Nome#Tag em um campo ou nome e tag em dois)
+  // Alteração de conta Riot: dois campos (nome e tag); no back verificamos como nome#tag
   if (data.riotId !== undefined && data.tagline !== undefined) {
     const riotIdRaw = data.riotId?.trim() || null;
     const taglineRaw = data.tagline?.trim() || null;
 
-    if (riotIdRaw == null || (!riotIdRaw && !taglineRaw)) {
+    if (!riotIdRaw && !taglineRaw) {
       updateData.riotId = null;
       updateData.tagline = null;
       updateData.riotAccount = null;
       updateData.rank = null;
       updateData.elo = 0;
-    } else {
-      const normalized = parseRiotIdAndTag(riotIdRaw ?? "", taglineRaw ?? "");
-      if (!normalized) {
+    } else if (riotIdRaw && taglineRaw) {
+      if (riotIdRaw.length < 2 || taglineRaw.length < 2) {
         return NextResponse.json(
-          { message: "Use Nome#Tag (ex: Avestruz#001) no primeiro campo e deixe o segundo vazio, ou preencha os dois campos." },
+          { message: "Nome e tag devem ter pelo menos 2 caracteres cada." },
           { status: 422 }
         );
       }
-      const { name: riotId, tag: tagline } = normalized;
-      const riotAccount = `${riotId}#${tagline}`;
+      const riotAccount = `${riotIdRaw}#${taglineRaw}`;
 
       try {
-        const accountData = await getAccount(riotId, tagline);
+        const accountData = await getAccount(riotIdRaw, taglineRaw);
         if (!accountData?.data?.puuid) {
           return NextResponse.json(
             { message: "Conta Riot não encontrada. Verifique o nome e a tag." },
@@ -115,12 +112,12 @@ export async function PATCH(request: NextRequest) {
         }
 
         // Pontos (0–20) baseados no ELO/rank retornado pela API Riot
-        const mmrData = await getMMR(riotId, tagline);
+        const mmrData = await getMMR(riotIdRaw, taglineRaw);
         const rankLabel = getRankLabelFromMMR(mmrData);
         const rankPoints = rankLabel != null ? getRankPointsFromTier(rankLabel) : 0;
 
-        updateData.riotId = riotId;
-        updateData.tagline = tagline;
+        updateData.riotId = riotIdRaw;
+        updateData.tagline = taglineRaw;
         updateData.riotAccount = riotAccount;
         updateData.rank = rankLabel;
         updateData.elo = rankPoints;
@@ -133,6 +130,11 @@ export async function PATCH(request: NextRequest) {
         }
         throw e;
       }
+    } else if (riotIdRaw || taglineRaw) {
+      return NextResponse.json(
+        { message: "Preencha nome e tag do Riot ID para vincular." },
+        { status: 422 }
+      );
     }
   }
 

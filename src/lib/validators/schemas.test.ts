@@ -20,22 +20,18 @@ describe("schemas", () => {
       }
     });
 
-    it("aceita Nome#Tag no primeiro campo e tagline vazio", () => {
-      const r = onboardingRiotIdSchema.safeParse({ riotId: "Avestruz#001", tagline: "" });
-      expect(r.success).toBe(true);
-      if (r.success) {
-        expect(r.data.riotId).toBe("Avestruz");
-        expect(r.data.tagline).toBe("001");
-      }
-    });
-
     it("rejeita riotId vazio", () => {
       const r = onboardingRiotIdSchema.safeParse({ riotId: "", tagline: "BR1" });
       expect(r.success).toBe(false);
     });
 
-    it("rejeita quando nome e tag insuficientes (dois campos)", () => {
+    it("rejeita tagline vazio", () => {
       const r = onboardingRiotIdSchema.safeParse({ riotId: "Player", tagline: "" });
+      expect(r.success).toBe(false);
+    });
+
+    it("rejeita nome com menos de 2 caracteres", () => {
+      const r = onboardingRiotIdSchema.safeParse({ riotId: "A", tagline: "BR1" });
       expect(r.success).toBe(false);
     });
   });

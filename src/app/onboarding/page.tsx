@@ -203,27 +203,27 @@ export default function OnboardingPage() {
               Riot ID (opcional)
             </h2>
             <p className="text-[var(--hub-text-muted)] mb-6 text-sm">
-              Vincule seu Riot ID para partidas no Valorant. Use <strong>Nome#Tag</strong> em um campo (ex: Avestruz#001) ou preencha os dois campos.
+              Vincule seu Riot ID para partidas no Valorant. Informe o <strong>nome</strong> e a <strong>tag</strong> em campos separados.
             </p>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Riot ID (nome ou Nome#Tag)</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Nome</label>
                 <input
                   type="text"
                   value={riotId}
                   onChange={(e) => { setRiotId(e.target.value); setFieldErrors((prev) => ({ ...prev, riotId: undefined, tagline: undefined })); }}
-                  placeholder="Ex: Avestruz#001 ou só o nome"
+                  placeholder="santvlr"
                   className={`w-full px-4 py-3 bg-black/40 border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[var(--hub-accent)] ${fieldErrors.riotId ? "border-red-500" : "border-[var(--hub-border)]"}`}
                 />
                 {fieldErrors.riotId?.[0] && <p className="mt-1 text-sm text-red-400">{fieldErrors.riotId[0]}</p>}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Tagline (ou deixe vazio se usou # acima)</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Tag</label>
                 <input
                   type="text"
                   value={tagline}
                   onChange={(e) => { setTagline(e.target.value); setFieldErrors((prev) => ({ ...prev, tagline: undefined })); }}
-                  placeholder="Ex: BR1, 001"
+                  placeholder="café"
                   className={`w-full px-4 py-3 bg-black/40 border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[var(--hub-accent)] ${fieldErrors.tagline ? "border-red-500" : "border-[var(--hub-border)]"}`}
                 />
                 {fieldErrors.tagline?.[0] && <p className="mt-1 text-sm text-red-400">{fieldErrors.tagline[0]}</p>}
@@ -240,7 +240,7 @@ export default function OnboardingPage() {
               </button>
               <button
                 type="button"
-                onClick={riotId.trim() || tagline.trim() ? saveRiotAndComplete : completeOnboarding}
+                onClick={riotId.trim() && tagline.trim() ? saveRiotAndComplete : completeOnboarding}
                 disabled={loading}
                 className="px-8 py-3 rounded-lg font-bold uppercase tracking-wider bg-[var(--hub-accent)] hover:opacity-90 text-white disabled:opacity-50 clip-button"
               >
