@@ -15,7 +15,8 @@ const ELO_LOSS = 1;
 const XP_PER_MATCH_PLAYED = 10;
 const XP_MATCH_WIN_BONUS = 5;
 const MATCH_MAX_AGE_MS = 4 * 60 * 60 * 1000; // 4h
-const DELAY_MS = 800;
+const DELAY_MS = 2000; // 2 segundos = 30 req/min com 2 req por partida
+const LAST_SYNC_CHECK_MS = 5 * 60 * 1000; // Não checa a mesma partida dentro de 5 minutos
 
 function normalizeRiotKey(name: string, tag: string): string {
   return `${String(name || "").trim().toLowerCase()}#${String(tag || "").trim().toLowerCase()}`;
@@ -51,10 +52,13 @@ export async function syncPendingMatchesFromRiot(): Promise<SyncResult> {
   let updated = 0;
 
   const cutoff = new Date(Date.now() - MATCH_MAX_AGE_MS);
+  const lastSyncCutoff = new Date(Date.now() - LAST_SYNC_CHECK_MS);
   const pendingMatches = await prisma.gameMatch.findMany({
     where: {
       status: { in: ["pending", "in_progress"] },
       createdAt: { gte: cutoff },
+      // Só checa partidas que não foram sincronizadas nos últimos 5 minutos
+      updatedAt: { lte: lastSyncCutoff },
     },
     include: {
       participants: {
@@ -64,7 +68,7 @@ export async function syncPendingMatchesFromRiot(): Promise<SyncResult> {
       },
     },
     orderBy: { createdAt: "desc" },
-    take: 20,
+    take: 10, // Reduzido de 20 para 10 (max 20 requisições por execução)
   });
 
   for (const match of pendingMatches) {

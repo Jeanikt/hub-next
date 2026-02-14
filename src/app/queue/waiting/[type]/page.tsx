@@ -34,6 +34,7 @@ export default function WaitingRoomPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [sending, setSending] = useState(false);
+  const [leavingQueue, setLeavingQueue] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -121,6 +122,21 @@ export default function WaitingRoomPage() {
     }
   }
 
+  async function leaveQueue() {
+    setLeavingQueue(true);
+    try {
+      const res = await fetch("/api/queue/leave", {
+        method: "POST",
+        credentials: "include",
+      });
+      if (res.ok) {
+        router.push("/queue");
+      }
+    } finally {
+      setLeavingQueue(false);
+    }
+  }
+
   const players = data?.queuePlayers ?? [];
   const needed = getPlayersRequired(type);
 
@@ -134,9 +150,18 @@ export default function WaitingRoomPage() {
         </div>
       )}
 
-      <Link href="/queue" className="text-sm underline">
-        Voltar
-      </Link>
+      <div className="flex gap-3 items-center">
+        <Link href="/queue" className="text-sm underline">
+          Voltar
+        </Link>
+        <button
+          onClick={leaveQueue}
+          disabled={leavingQueue}
+          className="text-sm px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 font-medium"
+        >
+          {leavingQueue ? "Saindo..." : "Sair da fila"}
+        </button>
+      </div>
 
       <h1 className="text-2xl font-bold">
         Sala de espera — {getQueueDisplayName(type)}
