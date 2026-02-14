@@ -3,9 +3,10 @@
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
-import { MessageCircle, Send } from "lucide-react";
+import { MessageCircle, Send, Users, Loader2 } from "lucide-react";
 import { getQueueAliasFromId } from "@/src/lib/valorant";
 import { getQueueDisplayName, getPlayersRequired } from "@/src/lib/queues";
+import { playMatchFoundSound, notifyMatchFound } from "@/src/lib/useNotificationSound";
 
 type QueuePlayer = {
   id: string;
@@ -53,9 +54,11 @@ export default function WaitingRoomPage() {
       const json: QueueStatus = await res.json();
       setData(json);
 
-      // Partida formada: avisar e redirecionar todos para a tela da partida
+      // Partida formada: som, notificação e redirecionar
       if (json.matchFound && json.matchId) {
         setMatchFoundAlert(true);
+        playMatchFoundSound();
+        notifyMatchFound(json.matchId).catch(() => {});
         setTimeout(() => {
           router.replace(`/matches/${json.matchId}`);
         }, 1200);
@@ -141,56 +144,66 @@ export default function WaitingRoomPage() {
   const needed = getPlayersRequired(type);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {matchFoundAlert && (
-        <div className="rounded-xl border-2 border-[var(--hub-accent)] bg-[var(--hub-accent)]/20 p-6 text-center">
-          <p className="text-lg font-bold text-[var(--hub-text)]">Partida formada!</p>
-          <p className="mt-2 text-sm text-[var(--hub-text-muted)]">Você será levado à tela da partida em instantes. Lá o criador informará o código do Valorant para todos entrarem.</p>
-          <p className="mt-3 text-xs text-[var(--hub-accent)]">Redirecionando...</p>
+        <div className="rounded-2xl border-2 border-[var(--hub-accent)] bg-[var(--hub-accent)]/20 p-8 text-center clip-card animate-pulse">
+          <p className="text-2xl font-black uppercase tracking-tight text-[var(--hub-text)]">Partida formada!</p>
+          <p className="mt-3 text-sm text-[var(--hub-text-muted)]">Você será levado à tela da partida em instantes. O criador informará o código do Valorant lá.</p>
+          <p className="mt-4 flex items-center justify-center gap-2 text-[var(--hub-accent)]">
+            <Loader2 size={18} className="animate-spin" />
+            Redirecionando...
+          </p>
         </div>
       )}
 
-      <div className="flex gap-3 items-center">
-        <Link href="/queue" className="text-sm underline">
-          Voltar
+      <div className="flex flex-wrap gap-3 items-center">
+        <Link href="/queue" className="text-sm text-[var(--hub-text-muted)] hover:text-[var(--hub-accent)] transition">
+          ← Voltar às filas
         </Link>
         <button
           onClick={leaveQueue}
           disabled={leavingQueue}
-          className="text-sm px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 font-medium"
+          className="text-sm px-4 py-2 rounded-xl border border-red-500/50 text-red-400 hover:bg-red-500/10 disabled:opacity-50 font-medium transition"
         >
           {leavingQueue ? "Saindo..." : "Sair da fila"}
         </button>
       </div>
 
-      <h1 className="text-2xl font-bold">
-        Sala de espera — {getQueueDisplayName(type)}
-      </h1>
+      <div className="border-l-4 border-[var(--hub-accent)] pl-6 py-2">
+        <h1 className="text-2xl font-black uppercase tracking-tight text-[var(--hub-text)] flex items-center gap-2">
+          <Users size={28} className="text-[var(--hub-accent)]" />
+          Sala de espera — {getQueueDisplayName(type)}
+        </h1>
+        <p className="mt-2 text-sm text-[var(--hub-text-muted)]">
+          {players.length}/{needed} jogadores · Aguardando partida
+        </p>
+      </div>
 
-      <p>
-        {players.length}/{needed} jogadores
-      </p>
-
-      <div className="grid md:grid-cols-5 gap-3">
-        {players.map((p) => (
+      <div className="rounded-2xl border border-[var(--hub-border)] bg-[var(--hub-bg-card)] p-6 clip-card">
+        <div className="h-2 w-full rounded-full bg-[var(--hub-bg)] mb-6">
           <div
-            key={p.id}
-            className="border border-[var(--hub-border)] p-3 rounded"
-          >
-            {getQueueAliasFromId(p.id)}
-          </div>
-        ))}
-
-        {Array.from({ length: Math.max(0, needed - players.length) }).map(
-          (_, i) => (
+            className="h-full rounded-full bg-gradient-to-r from-[var(--hub-accent)] to-[var(--hub-accent-cyan)] transition-all duration-500"
+            style={{ width: `${needed > 0 ? Math.min(100, (players.length / needed) * 100) : 0}%` }}
+          />
+        </div>
+        <div className="grid md:grid-cols-5 gap-4">
+          {players.map((p) => (
+            <div
+              key={p.id}
+              className="rounded-xl border border-[var(--hub-border)] bg-[var(--hub-bg-elevated)]/50 p-4 text-center"
+            >
+              <p className="text-sm font-medium text-[var(--hub-text)] truncate">{getQueueAliasFromId(p.id)}</p>
+            </div>
+          ))}
+          {Array.from({ length: Math.max(0, needed - players.length) }).map((_, i) => (
             <div
               key={i}
-              className="border border-dashed border-[var(--hub-border)] p-3 rounded text-center text-xs"
+              className="rounded-xl border border-dashed border-[var(--hub-border)] p-4 text-center text-xs text-[var(--hub-text-muted)]"
             >
               Aguardando...
             </div>
-          )
-        )}
+          ))}
+        </div>
       </div>
 
       <div className="rounded-2xl border border-[var(--hub-border)] bg-[var(--hub-bg-card)] clip-card overflow-hidden">

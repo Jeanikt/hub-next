@@ -33,6 +33,7 @@ export async function GET(request: NextRequest, { params }: Params) {
             },
           },
         },
+        cancelVotes: { select: { userId: true } },
       },
     });
 
@@ -44,9 +45,15 @@ export async function GET(request: NextRequest, { params }: Params) {
       ? match.participants.some((p) => p.userId === session.user.id)
       : false;
     const isCreator = session?.user?.id ? match.creatorId === session.user.id : false;
+    const vetoCount = match.cancelVotes.length;
+    const vetoThreshold = Math.floor(match.maxPlayers / 2) + 1;
+    const userVetoed = session?.user?.id
+      ? match.cancelVotes.some((v) => v.userId === session.user.id)
+      : false;
 
+    const { cancelVotes, ...matchWithoutVotes } = match;
     return NextResponse.json({
-      ...match,
+      ...matchWithoutVotes,
       settings: match.settings ? JSON.parse(match.settings) : null,
       participants: match.participants.map((p) => ({
         ...p,
@@ -57,6 +64,9 @@ export async function GET(request: NextRequest, { params }: Params) {
       userInMatch,
       isCreator,
       isAdmin,
+      vetoCount,
+      vetoThreshold,
+      userVetoed,
     });
   } catch (e) {
     serverError("GET /api/matches/[matchId]", "error", { err: e instanceof Error ? e.message : String(e) });

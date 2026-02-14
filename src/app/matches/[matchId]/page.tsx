@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import { Trophy, Clock, Star, Loader2 } from "lucide-react";
+import { useEffect, useState, useRef } from "react";
+import { Trophy, Clock, Star, Loader2, MessageCircle, Send, Vote } from "lucide-react";
+import { playCodeAvailableSound, notifyCodeAvailable } from "@/src/lib/useNotificationSound";
 
 type Match = {
   matchId: string;
@@ -21,6 +22,9 @@ type Match = {
   matchDuration?: number | null;
   settings?: { mvpUserId?: string; match_code?: string; valorant_room_code?: string } | null;
   creator: { id: string; username: string | null; name: string | null } | null;
+  vetoCount?: number;
+  vetoThreshold?: number;
+  userVetoed?: boolean;
   participants: {
     userId: string;
     team: string | null;
@@ -54,6 +58,11 @@ export default function MatchDetailPage() {
   const [finishMvp, setFinishMvp] = useState("");
   const [valorantCode, setValorantCode] = useState("");
   const [submittingCode, setSubmittingCode] = useState(false);
+  const [vetoing, setVetoing] = useState(false);
+  const [lobbyMessages, setLobbyMessages] = useState<{ id: string; content: string; userId: string; user: { id: string; username: string | null; name: string | null }; createdAt: string }[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [sendingChat, setSendingChat] = useState(false);
+  const hadCodeRef = useRef(false);
 
   const fetchMatch = () => {
     if (!matchId) return;
@@ -69,10 +78,52 @@ export default function MatchDetailPage() {
     setLoading(true);
     fetch(`/api/matches/${matchId}`, { credentials: "include" })
       .then((r) => r.json())
-      .then(setMatch)
+      .then((m: Match) => {
+        if (m?.settings?.valorant_room_code) hadCodeRef.current = true;
+        setMatch(m);
+      })
       .catch(() => setMatch(null))
       .finally(() => setLoading(false));
   }, [matchId]);
+
+  // Quando o criador informa o código: som + notificação para os outros
+  useEffect(() => {
+    if (!match?.userInMatch || match.isCreator || !match.settings?.valorant_room_code) return;
+    if (!hadCodeRef.current) {
+      hadCodeRef.current = true;
+      playCodeAvailableSound();
+      notifyCodeAvailable().catch(() => {});
+    }
+  }, [match?.settings?.valorant_room_code, match?.userInMatch, match?.isCreator]);
+
+  // Poll para detectar quando o código é informado (para não-criadores)
+  useEffect(() => {
+    if (!matchId || !match?.userInMatch || match.isCreator || match.status === "finished") return;
+    const t = setInterval(() => {
+      fetch(`/api/matches/${matchId}`, { credentials: "include" })
+        .then((r) => r.json())
+        .then((m: Match) => {
+          setMatch((prev) => (prev ? { ...prev, settings: m.settings } : null));
+        })
+        .catch(() => {});
+    }, 5000);
+    return () => clearInterval(t);
+  }, [matchId, match?.userInMatch, match?.isCreator, match?.status]);
+
+  // Chat do lobby
+  const fetchLobbyMessages = () => {
+    if (!matchId || !match?.userInMatch) return;
+    fetch(`/api/lobby-messages/${matchId}`, { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => d?.messages && setLobbyMessages(d.messages))
+      .catch(() => {});
+  };
+  useEffect(() => {
+    if (!match?.userInMatch) return;
+    fetchLobbyMessages();
+    const interval = setInterval(fetchLobbyMessages, 4000);
+    return () => clearInterval(interval);
+  }, [matchId, match?.userInMatch]);
 
   async function joinMatch() {
     setJoining(true);
@@ -105,6 +156,29 @@ export default function MatchDetailPage() {
       else alert((await res.json()).message || "Erro ao cancelar.");
     } finally {
       setCancelling(false);
+    }
+  }
+
+  async function voteVeto() {
+    if (!match?.userInMatch || vetoing) return;
+    setVetoing(true);
+    try {
+      const res = await fetch(`/api/matches/${matchId}/veto`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        fetchMatch();
+        if (data.cancelled) {
+          router.push("/matches");
+          return;
+        }
+      } else {
+        alert(data.message || "Erro ao votar.");
+      }
+    } finally {
+      setVetoing(false);
     }
   }
 
@@ -219,17 +293,34 @@ export default function MatchDetailPage() {
           </div>
         </div>
 
+        {(match.status === "pending" || match.status === "in_progress") && match.userInMatch && (match.vetoCount != null && match.vetoThreshold != null) && (
+          <div className="mt-4 rounded-xl border border-[var(--hub-border)] bg-[var(--hub-bg-elevated)]/50 p-4 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-sm text-[var(--hub-text-muted)]">
+              <Vote size={18} />
+              <span>
+                {match.vetoCount} de {match.vetoThreshold} jogadores votaram para cancelar a partida
+              </span>
+            </div>
+            {!match.userVetoed ? (
+              <button
+                type="button"
+                onClick={voteVeto}
+                disabled={vetoing}
+                className="rounded-lg border border-amber-500/50 px-4 py-2 text-sm font-medium text-amber-400 hover:bg-amber-500/10 disabled:opacity-50 flex items-center gap-2"
+              >
+                {vetoing ? <Loader2 size={16} className="animate-spin" /> : <Vote size={16} />}
+                {vetoing ? "Enviando..." : "Votar para cancelar"}
+              </button>
+            ) : (
+              <span className="text-sm text-amber-400/80">Você votou para cancelar</span>
+            )}
+          </div>
+        )}
+
         {(match.status === "pending" || match.status === "in_progress") && match.userInMatch && (
           <div className="mt-6 rounded-xl border-2 border-[var(--hub-accent)] bg-[var(--hub-accent)]/10 p-5">
-            {isCreator && !match.settings?.valorant_room_code && (
-              <p className="text-sm font-bold text-[var(--hub-accent)] mb-3 rounded-lg bg-[var(--hub-accent)]/20 p-3">
-                Você é o criador: informe o código da sala do Valorant abaixo (o código que aparece no jogo ao criar a partida). Todos na partida verão aqui.
-              </p>
-            )}
-            <p className="text-sm font-bold uppercase tracking-wider text-[var(--hub-accent)] mb-3">
-              {match.status === "in_progress" ? "Partida iniciada — entre no Valorant" : "Código da sala — entre no Valorant"}
-            </p>
-            <div className="flex flex-wrap gap-6 text-[var(--hub-text)]">
+            <p className="text-sm font-bold uppercase tracking-wider text-[var(--hub-accent)] mb-3">Código da sala</p>
+            <div className="flex flex-wrap items-center gap-6 text-[var(--hub-text)]">
               {match.map && (
                 <div>
                   <span className="text-xs text-[var(--hub-text-muted)] uppercase">Mapa</span>
@@ -238,64 +329,117 @@ export default function MatchDetailPage() {
               )}
               {match.settings?.valorant_room_code ? (
                 <div>
-                  <span className="text-xs text-[var(--hub-text-muted)] uppercase">Código para entrar no Valorant</span>
+                  <span className="text-xs text-[var(--hub-text-muted)] uppercase">Valorant</span>
                   <p className="text-2xl font-mono font-bold tracking-widest text-white">{match.settings.valorant_room_code}</p>
                 </div>
               ) : isCreator && (
-                <div className="w-full max-w-sm">
-                  <span className="text-xs text-[var(--hub-text-muted)] uppercase block mb-1">Informar código da sala (Valorant)</span>
-                  <form
-                    className="flex gap-2 flex-wrap"
-                    onSubmit={async (e) => {
-                      e.preventDefault();
-                      if (!valorantCode.trim() || submittingCode) return;
-                      setSubmittingCode(true);
-                      try {
-                        const res = await fetch(`/api/matches/${matchId}/valorant-code`, {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          credentials: "include",
-                          body: JSON.stringify({ valorantRoomCode: valorantCode.trim() }),
-                        });
-                        const data = await res.json().catch(() => ({}));
-                        if (res.ok) {
-                          setValorantCode("");
-                          fetchMatch();
-                        } else {
-                          alert(data.message || "Erro ao salvar código.");
-                        }
-                      } finally {
-                        setSubmittingCode(false);
+                <form
+                  className="flex gap-2 flex-wrap items-end"
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    if (!valorantCode.trim() || submittingCode) return;
+                    setSubmittingCode(true);
+                    try {
+                      const res = await fetch(`/api/matches/${matchId}/valorant-code`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        credentials: "include",
+                        body: JSON.stringify({ valorantRoomCode: valorantCode.trim() }),
+                      });
+                      const data = await res.json().catch(() => ({}));
+                      if (res.ok) {
+                        setValorantCode("");
+                        fetchMatch();
+                      } else {
+                        alert(data.message || "Erro ao salvar código.");
                       }
-                    }}
-                  >
+                    } finally {
+                      setSubmittingCode(false);
+                    }
+                  }}
+                >
+                  <div>
+                    <span className="text-xs text-[var(--hub-text-muted)] uppercase block mb-1">Código</span>
                     <input
                       type="text"
                       maxLength={20}
                       placeholder="Ex: ABC123"
                       value={valorantCode}
                       onChange={(e) => setValorantCode(e.target.value.toUpperCase())}
-                      className="flex-1 min-w-[120px] rounded-lg border border-[var(--hub-border)] bg-[var(--hub-bg)] px-3 py-2 text-lg font-mono text-[var(--hub-text)] placeholder:text-[var(--hub-text-muted)]"
+                      className="min-w-[140px] rounded-lg border border-[var(--hub-border)] bg-[var(--hub-bg)] px-3 py-2 text-lg font-mono text-[var(--hub-text)] placeholder:text-[var(--hub-text-muted)]"
                     />
-                    <button
-                      type="submit"
-                      disabled={submittingCode || !valorantCode.trim()}
-                      className="rounded-lg bg-[var(--hub-accent)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-                    >
-                      {submittingCode ? "Salvando…" : "Salvar código"}
-                    </button>
-                  </form>
-                  <p className="text-xs text-[var(--hub-text-muted)] mt-1">
-                    Código que aparece no jogo ao criar a partida custom. Todos verão aqui.
-                  </p>
-                </div>
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={submittingCode || !valorantCode.trim()}
+                    className="rounded-lg bg-[var(--hub-accent)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50 h-[42px]"
+                  >
+                    {submittingCode ? "Salvando…" : "Salvar"}
+                  </button>
+                </form>
               )}
             </div>
-            <p className="mt-3 text-sm text-[var(--hub-text-muted)]">
-              {match.settings?.valorant_room_code
-                ? "Use o código acima no Valorant para entrar na partida. Após o fim da partida, o resultado será sincronizado automaticamente."
-                : "O criador abre uma partida custom no Valorant, escolhe o mapa acima, e informa o código que aparecer no jogo para os jogadores entrarem. Após o fim da partida, o resultado será sincronizado automaticamente."}
-            </p>
+          </div>
+        )}
+
+        {match.userInMatch && (match.status === "pending" || match.status === "in_progress") && (
+          <div className="mt-6 rounded-2xl border border-[var(--hub-border)] bg-[var(--hub-bg-card)] clip-card overflow-hidden">
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-[var(--hub-border)] bg-[var(--hub-bg-elevated)]">
+              <MessageCircle size={20} className="text-[var(--hub-accent)]" />
+              <h2 className="font-bold text-[var(--hub-text)]">Chat da partida</h2>
+            </div>
+            <div className="max-h-[220px] overflow-y-auto p-4 space-y-2 min-h-[100px]">
+              {lobbyMessages.length === 0 && (
+                <p className="text-sm text-[var(--hub-text-muted)]">Nenhuma mensagem ainda.</p>
+              )}
+              {lobbyMessages.map((m) => (
+                <div key={m.id} className="text-sm">
+                  <span className="text-[var(--hub-text-muted)] font-medium">{m.user?.username ?? m.user?.name ?? "Jogador"}:</span>{" "}
+                  <span className="text-[var(--hub-text)]">{m.content}</span>
+                </div>
+              ))}
+            </div>
+            <form
+              className="p-3 border-t border-[var(--hub-border)] flex gap-2"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const text = chatInput.trim();
+                if (!text || sendingChat) return;
+                setSendingChat(true);
+                try {
+                  const res = await fetch("/api/lobby-messages/send", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include",
+                    body: JSON.stringify({ matchId, content: text }),
+                  });
+                  if (res.ok) {
+                    setChatInput("");
+                    fetchLobbyMessages();
+                  }
+                } finally {
+                  setSendingChat(false);
+                }
+              }}
+            >
+              <input
+                type="text"
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value.slice(0, 500))}
+                placeholder="Mensagem..."
+                maxLength={500}
+                className="flex-1 min-w-0 rounded-lg border border-[var(--hub-border)] bg-[var(--hub-bg)] px-3 py-2 text-sm text-[var(--hub-text)] placeholder:text-[var(--hub-text-muted)]"
+                disabled={sendingChat}
+              />
+              <button
+                type="submit"
+                disabled={sendingChat || !chatInput.trim()}
+                className="rounded-lg bg-[var(--hub-accent)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50 flex items-center gap-1"
+              >
+                <Send size={16} />
+                {sendingChat ? "..." : "Enviar"}
+              </button>
+            </form>
           </div>
         )}
 

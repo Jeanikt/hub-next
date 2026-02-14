@@ -125,13 +125,16 @@ export async function POST(request: NextRequest) {
         );
       }
 
-    // já tá em uma fila?
+    // Um usuário não pode estar em duas filas ao mesmo tempo (schema: userId único em QueueEntry)
     const existing = await prisma.queueEntry.findUnique({
       where: { userId: session.user.id },
     });
     if (existing) {
       return NextResponse.json(
-        { message: "Você já está em uma fila.", queue_type: existing.queueType },
+        {
+          message: "Você já está em uma fila. Não é possível entrar em outra ao mesmo tempo. Saia da fila atual primeiro.",
+          queue_type: existing.queueType,
+        },
         { status: 409 }
       );
     }

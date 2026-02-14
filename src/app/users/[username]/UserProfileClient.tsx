@@ -327,14 +327,14 @@ export default function UserProfileClient({ username }: { username: string }) {
         </div>
       </div>
 
-      {/* Nível e XP */}
+      {/* Pontos Hub e Nível */}
       <div className="rounded-2xl border border-[var(--hub-border)] bg-[var(--hub-bg-card)] p-6 clip-card">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <span className="text-xs font-bold uppercase tracking-wider text-[var(--hub-text-muted)]">
-            Nível {profile.xpProgress.currentLevel}
+            Pontos Hub · Nível {profile.xpProgress.currentLevel}
           </span>
-          <span className="text-sm text-[var(--hub-text-muted)]">
-            {profile.xpProgress.currentXpInLevel} / {profile.xpProgress.xpNeededForNext} XP
+          <span className="text-lg font-black text-[var(--hub-accent)]">
+            {profile.xp} pts
           </span>
         </div>
         <div className="mt-3 h-3 w-full overflow-hidden rounded-full bg-black/40">
@@ -344,7 +344,7 @@ export default function UserProfileClient({ username }: { username: string }) {
           />
         </div>
         <p className="mt-2 text-xs text-[var(--hub-text-muted)]">
-          Faltam {profile.xpProgress.xpNeededForNext - profile.xpProgress.currentXpInLevel} XP para o nível {profile.xpProgress.nextLevel}
+          {profile.xpProgress.currentXpInLevel} / {profile.xpProgress.xpNeededForNext} XP neste nível · Faltam {profile.xpProgress.xpNeededForNext - profile.xpProgress.currentXpInLevel} XP para o nível {profile.xpProgress.nextLevel}
         </p>
       </div>
 

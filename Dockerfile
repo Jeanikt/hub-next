@@ -42,10 +42,10 @@
   RUN addgroup -S nodejs && adduser -S nextjs -G nodejs
   USER nextjs
   
-  # copia standalone
-  COPY --from=builder /app/public ./public
-  COPY --from=builder /app/.next/static ./.next/static
+  # Next.js standalone: primeiro o output, depois static e public (conforme documentação)
   COPY --from=builder /app/.next/standalone ./
+  COPY --from=builder /app/.next/static ./.next/static
+  COPY --from=builder /app/public ./public
   
   EXPOSE 3000
   

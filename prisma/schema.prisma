@@ -109,6 +109,7 @@ model User {
   supportTicketMessages  SupportTicketMessage[]
   supportTickets         SupportTicket[]
   missionsCompleted      UserMission[]
+  matchCancelVotes       MatchCancelVote[]
 
   @@map("users")
 }
@@ -196,12 +197,12 @@ model QueueWaitingMessage {
 }
 
 model GameMatch {
-  id            Int             @id @default(autoincrement())
-  matchId       String          @unique
+  id            Int                @id @default(autoincrement())
+  matchId       String             @unique
   type          String
   status        String
   map           String?
-  maxPlayers    Int             @default(10)
+  maxPlayers    Int                @default(10)
   settings      String?
   creatorId     String?
   scheduledAt   DateTime?
@@ -209,15 +210,30 @@ model GameMatch {
   finishedAt    DateTime?
   winnerTeam    String?
   matchDuration Int?
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
   participants  GameMatchUser[]
-  creator       User?           @relation("MatchCreator", fields: [creatorId], references: [id])
+  creator       User?              @relation("MatchCreator", fields: [creatorId], references: [id])
   lobbyMessages LobbyMessage[]
+  cancelVotes   MatchCancelVote[]
 
   @@index([status])
   @@index([type])
   @@map("game_matches")
+}
+
+/// Voto para cancelar a partida por veto popular. Quando votos >= maioria, a partida é cancelada.
+model MatchCancelVote {
+  id          Int       @id @default(autoincrement())
+  gameMatchId Int
+  userId      String
+  createdAt   DateTime  @default(now())
+  gameMatch   GameMatch @relation(fields: [gameMatchId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([gameMatchId, userId])
+  @@index([gameMatchId])
+  @@map("match_cancel_votes")
 }
 
 model GameMatchUser {
