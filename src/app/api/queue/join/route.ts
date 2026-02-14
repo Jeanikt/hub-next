@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
 
     if (!queue_type || !ALL_QUEUE_TYPES.includes(queue_type as QueueType)) {
       return NextResponse.json(
-        { message: "queue_type inválido. Use: low_elo, high_elo, inclusive, test_2v2." },
+        { message: "queue_type inválido. Use: low_elo, mid_elo, high_elo, aberta, test_2v2." },
         { status: 422 }
       );
     }
@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
     const rankPoints = user.elo ?? 0;
     if (
       qt !== FOURTH_QUEUE_TYPE &&
-      !canJoinQueue(qt as "low_elo" | "mid_elo" | "high_elo" | "inclusive", rankPoints)
+      !canJoinQueue(qt as "low_elo" | "mid_elo" | "high_elo" | "aberta", rankPoints)
     ) {
       return NextResponse.json(
         {

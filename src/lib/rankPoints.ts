@@ -90,7 +90,7 @@ export const HIGH_ELO_MIN_POINTS = 17;
  * Fila aberta: liberada para qualquer elo (sempre true).
  */
 export function canJoinQueue(
-  queueType: "low_elo" | "mid_elo" | "high_elo" | "inclusive",
+  queueType: "low_elo" | "mid_elo" | "high_elo" | "aberta",
   rankPoints: number
 ): boolean {
   switch (queueType) {
@@ -100,7 +100,7 @@ export function canJoinQueue(
       return rankPoints >= RANK_POINTS["diamond 1"] && rankPoints <= RANK_POINTS["ascendant 3"];
     case "high_elo":
       return rankPoints >= HIGH_ELO_MIN_POINTS;
-    case "inclusive":
+    case "aberta":
       return true; // qualquer elo
     default:
       return false;
@@ -108,8 +108,8 @@ export function canJoinQueue(
 }
 
 /** Lista de filas que o usuário pode entrar dado seu rank (pontos). Inclusiva sempre liberada para qualquer elo. */
-export function getAllowedQueues(rankPoints: number): ("low_elo" | "mid_elo" | "high_elo" | "inclusive")[] {
-  const allowed: ("low_elo" | "mid_elo" | "high_elo" | "inclusive")[] = ["inclusive"]; // sempre liberada
+export function getAllowedQueues(rankPoints: number): ("low_elo" | "mid_elo" | "high_elo" | "aberta")[] {
+  const allowed: ("low_elo" | "mid_elo" | "high_elo" | "aberta")[] = ["aberta"]; // sempre liberada
   if (rankPoints <= LOW_ELO_MAX_POINTS) allowed.push("low_elo");
   // mid_elo: Diamond 1 (11) até Ascendant 3 (16)
   if (rankPoints >= RANK_POINTS["diamond 1"] && rankPoints <= RANK_POINTS["ascendant 3"]) allowed.push("mid_elo");

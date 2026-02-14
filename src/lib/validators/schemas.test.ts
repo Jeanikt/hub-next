@@ -53,11 +53,11 @@ describe("schemas", () => {
   });
 
   describe("queueTypeSchema", () => {
-    it("aceita low_elo, mid_elo, high_elo, inclusive", () => {
+    it("aceita low_elo, mid_elo, high_elo, aberta", () => {
       expect(queueTypeSchema.safeParse("low_elo").success).toBe(true);
       expect(queueTypeSchema.safeParse("mid_elo").success).toBe(true);
       expect(queueTypeSchema.safeParse("high_elo").success).toBe(true);
-      expect(queueTypeSchema.safeParse("inclusive").success).toBe(true);
+      expect(queueTypeSchema.safeParse("aberta").success).toBe(true);
     });
 
     it("rejeita valor inválido", () => {

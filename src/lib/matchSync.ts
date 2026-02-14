@@ -41,6 +41,44 @@ function extractFirstMatch(data: ValorantMatch | ValorantMatch[] | undefined): V
   return data as ValorantMatch;
 }
 
+async function sendDiscordMatchSyncWebhook(result: SyncResult, startedAt: Date, endedAt: Date) {
+  const url = process.env.DISCORD_MATCH_SYNC_WEBHOOK;
+  if (!url) return;
+
+  const color = result.errors && result.errors.length > 0 ? 0xff5c5c : 0x57f287;
+  const notFinished = Math.max(0, result.checked - result.updated);
+  const maxErrorsShown = 8;
+  const errorsPreview = result.errors && result.errors.length > 0
+    ? result.errors.slice(0, maxErrorsShown).join("\n") + (result.errors.length > maxErrorsShown ? `\n...(+${result.errors.length - maxErrorsShown} mais)` : "")
+    : "Nenhum";
+
+  const embed = {
+    title: "Cron: Sincronização de partidas",
+    description: "O cron de sincronização foi ativado e executado.",
+    color,
+    fields: [
+      { name: "Partidas verificadas", value: String(result.checked), inline: true },
+      { name: "Partidas sincronizadas", value: String(result.updated), inline: true },
+      { name: "Partidas não finalizadas", value: String(notFinished), inline: true },
+      { name: "Erros", value: errorsPreview, inline: false },
+      { name: "Iniciado em", value: startedAt.toISOString(), inline: true },
+      { name: "Finalizado em", value: endedAt.toISOString(), inline: true },
+    ],
+    footer: { text: "Hub - matchSync" },
+    timestamp: endedAt.toISOString(),
+  };
+
+  try {
+    await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ embeds: [embed] }),
+    });
+  } catch (e) {
+    // não bloquear o fluxo por falha no webhook
+  }
+}
+
 export type SyncResult = {
   checked: number;
   updated: number;
@@ -48,6 +86,7 @@ export type SyncResult = {
 };
 
 export async function syncPendingMatchesFromRiot(): Promise<SyncResult> {
+  const startedAt = new Date();
   const errors: string[] = [];
   let updated = 0;
 
@@ -228,5 +267,13 @@ export async function syncPendingMatchesFromRiot(): Promise<SyncResult> {
     }
   }
 
-  return { checked: pendingMatches.length, updated, errors };
+  const endedAt = new Date();
+  const result: SyncResult = { checked: pendingMatches.length, updated, errors };
+  try {
+    await sendDiscordMatchSyncWebhook(result, startedAt, endedAt);
+  } catch {
+    // ignore webhook errors
+  }
+
+  return result;
 }

@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 /** Tipos de fila permitidos */
-export const queueTypeSchema = z.enum(["low_elo", "mid_elo", "high_elo", "inclusive"]);
+export const queueTypeSchema = z.enum(["low_elo", "mid_elo", "high_elo", "aberta"]);
 
 /** Tipo de partida (criação) */
 export const matchTypeSchema = z.enum(["custom", "competitive", "practice"]);

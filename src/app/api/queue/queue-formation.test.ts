@@ -20,7 +20,7 @@ describe("queue formation", () => {
     }
     expect(getPlayersRequired("low_elo")).toBe(10);
     expect(getPlayersRequired("high_elo")).toBe(10);
-    expect(getPlayersRequired("inclusive")).toBe(10);
+    expect(getPlayersRequired("aberta")).toBe(10);
   });
 
   it("getPlayersRequired retorna 2 para fila test_2v2", () => {

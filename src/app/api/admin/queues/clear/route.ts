@@ -9,7 +9,7 @@ import { ALL_QUEUE_TYPES } from "@/src/lib/queues";
 
 const VALID_TYPES = ALL_QUEUE_TYPES;
 
-/** POST /api/admin/queues/clear – esvaziar fila(s). Body: { queueType?: "low_elo"|"high_elo"|"inclusive" } – se omitir, esvazia todas. */
+/** POST /api/admin/queues/clear – esvaziar fila(s). Body: { queueType?: "low_elo"|"mid_elo"|"high_elo"|"aberta" } – se omitir, esvazia todas. */
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
