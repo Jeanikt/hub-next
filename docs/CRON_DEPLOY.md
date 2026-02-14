@@ -1,23 +1,20 @@
-# Crons: partidas (iniciar pendentes + sincronizar com Valorant)
+# Verificação de partidas (rodando dentro do projeto)
 
-## 1. Start pending matches (a cada 15 segundos)
+As verificações de partida **rodam diretamente no projeto** ao subir o servidor (instrumentation), sem precisar de jobs externos no servidor.
 
-O endpoint `GET /api/cron/start-pending-matches` verifica partidas com status **pending** que já têm 10 jogadores (5 red, 5 blue) e atualiza no banco: `status` → `in_progress`, `startedAt` → now. Leve (só DB).
+- **A cada 15s:** partidas com status `pending` e 10 jogadores (5v5) são atualizadas para `in_progress` no banco.
+- **A cada 1 min:** partidas `in_progress` são sincronizadas com o Valorant (API Henrik); quando a partida termina no jogo, o status vai para `finished`, com K/D/A, ELO, XP e nível atualizados no banco.
 
-**Agendamento:** a cada 15 segundos. Mesmo segredo: `?secret=...` ou `Authorization: Bearer CRON_SECRET`.
-
-**Exemplo (Schedule Dokploy):**
-- **Task:** Start pending matches  
-- **Schedule:** `* * * * *` (a cada minuto; para 15s use agendador com segundos, ex. node-cron)  
-- **Command:** `curl -s "https://www.hubexpresso.com/api/cron/start-pending-matches?secret=SEU_CRON_SECRET"`
+Arquivos: `src/instrumentation.ts` (inicia os jobs no startup) e `src/lib/matchCronJobs.ts` (intervalos).
 
 ---
 
-## 2. Check matches (sincronizar com Valorant – a cada 1 minuto)
+## APIs de cron (opcional – apenas para disparo manual)
 
-O endpoint `GET /api/cron/check-matches` verifica partidas **in_progress** e sincroniza com partidas **encerradas** no Valorant (API Henrik). Ao detectar fim: `status` → `finished`, K/D/A, ELO, XP e nível no banco; missões verificadas.
+Se quiser disparar manualmente ou via job externo:
 
-**Agendamento:** a cada **1 minuto** (ex.: `*/1 * * * *`). Assim o resultado e o histórico aparecem rápido sem sobrecarregar a API Riot.
+- **GET /api/cron/start-pending-matches** – mesmo efeito do job de 15s. `?secret=...` ou `Authorization: Bearer CRON_SECRET`.
+- **GET /api/cron/check-matches** – mesmo efeito do job de 1 min. Mesmo segredo.
 
 ---
 
