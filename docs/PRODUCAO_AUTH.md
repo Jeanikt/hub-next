@@ -120,15 +120,26 @@ O Redis neste projeto é usado **apenas** para cache do status da fila (`hub:que
 
 ---
 
-## 10. Erros MissingCSRF / Invalid code verifier em multi-datacenter
+## 10. Erros MissingCSRF / Invalid code verifier / pkceCodeVerifier (PKCE)
 
-Quando o tráfego passa por **vários datacenters** (ex.: Cloudflare, load balancer) ou o usuário é atendido por **instâncias diferentes** entre o início do login e o callback, o cookie com o **code_verifier** (PKCE) ou o **CSRF token** pode não estar na mesma instância que processa o callback. Resultado: `MissingCSRF`, `Invalid code verifier` ou `InvalidCheck` (pkceCodeVerifier).
+Logs típicos em produção:
+
+- `[auth][details] "error": "invalid_grant", "error_description": "Invalid code verifier.", "provider": "google"`
+- `[auth][error] InvalidCheck: pkceCodeVerifier value could not be parsed`
+- `[auth][error] MissingCSRF: CSRF token was missing during an action signin`
+
+**Causa:** O cookie que guarda o **code_verifier** (PKCE) ou o **CSRF token** não está disponível quando o callback do OAuth é processado. Isso ocorre quando:
+
+1. **Múltiplas instâncias sem sticky session:** O request que inicia o login (e grava o cookie) é atendido pela instância A; o callback do Google é atendido pela instância B, que não tem o cookie.
+2. **URL inconsistente:** O usuário acessa por um host (ex.: `hubexpresso.com`) e o callback usa outro (ex.: `www.hubexpresso.com`), ou `NEXTAUTH_URL` está diferente do host real.
+3. **Cookie bloqueado ou perdido:** Proxy/CDN alterando cookies, ou SameSite/Secure incorretos.
 
 **Recomendações:**
 
-- **Sticky session (recomendado):** Configure o load balancer ou o proxy (ex.: Cloudflare Load Balancing, ou o proxy na frente do Dokploy) para manter a mesma sessão (cookie ou IP) na mesma instância para as rotas `/api/auth/*`. Assim o callback do Google será processado pela mesma instância que iniciou o login.
-- Confirme que `NEXTAUTH_URL` e `AUTH_GOOGLE_REDIRECT_URI` estão exatamente iguais à URL que o usuário usa (com ou sem `www`).
-- Se usar apenas uma instância (um container), o problema pode ser cookie não persistido (domínio, path, SameSite) ou uso de múltiplas abas; oriente o usuário a fazer login em uma única aba.
+- **Sticky session (recomendado):** No load balancer ou proxy (Cloudflare, Dokploy, etc.), configure **sticky session** para as rotas `/api/auth/*` para que o mesmo cliente seja atendido pela mesma instância durante todo o fluxo de login (início + callback).
+- **URL canônica:** Use `NEXTAUTH_URL` e `AUTH_GOOGLE_REDIRECT_URI` exatamente iguais à URL que o usuário vê no navegador (com ou sem `www`). No Google Cloud Console, adicione a mesma URI em “URIs de redirecionamento autorizados”.
+- **Uma instância:** Se houver só um container/servidor, verifique se os cookies de auth não estão sendo descartados (domínio, path, `SameSite: lax`) e peça ao usuário para fazer login em uma única aba (evitar voltar/avançar durante o fluxo).
+- **Cache:** Não faça cache das rotas `/api/auth/*` (nem no Cloudflare nem em CDN); o callback deve sempre ir ao origin.
 
 ---
 

@@ -19,7 +19,7 @@ type Match = {
   finishedAt?: string | null;
   winnerTeam?: string | null;
   matchDuration?: number | null;
-  settings?: { mvpUserId?: string; match_code?: string } | null;
+  settings?: { mvpUserId?: string; match_code?: string; valorant_room_code?: string } | null;
   creator: { id: string; username: string | null; name: string | null } | null;
   participants: {
     userId: string;
@@ -52,6 +52,8 @@ export default function MatchDetailPage() {
   const [finishWinner, setFinishWinner] = useState<"red" | "blue">("red");
   const [finishDuration, setFinishDuration] = useState("");
   const [finishMvp, setFinishMvp] = useState("");
+  const [valorantCode, setValorantCode] = useState("");
+  const [submittingCode, setSubmittingCode] = useState(false);
 
   const fetchMatch = () => {
     if (!matchId) return;
@@ -217,7 +219,7 @@ export default function MatchDetailPage() {
           </div>
         </div>
 
-        {match.status === "in_progress" && (match.map || match.settings?.match_code) && (
+        {match.status === "in_progress" && (match.map || match.settings?.match_code || match.settings?.valorant_room_code) && (
           <div className="mt-6 rounded-xl border-2 border-[var(--hub-accent)] bg-[var(--hub-accent)]/10 p-5">
             <p className="text-sm font-bold uppercase tracking-wider text-[var(--hub-accent)] mb-3">
               Partida iniciada — entre no Valorant
@@ -235,9 +237,65 @@ export default function MatchDetailPage() {
                   <p className="text-xl font-mono font-bold tracking-wider text-[var(--hub-accent)]">{match.settings.match_code}</p>
                 </div>
               )}
+              {match.settings?.valorant_room_code ? (
+                <div>
+                  <span className="text-xs text-[var(--hub-text-muted)] uppercase">Código para entrar no Valorant</span>
+                  <p className="text-2xl font-mono font-bold tracking-widest text-white">{match.settings.valorant_room_code}</p>
+                </div>
+              ) : isCreator && (
+                <div className="w-full max-w-sm">
+                  <span className="text-xs text-[var(--hub-text-muted)] uppercase block mb-1">Informar código da sala (Valorant)</span>
+                  <form
+                    className="flex gap-2 flex-wrap"
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      if (!valorantCode.trim() || submittingCode) return;
+                      setSubmittingCode(true);
+                      try {
+                        const res = await fetch(`/api/matches/${matchId}/valorant-code`, {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          credentials: "include",
+                          body: JSON.stringify({ valorantRoomCode: valorantCode.trim() }),
+                        });
+                        const data = await res.json().catch(() => ({}));
+                        if (res.ok) {
+                          setValorantCode("");
+                          fetchMatch();
+                        } else {
+                          alert(data.message || "Erro ao salvar código.");
+                        }
+                      } finally {
+                        setSubmittingCode(false);
+                      }
+                    }}
+                  >
+                    <input
+                      type="text"
+                      maxLength={20}
+                      placeholder="Ex: ABC123"
+                      value={valorantCode}
+                      onChange={(e) => setValorantCode(e.target.value.toUpperCase())}
+                      className="flex-1 min-w-[120px] rounded-lg border border-[var(--hub-border)] bg-[var(--hub-bg)] px-3 py-2 text-lg font-mono text-[var(--hub-text)] placeholder:text-[var(--hub-text-muted)]"
+                    />
+                    <button
+                      type="submit"
+                      disabled={submittingCode || !valorantCode.trim()}
+                      className="rounded-lg bg-[var(--hub-accent)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+                    >
+                      {submittingCode ? "Salvando…" : "Salvar código"}
+                    </button>
+                  </form>
+                  <p className="text-xs text-[var(--hub-text-muted)] mt-1">
+                    Código que aparece no jogo ao criar a partida custom. Todos verão aqui.
+                  </p>
+                </div>
+              )}
             </div>
             <p className="mt-3 text-sm text-[var(--hub-text-muted)]">
-              O criador abre uma partida custom no Valorant, escolhe o mapa acima, e informa o código que aparecer no jogo para os jogadores entrarem. Após o fim da partida, o resultado será sincronizado automaticamente.
+              {match.settings?.valorant_room_code
+                ? "Use o código acima no Valorant para entrar na partida. Após o fim da partida, o resultado será sincronizado automaticamente."
+                : "O criador abre uma partida custom no Valorant, escolhe o mapa acima, e informa o código que aparecer no jogo para os jogadores entrarem. Após o fim da partida, o resultado será sincronizado automaticamente."}
             </p>
           </div>
         )}
