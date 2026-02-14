@@ -270,8 +270,7 @@ export async function getMMR(
     );
     if (!res.ok) return null;
     const data = (await res.json()) as ValorantMMRData;
-    if (data?.status !== undefined && data.status !== 200 && data.status !== 404) return null;
-    return data;
+    if (data?.status !== undefined && data.status !== 200 && data.status !== 404) return null; return data;
   } catch (e) {
     if (e instanceof Error && e.message === VALORANT_RATE_LIMIT_ERROR) throw e;
     console.error("Valorant getMMR", e);

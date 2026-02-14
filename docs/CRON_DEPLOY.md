@@ -28,13 +28,13 @@ node scripts/cron-check-matches.js
 - O ambiente onde o comando roda deve ter a variável **`CRON_SECRET`** (ou `CRON_API_KEY`) com o **mesmo valor** configurado na aplicação (ex.: no `.env` do app ou nas variáveis do deploy).
 - Opcional: **`BASE_URL`** (ex.: `https://www.hubexpresso.com`). Se não definir, usa `https://www.hubexpresso.com`.
 
-No **Docker exec** (teste manual):
+No **Docker exec** (teste manual), com o working directory `/app`:
 
 ```bash
-docker exec <container_id> node /app/scripts/cron-check-matches.js
+docker exec <container_id> node scripts/cron-check-matches.js
 ```
 
-(O path pode ser outro, conforme o working directory do container; ex.: `/app` se o projeto estiver em `/app`.)
+O Dockerfile copia a pasta `scripts` para a imagem final; o comando deve rodar com o diretório de trabalho `/app`.
 
 No **agendador do Dokploy** (Schedule):
 
