@@ -4,6 +4,7 @@ import { auth } from "@/src/lib/auth";
 import { isAllowedAdmin } from "@/src/lib/admin";
 import { invalidateQueueStatusCache } from "@/src/lib/redis";
 import { verifyAndCompleteMissions } from "@/src/lib/missions/verify";
+import { serverError } from "@/src/lib/serverLog";
 
 const MIN_ELO = 0;
 const MAX_ELO = 20;
@@ -144,7 +145,7 @@ export async function POST(request: NextRequest, { params }: Params) {
       mvpUserId: mvpUserId ?? null,
     });
   } catch (e) {
-    console.error("finish match", e);
+    serverError("POST /api/matches/[matchId]/finish", "error", { err: e instanceof Error ? e.message : String(e) });
     return NextResponse.json(
       { error: "Erro ao encerrar partida." },
       { status: 500 }

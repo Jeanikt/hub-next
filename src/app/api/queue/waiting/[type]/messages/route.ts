@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/src/lib/prisma";
 import { auth } from "@/src/lib/auth";
 import { ALL_QUEUE_TYPES, type QueueType } from "@/src/lib/queues";
+import { serverError } from "@/src/lib/serverLog";
 
 const MAX_MESSAGES = 80;
 const MAX_CONTENT_LENGTH = 500;
@@ -44,7 +45,7 @@ export async function GET(request: NextRequest, { params }: Params) {
       })),
     });
   } catch (e) {
-    console.error("queue waiting messages GET", e);
+    serverError("GET /api/queue/waiting/[type]/messages", "error", { err: e instanceof Error ? e.message : String(e) });
     return NextResponse.json(
       { message: "Erro ao carregar mensagens." },
       { status: 500 }
@@ -97,7 +98,7 @@ export async function POST(request: NextRequest, { params }: Params) {
 
     return NextResponse.json({ success: true });
   } catch (e) {
-    console.error("queue waiting messages POST", e);
+    serverError("POST /api/queue/waiting/[type]/messages", "error", { err: e instanceof Error ? e.message : String(e) });
     return NextResponse.json(
       { message: "Erro ao enviar mensagem." },
       { status: 500 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { syncPendingMatchesFromRiot } from "@/src/lib/matchSync";
 import { VALORANT_RATE_LIMIT_ERROR } from "@/src/lib/valorant";
+import { serverError } from "@/src/lib/serverLog";
 
 const CRON_SECRET = process.env.CRON_SECRET ?? process.env.CRON_API_KEY;
 
@@ -35,7 +36,7 @@ export async function GET(request: NextRequest) {
       ...result,
     });
   } catch (e) {
-    console.error("cron check-matches", e);
+    serverError("GET /api/cron/check-matches", "error", { err: e instanceof Error ? e.message : String(e) });
     const isRateLimit = e instanceof Error && e.message === VALORANT_RATE_LIMIT_ERROR;
     return NextResponse.json(
       { error: isRateLimit ? "Rate limit da API Riot. Tente mais tarde." : "Erro ao verificar partidas." },

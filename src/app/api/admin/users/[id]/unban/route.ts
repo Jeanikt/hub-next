@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { serverError } from "@/src/lib/serverLog";
 import { prisma } from "@/src/lib/prisma";
 import { auth } from "@/src/lib/auth";
 import { isAllowedAdmin } from "@/src/lib/admin";
@@ -29,7 +30,7 @@ export async function POST(request: NextRequest, { params }: Params) {
 
     return NextResponse.json({ success: true, message: "Usuário desbanido." });
   } catch (e) {
-    console.error("admin unban", e);
+    serverError("POST /api/admin/users/[id]/unban", "error", { err: e instanceof Error ? e.message : String(e) });
     return NextResponse.json({ message: "Erro ao desbanir." }, { status: 500 });
   }
 }

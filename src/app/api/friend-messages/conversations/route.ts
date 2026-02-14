@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { serverError } from "@/src/lib/serverLog";
 import { prisma } from "@/src/lib/prisma";
 import { auth } from "@/src/lib/auth";
 
@@ -59,7 +60,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ conversations: list });
   } catch (e) {
-    console.error("friend-messages conversations", e);
+    serverError("GET /api/friend-messages/conversations", "error", { err: e instanceof Error ? e.message : String(e) });
     return NextResponse.json({ error: "Erro ao listar conversas." }, { status: 500 });
   }
 }

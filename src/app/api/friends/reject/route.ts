@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { serverError } from "@/src/lib/serverLog";
 import { prisma } from "@/src/lib/prisma";
 import { auth } from "@/src/lib/auth";
 import { friendAcceptRejectSchema } from "@/src/lib/validators/schemas";
@@ -37,7 +38,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, message: "Pedido rejeitado." });
   } catch (e) {
-    console.error("friends reject", e);
+    serverError("POST /api/friends/reject", "error", { err: e instanceof Error ? e.message : String(e) });
     return NextResponse.json({ message: "Erro ao rejeitar." }, { status: 500 });
   }
 }

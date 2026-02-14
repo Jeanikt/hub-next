@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/src/lib/prisma";
 import { auth } from "@/src/lib/auth";
 import { isAllowedAdmin } from "@/src/lib/admin";
+import { serverError } from "@/src/lib/serverLog";
 
 type Params = { params: Promise<{ matchId: string }> };
 
@@ -58,7 +59,7 @@ export async function GET(request: NextRequest, { params }: Params) {
       isAdmin,
     });
   } catch (e) {
-    console.error("match show", e);
+    serverError("GET /api/matches/[matchId]", "error", { err: e instanceof Error ? e.message : String(e) });
     return NextResponse.json({ error: "Erro ao buscar partida." }, { status: 500 });
   }
 }

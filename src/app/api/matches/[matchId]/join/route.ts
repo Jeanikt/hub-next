@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/src/lib/prisma";
 import { auth } from "@/src/lib/auth";
+import { serverError } from "@/src/lib/serverLog";
 
 type Params = { params: Promise<{ matchId: string }> };
 
@@ -60,7 +61,7 @@ export async function POST(request: NextRequest, { params }: Params) {
       team,
     });
   } catch (e) {
-    console.error("match join", e);
+    serverError("POST /api/matches/[matchId]/join", "error", { err: e instanceof Error ? e.message : String(e) });
     return NextResponse.json(
       { message: "Erro ao entrar na partida." },
       { status: 500 }

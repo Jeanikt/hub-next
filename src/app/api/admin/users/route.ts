@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { serverError } from "@/src/lib/serverLog";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/src/lib/prisma";
 import { auth } from "@/src/lib/auth";
@@ -78,7 +79,7 @@ export async function GET(request: NextRequest) {
       perPage,
     });
   } catch (e) {
-    console.error("admin users", e);
+    serverError("GET /api/admin/users", "error", { err: e instanceof Error ? e.message : String(e) });
     return NextResponse.json({ error: "Erro ao listar usuários." }, { status: 500 });
   }
 }

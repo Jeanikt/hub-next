@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/src/lib/prisma";
 import { auth } from "@/src/lib/auth";
+import { serverError } from "@/src/lib/serverLog";
 
 type Params = { params: Promise<{ matchId: string }> };
 
@@ -58,7 +59,7 @@ export async function POST(request: NextRequest, { params }: Params) {
       valorant_room_code: valorantRoomCode,
     });
   } catch (e) {
-    console.error("match valorant-code", e);
+    serverError("POST /api/matches/[matchId]/valorant-code", "error", { err: e instanceof Error ? e.message : String(e) });
     return NextResponse.json(
       { message: "Erro ao salvar código da sala." },
       { status: 500 }

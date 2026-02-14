@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/src/lib/prisma";
 import { auth } from "@/src/lib/auth";
 import { randomUUID } from "crypto";
+import { serverError, serverLog } from "@/src/lib/serverLog";
 
 /** GET /api/matches – lista partidas (público, paginado). ?status=pending|in_progress|completed filtra. */
 export async function GET(request: NextRequest) {
@@ -47,7 +48,7 @@ export async function GET(request: NextRequest) {
       perPage,
     });
   } catch (e) {
-    console.error("matches list", e);
+    serverError("GET /api/matches", "error", { err: e instanceof Error ? e.message : String(e) });
     return NextResponse.json({ error: "Erro ao listar partidas." }, { status: 500 });
   }
 }
@@ -94,7 +95,7 @@ export async function POST(request: NextRequest) {
         }),
       },
     });
-    console.log("Partida criada", match)
+    serverLog("POST /api/matches", "Partida criada", { matchId: match.matchId })
 
     await prisma.gameMatchUser.create({
       data: {

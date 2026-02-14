@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { serverError } from "@/src/lib/serverLog";
 import { prisma } from "@/src/lib/prisma";
 import { auth } from "@/src/lib/auth";
 import { sendLobbyMessageSchema } from "@/src/lib/validators/schemas";
@@ -55,7 +56,7 @@ export async function POST(request: NextRequest) {
       createdAt: message.createdAt,
     });
   } catch (e) {
-    console.error("lobby-messages send", e);
+    serverError("POST /api/lobby-messages/send", "error", { err: e instanceof Error ? e.message : String(e) });
     return NextResponse.json({ message: "Erro ao enviar mensagem." }, { status: 500 });
   }
 }

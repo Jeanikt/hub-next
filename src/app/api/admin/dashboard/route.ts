@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { serverError } from "@/src/lib/serverLog";
 import { prisma } from "@/src/lib/prisma";
 import { auth } from "@/src/lib/auth";
 import { isAllowedAdmin } from "@/src/lib/admin";
@@ -39,7 +40,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (e) {
-    console.error("admin dashboard", e);
+    serverError("GET /api/admin/dashboard", "error", { err: e instanceof Error ? e.message : String(e) });
     return NextResponse.json({ error: "Erro ao carregar dashboard." }, { status: 500 });
   }
 }

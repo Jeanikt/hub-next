@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/src/lib/prisma";
 import { auth } from "@/src/lib/auth";
+import { serverError } from "@/src/lib/serverLog";
 
 type Params = { params: Promise<{ matchId: string }> };
 
@@ -50,7 +51,7 @@ export async function POST(request: NextRequest, { params }: Params) {
 
     return NextResponse.json({ success: true, message: "Partida cancelada." });
   } catch (e) {
-    console.error("match cancel", e);
+    serverError("POST /api/matches/[matchId]/cancel", "error", { err: e instanceof Error ? e.message : String(e) });
     return NextResponse.json(
       { message: "Erro ao cancelar partida." },
       { status: 500 }

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { serverError } from "@/src/lib/serverLog";
 import { prisma } from "@/src/lib/prisma";
 import { auth } from "@/src/lib/auth";
 import { isAllowedAdmin } from "@/src/lib/admin";
@@ -59,7 +60,7 @@ export async function POST(request: NextRequest, { params }: Params) {
       message: permanent ? "Usuário banido permanentemente." : "Usuário suspenso até a data definida.",
     });
   } catch (e) {
-    console.error("admin ban", e);
+    serverError("POST /api/admin/users/[id]/ban", "error", { err: e instanceof Error ? e.message : String(e) });
     return NextResponse.json({ message: "Erro ao banir." }, { status: 500 });
   }
 }

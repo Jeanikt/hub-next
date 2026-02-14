@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { serverError } from "@/src/lib/serverLog";
 import { auth } from "@/src/lib/auth";
 import { prisma } from "@/src/lib/prisma";
 import { ONLINE_WINDOW_MS } from "@/src/lib/online";
@@ -24,7 +25,7 @@ export async function GET() {
       prisma.$executeRaw`UPDATE users SET "isOnline" = false WHERE "isOnline" = true AND "lastLoginAt" < ${cutoff}`,
     ]);
   } catch (e) {
-    console.error("presence heartbeat", e);
+    serverError("POST /api/presence/heartbeat", "error", { err: e instanceof Error ? e.message : String(e) });
     return NextResponse.json({ ok: false }, { status: 500 });
   }
 

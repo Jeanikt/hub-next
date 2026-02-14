@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { serverError } from "@/src/lib/serverLog";
 import { prisma } from "@/src/lib/prisma";
 import { auth } from "@/src/lib/auth";
 import { markReadFriendSchema } from "@/src/lib/validators/schemas";
@@ -30,7 +31,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (e) {
-    console.error("friend-messages mark-read", e);
+    serverError("POST /api/friend-messages/mark-read", "error", { err: e instanceof Error ? e.message : String(e) });
     return NextResponse.json({ message: "Erro ao marcar como lida." }, { status: 500 });
   }
 }

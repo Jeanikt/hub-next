@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { serverError } from "@/src/lib/serverLog";
 import { auth } from "@/src/lib/auth";
 import { prisma } from "@/src/lib/prisma";
 import { levelFromXp } from "@/src/lib/xpLevel";
@@ -90,7 +91,7 @@ export async function POST(request: NextRequest) {
     res.cookies.set("hub_invite_ref", "", { maxAge: 0, path: "/" });
     return res;
   } catch (e) {
-    console.error("referrals/attribute", e);
+    serverError("POST /api/referrals/attribute", "error", { err: e instanceof Error ? e.message : String(e) });
     return NextResponse.json({ error: "Erro ao atribuir convite." }, { status: 500 });
   }
 }

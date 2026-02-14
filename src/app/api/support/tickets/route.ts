@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { serverError } from "@/src/lib/serverLog";
 import { auth } from "@/src/lib/auth";
 import { prisma } from "@/src/lib/prisma";
 
@@ -21,7 +22,7 @@ export async function GET() {
     });
     return NextResponse.json({ data: tickets, total: tickets.length });
   } catch (e) {
-    console.error("support tickets list", e);
+    serverError("GET /api/support/tickets", "error", { err: e instanceof Error ? e.message : String(e) });
     return NextResponse.json({ error: "Erro ao listar tickets." }, { status: 500 });
   }
 }
@@ -53,7 +54,7 @@ export async function POST(request: NextRequest) {
     });
     return NextResponse.json({ success: true, ...ticket }, { status: 201 });
   } catch (e) {
-    console.error("support ticket create", e);
+    serverError("GET /api/support/tickets", "error", { err: e instanceof Error ? e.message : String(e) });
     return NextResponse.json({ error: "Erro ao criar ticket." }, { status: 500 });
   }
 }

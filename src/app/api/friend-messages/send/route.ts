@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { serverError } from "@/src/lib/serverLog";
 import { prisma } from "@/src/lib/prisma";
 import { auth } from "@/src/lib/auth";
 import { sendFriendMessageSchema } from "@/src/lib/validators/schemas";
@@ -53,7 +54,7 @@ export async function POST(request: NextRequest) {
       createdAt: message.createdAt,
     });
   } catch (e) {
-    console.error("friend-messages send", e);
+    serverError("POST /api/friend-messages/send", "error", { err: e instanceof Error ? e.message : String(e) });
     return NextResponse.json({ message: "Erro ao enviar mensagem." }, { status: 500 });
   }
 }

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { serverError } from "@/src/lib/serverLog";
 import { auth } from "@/src/lib/auth";
 import { isAllowedAdmin } from "@/src/lib/admin";
 import { prisma } from "@/src/lib/prisma";
@@ -96,7 +97,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (e) {
-    console.error("POST /api/admin/missions", e);
+    serverError("POST /api/admin/missions", "error", { err: e instanceof Error ? e.message : String(e) });
     return NextResponse.json({ error: "Erro ao cadastrar missão." }, { status: 500 });
   }
 }

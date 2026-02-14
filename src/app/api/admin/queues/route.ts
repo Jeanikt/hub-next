@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { serverError } from "@/src/lib/serverLog";
 import { prisma } from "@/src/lib/prisma";
 import { auth } from "@/src/lib/auth";
 import { isAllowedAdmin } from "@/src/lib/admin";
@@ -52,7 +53,7 @@ export async function GET() {
 
     return NextResponse.json({ data: queues });
   } catch (e) {
-    console.error("admin queues", e);
+    serverError("GET /api/admin/queues", "error", { err: e instanceof Error ? e.message : String(e) });
     return NextResponse.json({ error: "Erro ao listar filas." }, { status: 500 });
   }
 }

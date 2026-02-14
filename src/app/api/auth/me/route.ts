@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { serverError } from "@/src/lib/serverLog";
 import type { NextRequest } from "next/server";
 import { prisma } from "@/src/lib/prisma";
 import { auth } from "@/src/lib/auth";
@@ -38,7 +39,7 @@ export async function GET(_request: NextRequest) {
 
     return NextResponse.json(user, { status: 200 });
   } catch (error) {
-    console.error("Erro em /api/auth/me", error);
+    serverError("GET /api/auth/me", "error", { err: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ message: "Erro ao buscar usuario autenticado." }, { status: 500 });
   }
 }

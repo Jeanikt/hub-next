@@ -16,6 +16,7 @@ import {
   FOURTH_QUEUE_TYPE,
   getPlayersRequired,
 } from "@/src/lib/queues";
+import { serverError } from "@/src/lib/serverLog";
 
 type QueueType = (typeof ALL_QUEUE_TYPES)[number];
 
@@ -225,7 +226,7 @@ export async function POST(request: NextRequest) {
       matchId,
     });
   } catch (e) {
-    console.error("queue join", e);
+    serverError("POST /api/queue/join", "error", { err: e instanceof Error ? e.message : String(e) });
     return NextResponse.json({ message: "Erro ao entrar na fila." }, { status: 500 });
   }
 }

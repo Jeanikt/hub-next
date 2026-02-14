@@ -9,6 +9,7 @@ import {
   FOURTH_QUEUE_TYPE,
   getPlayersRequired,
 } from "@/src/lib/queues";
+import { serverError } from "@/src/lib/serverLog";
 
 async function computeQueues(
   queueTypeParam: string | null,
@@ -194,7 +195,7 @@ export async function GET(request: NextRequest) {
     }
     return NextResponse.json(body, { headers });
   } catch (e) {
-    console.error("queue status", e);
+    serverError("GET /api/queue/status", "error", { err: e instanceof Error ? e.message : String(e) });
     return NextResponse.json(
       { error: "Erro ao obter status da fila" },
       { status: 500 }

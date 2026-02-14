@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/src/lib/prisma";
 import { auth } from "@/src/lib/auth";
 import { invalidateQueueStatusCache } from "@/src/lib/redis";
+import { serverError } from "@/src/lib/serverLog";
 
 export async function POST() {
   try {
@@ -31,7 +32,7 @@ export async function POST() {
       message: "Você saiu da fila.",
     });
   } catch (e) {
-    console.error("queue leave", e);
+    serverError("POST /api/queue/leave", "error", { err: e instanceof Error ? e.message : String(e) });
     return NextResponse.json(
       { message: "Erro ao sair da fila." },
       { status: 500 }

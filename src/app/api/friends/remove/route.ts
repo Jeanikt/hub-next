@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { serverError } from "@/src/lib/serverLog";
 import { prisma } from "@/src/lib/prisma";
 import { auth } from "@/src/lib/auth";
 import { removeFriendSchema } from "@/src/lib/validators/schemas";
@@ -35,7 +36,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, message: "Amizade removida." });
   } catch (e) {
-    console.error("friends remove", e);
+    serverError("POST /api/friends/remove", "error", { err: e instanceof Error ? e.message : String(e) });
     return NextResponse.json({ message: "Erro ao remover." }, { status: 500 });
   }
 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { startPendingMatchesWithFullTeams } from "@/src/lib/startPendingMatches";
+import { serverError } from "@/src/lib/serverLog";
 
 const CRON_SECRET = process.env.CRON_SECRET ?? process.env.CRON_API_KEY;
 
@@ -33,7 +34,7 @@ export async function GET(request: NextRequest) {
       ...result,
     });
   } catch (e) {
-    console.error("cron start-pending-matches", e);
+    serverError("GET /api/cron/start-pending-matches", "error", { err: e instanceof Error ? e.message : String(e) });
     return NextResponse.json(
       { error: "Erro ao iniciar partidas pendentes." },
       { status: 500 }

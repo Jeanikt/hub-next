@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { serverError } from "@/src/lib/serverLog";
 import { auth } from "@/src/lib/auth";
 import { prisma } from "@/src/lib/prisma";
 import { getAccount, VALORANT_RATE_LIMIT_ERROR } from "@/src/lib/valorant";
@@ -95,7 +96,7 @@ export async function POST(req: Request) {
         { status: 503 }
       );
     }
-    console.error("POST /api/onboarding/riot", e);
+    serverError("POST /api/onboarding/riot", "error", { err: e instanceof Error ? e.message : String(e) });
     return NextResponse.json(
       { message: "Erro ao vincular conta. Tente novamente." },
       { status: 500 }

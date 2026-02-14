@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { serverError } from "@/src/lib/serverLog";
 import { prisma } from "@/src/lib/prisma";
 import { auth } from "@/src/lib/auth";
 import { isAllowedAdmin } from "@/src/lib/admin";
@@ -67,7 +68,7 @@ export async function PATCH(
       { status: 422 }
     );
   } catch (e) {
-    console.error("admin matches PATCH", e);
+    serverError("PATCH /api/admin/matches/[id]", "error", { err: e instanceof Error ? e.message : String(e) });
     return NextResponse.json({ error: "Erro ao atualizar partida." }, { status: 500 });
   }
 }

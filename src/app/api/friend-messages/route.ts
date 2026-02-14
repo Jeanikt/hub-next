@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { serverError } from "@/src/lib/serverLog";
 import { prisma } from "@/src/lib/prisma";
 import { auth } from "@/src/lib/auth";
 import { isUserOnline } from "@/src/lib/online";
@@ -22,7 +23,7 @@ export async function GET(request: NextRequest) {
       if (!u) return NextResponse.json({ message: "Usuário não encontrado." }, { status: 404 });
       peerId = u.id;
     } catch (e) {
-      console.error("friend-messages resolve username", e);
+      serverError("GET /api/friend-messages", "error", { err: e instanceof Error ? e.message : String(e) });
       return NextResponse.json({ error: "Erro ao listar mensagens." }, { status: 500 });
     }
   } else {
@@ -69,7 +70,7 @@ export async function GET(request: NextRequest) {
       })),
     });
   } catch (e) {
-    console.error("friend-messages list", e);
+    serverError("GET /api/friend-messages", "error", { err: e instanceof Error ? e.message : String(e) });
     return NextResponse.json({ error: "Erro ao listar mensagens." }, { status: 500 });
   }
 }

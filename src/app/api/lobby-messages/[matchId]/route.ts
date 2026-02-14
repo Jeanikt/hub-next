@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { serverError } from "@/src/lib/serverLog";
 import { prisma } from "@/src/lib/prisma";
 import { auth } from "@/src/lib/auth";
 
@@ -49,7 +50,7 @@ export async function GET(request: NextRequest, { params }: Params) {
       })),
     });
   } catch (e) {
-    console.error("lobby-messages list", e);
+    serverError("GET /api/lobby-messages/[matchId]", "error", { err: e instanceof Error ? e.message : String(e) });
     return NextResponse.json({ error: "Erro ao listar mensagens." }, { status: 500 });
   }
 }

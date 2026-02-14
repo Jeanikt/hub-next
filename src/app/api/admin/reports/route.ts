@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { serverError } from "@/src/lib/serverLog";
 import { auth } from "@/src/lib/auth";
 import { isAllowedAdmin } from "@/src/lib/admin";
 import { prisma } from "@/src/lib/prisma";
@@ -29,7 +30,7 @@ export async function GET() {
     }));
     return NextResponse.json({ data, total: data.length });
   } catch (e) {
-    console.error("admin reports", e);
+    serverError("GET /api/admin/reports", "error", { err: e instanceof Error ? e.message : String(e) });
     return NextResponse.json({ error: "Erro ao listar reports." }, { status: 500 });
   }
 }

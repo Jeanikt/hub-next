@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { serverError } from "@/src/lib/serverLog";
 import { prisma } from "@/src/lib/prisma";
 
 /** GET /api/leaderboard – ranking por ELO (público, sempre atualizado) */
@@ -41,7 +42,7 @@ export async function GET(request: NextRequest) {
       offset,
     });
   } catch (e) {
-    console.error("leaderboard", e);
+    serverError("GET /api/leaderboard", "error", { err: e instanceof Error ? e.message : String(e) });
     return NextResponse.json({ error: "Erro ao carregar ranking." }, { status: 500 });
   }
 }

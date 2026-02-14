@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { serverError } from "@/src/lib/serverLog";
 import { prisma } from "@/src/lib/prisma";
 
 /** GET /api/users – listagem pública OU perfil por ?username= */
@@ -94,7 +95,7 @@ export async function GET(request: NextRequest) {
       perPage,
     });
   } catch (e) {
-    console.error("users list", e);
+    serverError("GET /api/users", "error", { err: e instanceof Error ? e.message : String(e) });
     return NextResponse.json({ error: "Erro ao listar usuários." }, { status: 500 });
   }
 }

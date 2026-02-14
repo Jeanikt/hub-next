@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { serverError } from "@/src/lib/serverLog";
 import { prisma } from "@/src/lib/prisma";
 import { getUsersCountCache, setUsersCountCache } from "@/src/lib/redis";
 
@@ -13,7 +14,7 @@ export async function GET() {
 
     return NextResponse.json({ total });
   } catch (e) {
-    console.error("users count", e);
+    serverError("GET /api/users/count", "error", { err: e instanceof Error ? e.message : String(e) });
     return NextResponse.json({ error: "Erro ao obter total." }, { status: 500 });
   }
 }
