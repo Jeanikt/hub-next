@@ -79,8 +79,8 @@ export function getRankLabelFromPoints(points: number): string {
     .join(" ");
 }
 
-/** Pontos máximos para fila Low ELO (até Platina 1 = 8). Quem tem 0–8 pode entrar. */
-export const LOW_ELO_MAX_POINTS = 8;
+/** Pontos máximos para fila Low ELO (até Platina 3 = 10). Quem tem 0–10 pode entrar. */
+export const LOW_ELO_MAX_POINTS = 10;
 
 /** Pontos mínimos para fila High ELO (Diamante 1+ = 11). Quem tem 11–20 pode entrar. */
 export const HIGH_ELO_MIN_POINTS = 11;

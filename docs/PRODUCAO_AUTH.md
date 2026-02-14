@@ -117,3 +117,32 @@ Isso executa `prisma migrate reset --force`: **apaga todos os dados**, recria o 
 ## 9. Cache (Redis)
 
 O Redis neste projeto é usado **apenas** para cache do status da fila (`hub:queue:status`, TTL 3s). **Não afeta autenticação.** Se quiser “resetar” o cache da fila, use `invalidateQueueStatusCache()` ou `resetQueueCache()` de `@/src/lib/redis` (por exemplo numa rota de admin).
+
+---
+
+## 10. Erros MissingCSRF / Invalid code verifier em multi-datacenter
+
+Quando o tráfego passa por **vários datacenters** (ex.: Cloudflare, load balancer) ou o usuário é atendido por **instâncias diferentes** entre o início do login e o callback, o cookie com o **code_verifier** (PKCE) ou o **CSRF token** pode não estar na mesma instância que processa o callback. Resultado: `MissingCSRF`, `Invalid code verifier` ou `InvalidCheck` (pkceCodeVerifier).
+
+**Recomendações:**
+
+- **Sticky session (recomendado):** Configure o load balancer ou o proxy (ex.: Cloudflare Load Balancing, ou o proxy na frente do Dokploy) para manter a mesma sessão (cookie ou IP) na mesma instância para as rotas `/api/auth/*`. Assim o callback do Google será processado pela mesma instância que iniciou o login.
+- Confirme que `NEXTAUTH_URL` e `AUTH_GOOGLE_REDIRECT_URI` estão exatamente iguais à URL que o usuário usa (com ou sem `www`).
+- Se usar apenas uma instância (um container), o problema pode ser cookie não persistido (domínio, path, SameSite) ou uso de múltiplas abas; oriente o usuário a fazer login em uma única aba.
+
+---
+
+## 11. Cloudflare Cache Level
+
+O **Cache Level** do Cloudflare define **quanto do conteúdo estático** da zona é cacheado. Valores comuns:
+
+- **Standard** – Cacheia apenas recursos estáticos (ex.: imagens, CSS, JS). Boa opção para sites com muitas páginas dinâmicas (como este).
+- **Ignore query string** – Trata URLs com query strings diferentes como a mesma para cache (ex.: `?utm_source=x` não gera nova entrada). Aumenta o hit rate.
+- **No query string** – Só cacheia se a URL não tiver query string.
+
+Para **reduzir carga no origin** (ex.: servidor Dokploy) e melhorar tempo de carregamento, use **Standard** ou **Ignore query string**. Não use "Cache Everything" em rotas dinâmicas ou API.
+
+**Alterar via API (zone setting):**
+
+- **GET** (ler): `GET https://api.cloudflare.com/client/v4/zones/{zone_id}/settings/cache_level`
+- **PATCH** (editar): `PATCH https://api.cloudflare.com/client/v4/zones/{zone_id}/settings/cache_level` com body `{ "value": "standard" }` (ou `"ignore"` para ignore query string). Ver [Edit Zone Setting](https://developers.cloudflare.com/api/resources/zones/subresources/settings/methods/edit/).

@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           message:
-            "Sua rank atual não permite esta fila. Low ELO: até Platina; High ELO: Diamante ou acima; Inclusiva: qualquer elo.",
+            "Sua rank atual não permite esta fila. Low ELO: até Platina 3; High ELO: Diamante ou acima; Inclusiva: qualquer elo.",
         },
         { status: 403 }
       );

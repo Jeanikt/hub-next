@@ -39,7 +39,7 @@ const QUEUE_TYPES = [
   {
     id: "low_elo",
     label: "FILA LOW ELO",
-    desc: "Até Platina (pontos 0–8). Do Ferro ao Platina 1.",
+    desc: "Até Platina 3 (pontos 0–10). Do Ferro ao Platina 3.",
     color: "from-[#0d9488]/30 to-[#0d9488]/5",
     borderColor: "border-teal-500/40",
     accent: "text-teal-400",
