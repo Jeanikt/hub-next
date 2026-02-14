@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { getQueueAliasFromId } from "@/src/lib/valorant";
+import { getQueueDisplayName } from "@/src/lib/queues";
 
 type QueuePlayer = {
   id: string;
@@ -31,6 +32,7 @@ type QueueStatus = {
       count: number;
       players_needed: number;
       estimated_time: string;
+      required?: number;
       players: QueuePlayer[];
     }
   >;
@@ -42,8 +44,6 @@ type QueueStatus = {
   matchFound?: boolean;
   matchId?: string | null;
 };
-
-const PLAYERS_NEEDED = 10;
 
 export default function QueuePage() {
   const router = useRouter();
@@ -137,7 +137,7 @@ export default function QueuePage() {
       {data?.inQueue && data.currentQueue && (
         <div className="border border-green-500/40 p-4 rounded">
           Você está na fila{" "}
-          <strong>{data.currentQueue.replace("_", " ")}</strong>
+          <strong>{getQueueDisplayName(data.currentQueue)}</strong>
           <div className="mt-3">
             <button
               onClick={() =>
@@ -151,18 +151,18 @@ export default function QueuePage() {
         </div>
       )}
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         {Object.entries(data?.status ?? {}).map(([key, st]) => (
           <div
             key={key}
             className="border border-[var(--hub-border)] p-5 rounded"
           >
             <h2 className="font-bold uppercase">
-              {key === "secret" ? "Secret (teste admin)" : key.replace("_", " ")}
+              {getQueueDisplayName(key)}
             </h2>
 
             <p className="mt-2 text-sm">
-              {st.count}/{(st as { required?: number }).required ?? 10} jogadores
+              {st.count}/{st.required ?? 10} jogadores
             </p>
 
             {!data?.inQueue &&

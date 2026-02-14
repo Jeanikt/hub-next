@@ -4,7 +4,9 @@ import { auth } from "@/src/lib/auth";
 import { isAllowedAdmin } from "@/src/lib/admin";
 import { invalidateQueueStatusCache } from "@/src/lib/redis";
 
-const VALID_TYPES = ["low_elo", "high_elo", "inclusive", "secret"] as const;
+import { ALL_QUEUE_TYPES } from "@/src/lib/queues";
+
+const VALID_TYPES = ALL_QUEUE_TYPES;
 
 /** POST /api/admin/queues/clear – esvaziar fila(s). Body: { queueType?: "low_elo"|"high_elo"|"inclusive" } – se omitir, esvazia todas. */
 export async function POST(request: NextRequest) {

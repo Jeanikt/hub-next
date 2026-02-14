@@ -10,14 +10,18 @@ import {
 import { randomUUID } from "crypto";
 import { ROLE_IDS } from "@/src/lib/roles";
 import { generateMatchCode } from "@/src/lib/inviteCode";
-import { canSeeSecretQueue } from "@/src/lib/admin";
+import { canSeeFourthQueue } from "@/src/lib/admin";
+import {
+  ALL_QUEUE_TYPES,
+  FOURTH_QUEUE_TYPE,
+  getPlayersRequired,
+} from "@/src/lib/queues";
 
-const VALID_TYPES = ["low_elo", "high_elo", "inclusive", "secret"] as const;
-type QueueType = (typeof VALID_TYPES)[number];
+type QueueType = (typeof ALL_QUEUE_TYPES)[number];
 
-/** Para fila "secret" (admin/teste): 2 jogadores (1 de cada lado). Demais: 5v5. */
 function getQueueSizes(qt: QueueType): { playersNeeded: number; redSize: number; blueSize: number } {
-  if (qt === "secret") return { playersNeeded: 2, redSize: 1, blueSize: 1 };
+  const needed = getPlayersRequired(qt);
+  if (needed === 2) return { playersNeeded: 2, redSize: 1, blueSize: 1 };
   return { playersNeeded: 10, redSize: 5, blueSize: 5 };
 }
 
@@ -68,19 +72,19 @@ export async function POST(request: NextRequest) {
     const body = await request.json().catch(() => ({}));
     const queue_type = body.queue_type as string | undefined;
 
-    if (!queue_type || !VALID_TYPES.includes(queue_type as QueueType)) {
+    if (!queue_type || !ALL_QUEUE_TYPES.includes(queue_type as QueueType)) {
       return NextResponse.json(
-        { message: "queue_type inválido. Use: low_elo, high_elo, inclusive, secret (apenas admin)." },
+        { message: "queue_type inválido. Use: low_elo, high_elo, inclusive, test_2v2." },
         { status: 422 }
       );
     }
 
     const qt = queue_type as QueueType;
 
-    if (qt === "secret") {
-      if (!canSeeSecretQueue(session)) {
+    if (qt === FOURTH_QUEUE_TYPE) {
+      if (!canSeeFourthQueue(session)) {
         return NextResponse.json(
-          { message: "A fila secreta é apenas para super admins (teste de partidas)." },
+          { message: "A 4ª fila (Teste 2v2) é restrita a usuários autorizados." },
           { status: 403 }
         );
       }
@@ -99,7 +103,7 @@ export async function POST(request: NextRequest) {
     }
 
     const rankPoints = user.elo ?? 0;
-    if (qt !== "secret" && !canJoinQueue(qt, rankPoints)) {
+    if (qt !== FOURTH_QUEUE_TYPE && !canJoinQueue(qt as "low_elo" | "high_elo" | "inclusive", rankPoints)) {
       return NextResponse.json(
         {
           message:
@@ -168,7 +172,7 @@ export async function POST(request: NextRequest) {
                   maxPlayers: playersNeeded,
                   startedAt: new Date(),
                   settings: JSON.stringify({
-                    visibility: qt === "secret" ? "secret" : "public",
+                    visibility: qt === FOURTH_QUEUE_TYPE ? "test" : "public",
                     from_queue: true,
                     queue_type: qt,
                     map_pool: mapPool,

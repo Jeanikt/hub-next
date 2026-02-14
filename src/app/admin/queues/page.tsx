@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Users, Trash2, Loader2, RotateCcw } from "lucide-react";
+import { getQueueDisplayName } from "@/src/lib/queues";
 
 type QueueEntry = {
   type: string;
@@ -108,7 +109,7 @@ export default function AdminQueuesPage() {
           >
             <div className="border-b border-[var(--hub-border)] bg-[var(--hub-bg-elevated)] px-4 py-3 flex items-center justify-between gap-2">
               <span className="font-bold uppercase tracking-wider text-[var(--hub-text)]">
-                {q.type.replace("_", " ")}
+                {getQueueDisplayName(q.type)}
               </span>
               <div className="flex items-center gap-2">
                 <span className="flex items-center gap-1.5 text-sm text-[var(--hub-accent)]">

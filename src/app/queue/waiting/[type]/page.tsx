@@ -4,6 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getQueueAliasFromId } from "@/src/lib/valorant";
+import { getQueueDisplayName, getPlayersRequired } from "@/src/lib/queues";
 
 type QueuePlayer = {
   id: string;
@@ -66,7 +67,7 @@ export default function WaitingRoomPage() {
   }, [type, router]);
 
   const players = data?.queuePlayers ?? [];
-  const needed = type === "secret" ? 2 : 10;
+  const needed = getPlayersRequired(type);
 
   return (
     <div className="space-y-6">
@@ -81,7 +82,7 @@ export default function WaitingRoomPage() {
       </Link>
 
       <h1 className="text-2xl font-bold">
-        Sala de espera — {type.replace("_", " ")}
+        Sala de espera — {getQueueDisplayName(type)}
       </h1>
 
       <p>

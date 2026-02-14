@@ -3,20 +3,20 @@ import { prisma } from "@/src/lib/prisma";
 import { auth } from "@/src/lib/auth";
 import { getAllowedQueues } from "@/src/lib/rankPoints";
 import { getQueueStatusCache, setQueueStatusCache } from "@/src/lib/redis";
-import { canSeeSecretQueue } from "@/src/lib/admin";
-
-const QUEUE_TYPES = ["low_elo", "high_elo", "inclusive"] as const;
-const SECRET_QUEUE = "secret";
-const PLAYERS_NEEDED = 10;
-const SECRET_PLAYERS_NEEDED = 2;
+import { canSeeFourthQueue } from "@/src/lib/admin";
+import {
+  PUBLIC_QUEUE_TYPES,
+  FOURTH_QUEUE_TYPE,
+  getPlayersRequired,
+} from "@/src/lib/queues";
 
 async function computeQueues(
   queueTypeParam: string | null,
-  includeSecret: boolean
+  includeFourthQueue: boolean
 ) {
   const types = [
-    ...QUEUE_TYPES,
-    ...(includeSecret ? [SECRET_QUEUE] : []),
+    ...PUBLIC_QUEUE_TYPES,
+    ...(includeFourthQueue ? [FOURTH_QUEUE_TYPE] : []),
   ] as string[];
 
   const queues: Record<string, { count: number; players: unknown[]; players_needed: number; estimated_time: string; required: number }> = {};
@@ -43,7 +43,7 @@ async function computeQueues(
     });
 
     const count = entries.length;
-    const needed = type === SECRET_QUEUE ? SECRET_PLAYERS_NEEDED : PLAYERS_NEEDED;
+    const needed = getPlayersRequired(type);
     const players = entries.map((e) => ({
       id: e.user.id,
       username: e.user.username,
@@ -56,8 +56,8 @@ async function computeQueues(
     }));
 
     let estimated_time = "Indisponível";
-    if (type === SECRET_QUEUE) {
-      estimated_time = count >= 1 ? "Menos de 1 minuto" : "Aguardando outro admin";
+    if (type === FOURTH_QUEUE_TYPE) {
+      estimated_time = count >= 1 ? "Menos de 1 minuto" : "Aguardando outro jogador";
     } else {
       if (count >= 9) estimated_time = "Menos de 1 minuto";
       else if (count >= 6) estimated_time = "2-5 minutos";
@@ -78,14 +78,14 @@ async function computeQueues(
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
-    // Fila secreta: verificar por e-mail (sessão ou DB, para garantir que super admins vejam)
-    let includeSecret = canSeeSecretQueue(session);
-    if (!includeSecret && session?.user?.id) {
+    // 4ª fila: apenas jeandev003 e yagobtelles (e-mail na sessão ou no DB)
+    let includeFourthQueue = canSeeFourthQueue(session);
+    if (!includeFourthQueue && session?.user?.id) {
       const user = await prisma.user.findUnique({
         where: { id: session.user.id },
         select: { email: true },
       });
-      includeSecret = canSeeSecretQueue({ user: { email: user?.email ?? null } });
+      includeFourthQueue = canSeeFourthQueue({ user: { email: user?.email ?? null } });
     }
 
     const searchParams = request.nextUrl.searchParams;
@@ -103,7 +103,7 @@ export async function GET(request: NextRequest) {
       if (entry) userInQueue = entry.queueType;
     }
 
-    const useCache = !userInQueue && !includeSecret;
+    const useCache = !userInQueue && !includeFourthQueue;
     const cached = useCache ? await getQueueStatusCache() : null;
     if (cached) {
       try {
@@ -117,8 +117,8 @@ export async function GET(request: NextRequest) {
         await setQueueStatusCache(JSON.stringify(queues));
       }
     } else {
-      queues = await computeQueues(queueTypeParam || null, includeSecret);
-      if (!userInQueue && !includeSecret) await setQueueStatusCache(JSON.stringify(queues));
+      queues = await computeQueues(queueTypeParam || null, includeFourthQueue);
+      if (!userInQueue && !includeFourthQueue) await setQueueStatusCache(JSON.stringify(queues));
     }
 
     let inQueue = false;
@@ -160,7 +160,7 @@ export async function GET(request: NextRequest) {
       ]);
       hasRiotLinked = !!me?.riotAccount;
       allowed_queues = hasRiotLinked ? getAllowedQueues(me?.elo ?? 0) : [];
-      if (includeSecret) allowed_queues.push(SECRET_QUEUE);
+      if (includeFourthQueue) allowed_queues.push(FOURTH_QUEUE_TYPE);
       if (myEntry) {
         inQueue = true;
         currentQueue = myEntry.queueType;

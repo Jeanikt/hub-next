@@ -11,8 +11,10 @@ export async function GET() {
       return NextResponse.json({ message: "Acesso negado." }, { status: 403 });
     }
 
-    const types = ["low_elo", "high_elo", "inclusive", "secret"] as const;
-    const playersNeededByType: Record<string, number> = { secret: 2 };
+    const { ALL_QUEUE_TYPES, getPlayersRequired } = await import("@/src/lib/queues");
+    const types = ALL_QUEUE_TYPES;
+    const playersNeededByType: Record<string, number> = {};
+    for (const t of types) playersNeededByType[t] = getPlayersRequired(t);
     const queues = await Promise.all(
       types.map(async (type) => {
         const entries = await prisma.queueEntry.findMany({
