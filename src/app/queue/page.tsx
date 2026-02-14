@@ -157,10 +157,12 @@ export default function QueuePage() {
             key={key}
             className="border border-[var(--hub-border)] p-5 rounded"
           >
-            <h2 className="font-bold uppercase">{key.replace("_", " ")}</h2>
+            <h2 className="font-bold uppercase">
+              {key === "secret" ? "Secret (teste admin)" : key.replace("_", " ")}
+            </h2>
 
             <p className="mt-2 text-sm">
-              {st.count}/{st.players_needed} jogadores
+              {st.count}/{(st as { required?: number }).required ?? 10} jogadores
             </p>
 
             {!data?.inQueue &&

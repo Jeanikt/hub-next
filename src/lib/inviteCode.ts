@@ -4,7 +4,8 @@
 
 const CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const CODE_LENGTH = 8;
-const MATCH_CODE_LENGTH = 6;
+const LETTERS = "ABCDEFGHJKLMNPQRSTUVWXYZ"; // sem I,O para evitar confusão
+const DIGITS = "0123456789";
 
 export function generateInviteCode(): string {
   let code = "";
@@ -14,13 +15,17 @@ export function generateInviteCode(): string {
   return code;
 }
 
-/** Código curto para partida (ex.: sala custom Valorant). */
+/** Código da partida no formato ZMB553 (3 letras + 3 números). */
 export function generateMatchCode(): string {
-  let code = "";
-  for (let i = 0; i < MATCH_CODE_LENGTH; i++) {
-    code += CHARS[Math.floor(Math.random() * CHARS.length)];
+  let letters = "";
+  for (let i = 0; i < 3; i++) {
+    letters += LETTERS[Math.floor(Math.random() * LETTERS.length)];
   }
-  return code;
+  let digits = "";
+  for (let i = 0; i < 3; i++) {
+    digits += DIGITS[Math.floor(Math.random() * DIGITS.length)];
+  }
+  return letters + digits;
 }
 
 /** Gera um código amigável a partir do username (ex: JEAN -> JEAN-XXXX) ou aleatório */

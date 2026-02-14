@@ -6,6 +6,7 @@ import { Users, Trash2, Loader2, RotateCcw } from "lucide-react";
 type QueueEntry = {
   type: string;
   count: number;
+  max_players?: number;
   players_needed: number;
   players: { id: string; username: string | null; email: string | null; elo: number; rank: string | null; joinedAt: string }[];
 };
@@ -112,7 +113,7 @@ export default function AdminQueuesPage() {
               <div className="flex items-center gap-2">
                 <span className="flex items-center gap-1.5 text-sm text-[var(--hub-accent)]">
                   <Users size={18} />
-                  {q.count}/5 · faltam {q.players_needed}
+                  {q.count}/{q.max_players ?? 10} · faltam {q.players_needed}
                 </span>
                 <button
                   type="button"

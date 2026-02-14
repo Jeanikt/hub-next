@@ -10,20 +10,21 @@ import {
 import { randomUUID } from "crypto";
 import { ROLE_IDS } from "@/src/lib/roles";
 import { generateMatchCode } from "@/src/lib/inviteCode";
+import { isAllowedAdmin } from "@/src/lib/admin";
 
-const VALID_TYPES = ["low_elo", "high_elo", "inclusive"] as const;
+const VALID_TYPES = ["low_elo", "high_elo", "inclusive", "secret"] as const;
 type QueueType = (typeof VALID_TYPES)[number];
 
-/** 5v5 = 10 jogadores por partida (5 vs 5). */
-const PLAYERS_NEEDED = 10;
+/** Para fila "secret" (admin/teste): 2 jogadores (1 de cada lado). Demais: 5v5. */
+function getQueueSizes(qt: QueueType): { playersNeeded: number; redSize: number; blueSize: number } {
+  if (qt === "secret") return { playersNeeded: 2, redSize: 1, blueSize: 1 };
+  return { playersNeeded: 10, redSize: 5, blueSize: 5 };
+}
 
-const RED_SIZE = 5;
-const BLUE_SIZE = 5;
-
-/** Agrupa 10 jogadores em dois times (red/blue): no máximo um por função primária por time quando possível. */
+/** Agrupa jogadores em dois times (red/blue). Para 2 jogadores: primeiro red, segundo blue. */
 function assignTeamsByRole<
   T extends { userId: string; user: { primaryRole: string | null } }
->(entries: T[]): T[][] {
+>(entries: T[], redSize: number, blueSize: number): T[][] {
   const red: T[] = [];
   const blue: T[] = [];
   const assigned = new Set<string>();
@@ -33,23 +34,17 @@ function assignTeamsByRole<
     withRole.forEach((e, i) => {
       if (assigned.has(e.userId)) return;
       assigned.add(e.userId);
-
-      if (i % 2 === 0 && red.length < RED_SIZE) {
-        red.push(e);
-      } else if (blue.length < BLUE_SIZE) {
-        blue.push(e);
-      } else {
-        red.push(e);
-      }
+      if (i % 2 === 0 && red.length < redSize) red.push(e);
+      else if (blue.length < blueSize) blue.push(e);
+      else red.push(e);
     });
   }
 
   const remaining = entries.filter((e) => !assigned.has(e.userId));
   for (const e of remaining) {
-    if (red.length < RED_SIZE) red.push(e);
+    if (red.length < redSize) red.push(e);
     else blue.push(e);
   }
-
   return [red, blue];
 }
 
@@ -75,9 +70,20 @@ export async function POST(request: NextRequest) {
 
     if (!queue_type || !VALID_TYPES.includes(queue_type as QueueType)) {
       return NextResponse.json(
-        { message: "queue_type inválido. Use: low_elo, high_elo, inclusive." },
+        { message: "queue_type inválido. Use: low_elo, high_elo, inclusive, secret (apenas admin)." },
         { status: 422 }
       );
+    }
+
+    const qt = queue_type as QueueType;
+
+    if (qt === "secret") {
+      if (!isAllowedAdmin(session)) {
+        return NextResponse.json(
+          { message: "A fila secreta é apenas para administradores (teste de partidas)." },
+          { status: 403 }
+        );
+      }
     }
 
     const user = await prisma.user.findUnique({
@@ -92,10 +98,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const qt = queue_type as QueueType;
     const rankPoints = user.elo ?? 0;
-
-    if (!canJoinQueue(qt, rankPoints)) {
+    if (qt !== "secret" && !canJoinQueue(qt, rankPoints)) {
       return NextResponse.json(
         {
           message:
@@ -122,36 +126,32 @@ export async function POST(request: NextRequest) {
     });
     await invalidateQueueStatusCache();
 
-    // pega 10 primeiros
+    const { playersNeeded, redSize, blueSize } = getQueueSizes(qt);
+
     const entries = await prisma.queueEntry.findMany({
       where: { queueType: qt },
       orderBy: { joinedAt: "asc" },
-      take: PLAYERS_NEEDED,
+      take: playersNeeded,
       include: { user: { select: { primaryRole: true } } },
     });
 
     let matchFound = false;
     let matchId: string | null = null;
 
-    // se bateu 10, tenta criar partida (com lock)
-    if (entries.length >= PLAYERS_NEEDED) {
+    if (entries.length >= playersNeeded) {
       const lock = await acquireQueueMatchLock(qt, 12);
       if (lock) {
         try {
-          // revalida dentro do lock
           const lockedEntries = await prisma.queueEntry.findMany({
             where: { queueType: qt },
             orderBy: { joinedAt: "asc" },
-            take: PLAYERS_NEEDED,
+            take: playersNeeded,
             include: { user: { select: { primaryRole: true } } },
           });
 
-          if (lockedEntries.length >= PLAYERS_NEEDED) {
-            const [redTeam, blueTeam] = assignTeamsByRole(lockedEntries);
-            const orderedEntries = [...redTeam, ...blueTeam].slice(
-              0,
-              PLAYERS_NEEDED
-            );
+          if (lockedEntries.length >= playersNeeded) {
+            const [redTeam, blueTeam] = assignTeamsByRole(lockedEntries, redSize, blueSize);
+            const orderedEntries = [...redTeam, ...blueTeam].slice(0, playersNeeded);
 
             const mapPool = ["Ascent", "Bind", "Haven", "Split", "Icebox"];
             const chosenMap = mapPool[Math.floor(Math.random() * mapPool.length)];
@@ -165,10 +165,10 @@ export async function POST(request: NextRequest) {
                   type: qt,
                   status: "in_progress",
                   map: chosenMap,
-                  maxPlayers: PLAYERS_NEEDED,
+                  maxPlayers: playersNeeded,
                   startedAt: new Date(),
                   settings: JSON.stringify({
-                    visibility: "public",
+                    visibility: qt === "secret" ? "secret" : "public",
                     from_queue: true,
                     queue_type: qt,
                     map_pool: mapPool,
@@ -180,10 +180,8 @@ export async function POST(request: NextRequest) {
 
               await tx.gameMatchUser.createMany({
                 data: orderedEntries.map((e, i) => {
-                  const team = i < RED_SIZE ? "red" : "blue";
-                  const role =
-                    i === 0 ? "creator" : e.user.primaryRole ?? "player";
-
+                  const team = i < redSize ? "red" : "blue";
+                  const role = i === 0 ? "creator" : e.user.primaryRole ?? "player";
                   return {
                     gameMatchId: created.id,
                     userId: e.userId,

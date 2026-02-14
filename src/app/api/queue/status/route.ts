@@ -3,15 +3,25 @@ import { prisma } from "@/src/lib/prisma";
 import { auth } from "@/src/lib/auth";
 import { getAllowedQueues } from "@/src/lib/rankPoints";
 import { getQueueStatusCache, setQueueStatusCache } from "@/src/lib/redis";
+import { isAllowedAdmin } from "@/src/lib/admin";
 
 const QUEUE_TYPES = ["low_elo", "high_elo", "inclusive"] as const;
-/** 5v5 = 10 jogadores por partida (5 por time). */
+const SECRET_QUEUE = "secret";
 const PLAYERS_NEEDED = 10;
+const SECRET_PLAYERS_NEEDED = 2;
 
-async function computeQueues(queueTypeParam: string | null) {
-  const queues: Record<string, { count: number; players: unknown[]; players_needed: number; estimated_time: string }> = {};
+async function computeQueues(
+  queueTypeParam: string | null,
+  includeSecret: boolean
+) {
+  const types = [
+    ...QUEUE_TYPES,
+    ...(includeSecret ? [SECRET_QUEUE] : []),
+  ] as string[];
 
-  for (const type of QUEUE_TYPES) {
+  const queues: Record<string, { count: number; players: unknown[]; players_needed: number; estimated_time: string; required: number }> = {};
+
+  for (const type of types) {
     if (queueTypeParam && queueTypeParam !== type) continue;
 
     const entries = await prisma.queueEntry.findMany({
@@ -33,6 +43,7 @@ async function computeQueues(queueTypeParam: string | null) {
     });
 
     const count = entries.length;
+    const needed = type === SECRET_QUEUE ? SECRET_PLAYERS_NEEDED : PLAYERS_NEEDED;
     const players = entries.map((e) => ({
       id: e.user.id,
       username: e.user.username,
@@ -45,15 +56,20 @@ async function computeQueues(queueTypeParam: string | null) {
     }));
 
     let estimated_time = "Indisponível";
-    if (count >= 9) estimated_time = "Menos de 1 minuto";
-    else if (count >= 6) estimated_time = "2-5 minutos";
-    else estimated_time = "5+ minutos";
+    if (type === SECRET_QUEUE) {
+      estimated_time = count >= 1 ? "Menos de 1 minuto" : "Aguardando outro admin";
+    } else {
+      if (count >= 9) estimated_time = "Menos de 1 minuto";
+      else if (count >= 6) estimated_time = "2-5 minutos";
+      else estimated_time = "5+ minutos";
+    }
 
     queues[type] = {
       count,
       players,
-      players_needed: Math.max(0, PLAYERS_NEEDED - count),
+      players_needed: Math.max(0, needed - count),
       estimated_time,
+      required: needed,
     };
   }
   return queues;
@@ -77,23 +93,26 @@ export async function GET(request: NextRequest) {
       if (entry) userInQueue = entry.queueType;
     }
 
-    const useCache = !userInQueue;
+    const useCache = !userInQueue && !includeSecret;
     const cached = useCache ? await getQueueStatusCache() : null;
     if (cached) {
       try {
         queues = JSON.parse(cached) as Record<string, { count: number; players: unknown[]; players_needed: number; estimated_time: string }>;
         if (queueTypeParam && !queues[queueTypeParam]) {
-          queues = await computeQueues(null);
+          queues = await computeQueues(null, false);
           await setQueueStatusCache(JSON.stringify(queues));
         }
       } catch {
-        queues = await computeQueues(null);
+        queues = await computeQueues(null, false);
         await setQueueStatusCache(JSON.stringify(queues));
       }
     } else {
-      queues = await computeQueues(queueTypeParam || null);
-      if (!userInQueue) await setQueueStatusCache(JSON.stringify(queues));
+      queues = await computeQueues(queueTypeParam || null, includeSecret);
+      if (!userInQueue && !includeSecret) await setQueueStatusCache(JSON.stringify(queues));
     }
+    const isAdmin = session ? isAllowedAdmin(session) : false;
+    const includeSecret = !!isAdmin;
+
     let inQueue = false;
     let currentQueue: string | null = null;
     let queuePlayers: unknown[] = [];
@@ -133,6 +152,7 @@ export async function GET(request: NextRequest) {
       ]);
       hasRiotLinked = !!me?.riotAccount;
       allowed_queues = hasRiotLinked ? getAllowedQueues(me?.elo ?? 0) : [];
+      if (isAdmin) allowed_queues.push(SECRET_QUEUE);
       if (myEntry) {
         inQueue = true;
         currentQueue = myEntry.queueType;

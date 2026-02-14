@@ -66,7 +66,7 @@ export default function WaitingRoomPage() {
   }, [type, router]);
 
   const players = data?.queuePlayers ?? [];
-  const needed = 10;
+  const needed = type === "secret" ? 2 : 10;
 
   return (
     <div className="space-y-6">
