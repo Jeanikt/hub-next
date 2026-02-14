@@ -3,7 +3,13 @@
  * Usado pelo cron /api/cron/check-matches.
  */
 import { prisma } from "@/src/lib/prisma";
-import { getLastCustomMatchFresh, getMatchByMatchId, VALORANT_RATE_LIMIT_ERROR, type ValorantMatch, type ValorantMatchDetails } from "@/src/lib/valorant";
+import {
+  getLastCustomMatchFresh,
+  getMatchByMatchId,
+  VALORANT_RATE_LIMIT_ERROR,
+  type ValorantMatch,
+  type ValorantMatchDetails,
+} from "@/src/lib/valorant";
 import { invalidateQueueStatusCache } from "@/src/lib/redis";
 import { verifyAndCompleteMissions } from "@/src/lib/missions/verify";
 import { levelFromXp } from "@/src/lib/xpLevel";
@@ -14,12 +20,30 @@ const ELO_WIN = 1;
 const ELO_LOSS = 1;
 const XP_PER_MATCH_PLAYED = 10;
 const XP_MATCH_WIN_BONUS = 5;
+
 const MATCH_MAX_AGE_MS = 4 * 60 * 60 * 1000; // 4h
-const DELAY_MS = 3000; // 3 segundos entre requisições
-const LAST_SYNC_CHECK_MS = 3 * 60 * 1000; // Não checa a mesma partida dentro de 3 minutos
+const DELAY_MS = 3000; // 3s entre requests
+const LAST_SYNC_CHECK_MS = 3 * 60 * 1000; // 3min
 
 function normalizeRiotKey(name: string, tag: string): string {
   return `${String(name || "").trim().toLowerCase()}#${String(tag || "").trim().toLowerCase()}`;
+}
+
+function normalizeMapName(s: string): string {
+  return String(s || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .replace(/[’'"]/g, "");
+}
+
+function normalizeTeam(s: unknown): "red" | "blue" | null {
+  const v = String(s ?? "").trim().toLowerCase();
+  if (!v) return null;
+  if (v === "red") return "red";
+  if (v === "blue") return "blue";
+  // às vezes vem "Red" / "Blue" etc, já coberto
+  return null;
 }
 
 function getMatchIdFromMetadata(m: ValorantMatch): string | null {
@@ -41,16 +65,75 @@ function extractFirstMatch(data: ValorantMatch | ValorantMatch[] | undefined): V
   return data as ValorantMatch;
 }
 
+function getDetailsMapName(details: ValorantMatchDetails): string | null {
+  const meta = details?.metadata as any;
+  const mapFromObj = meta?.map?.name;
+  const mapFromFlat = meta?.map_name;
+  const map = mapFromObj ?? mapFromFlat;
+  return typeof map === "string" && map.trim() ? map.trim() : null;
+}
+
+function computeWinnerTeam(details: ValorantMatchDetails): "red" | "blue" | null {
+  const teams = details.teams as
+    | { red?: { has_won?: boolean }; blue?: { has_won?: boolean } }
+    | Array<{ team_id?: string; has_won?: boolean }>
+    | undefined;
+
+  let redWon = false;
+  let blueWon = false;
+
+  if (teams && !Array.isArray(teams)) {
+    redWon = teams.red?.has_won === true;
+    blueWon = teams.blue?.has_won === true;
+  } else if (Array.isArray(teams)) {
+    for (const t of teams) {
+      const id = String(t.team_id ?? "").toLowerCase();
+      if (id === "red" && t.has_won) redWon = true;
+      if (id === "blue" && t.has_won) blueWon = true;
+    }
+  }
+
+  return redWon ? "red" : blueWon ? "blue" : null;
+}
+
+function getAllPlayers(details: ValorantMatchDetails) {
+  const playersRaw = details.players as { all_players?: unknown[] } | unknown[] | undefined;
+  const allPlayers = Array.isArray(playersRaw)
+    ? playersRaw
+    : (playersRaw?.all_players ?? []);
+  return allPlayers as Array<{
+    name?: string;
+    tag?: string;
+    team?: string;
+    stats?: { kills?: number; deaths?: number; assists?: number; score?: number };
+  }>;
+}
+
+async function touchMatchUpdatedAt(matchId: number) {
+  // Atualiza updatedAt para respeitar LAST_SYNC_CHECK_MS mesmo quando não finaliza.
+  try {
+    await prisma.gameMatch.update({
+      where: { id: matchId },
+      data: { settings: (await prisma.gameMatch.findUnique({ where: { id: matchId }, select: { settings: true } }))?.settings ?? null },
+    });
+
+  } catch {
+    // ignore
+  }
+}
+
 async function sendDiscordMatchSyncWebhook(result: SyncResult, startedAt: Date, endedAt: Date) {
   const url = process.env.DISCORD_MATCH_SYNC_WEBHOOK;
   if (!url) return;
 
-  const color = result.errors && result.errors.length > 0 ? 0xff5c5c : 0x57f287;
+  const color = result.errors.length > 0 ? 0xff5c5c : 0x57f287;
   const notFinished = Math.max(0, result.checked - result.updated);
   const maxErrorsShown = 8;
-  const errorsPreview = result.errors && result.errors.length > 0
-    ? result.errors.slice(0, maxErrorsShown).join("\n") + (result.errors.length > maxErrorsShown ? `\n...(+${result.errors.length - maxErrorsShown} mais)` : "")
-    : "Nenhum";
+  const errorsPreview =
+    result.errors.length > 0
+      ? result.errors.slice(0, maxErrorsShown).join("\n") +
+      (result.errors.length > maxErrorsShown ? `\n...(+${result.errors.length - maxErrorsShown} mais)` : "")
+      : "Nenhum";
 
   const embed = {
     title: "Cron: Sincronização de partidas",
@@ -74,8 +157,8 @@ async function sendDiscordMatchSyncWebhook(result: SyncResult, startedAt: Date, 
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ embeds: [embed] }),
     });
-  } catch (e) {
-    // não bloquear o fluxo por falha no webhook
+  } catch {
+    // ignore
   }
 }
 
@@ -92,11 +175,11 @@ export async function syncPendingMatchesFromRiot(): Promise<SyncResult> {
 
   const cutoff = new Date(Date.now() - MATCH_MAX_AGE_MS);
   const lastSyncCutoff = new Date(Date.now() - LAST_SYNC_CHECK_MS);
+
   const pendingMatches = await prisma.gameMatch.findMany({
     where: {
       status: { in: ["pending", "in_progress"] },
       createdAt: { gte: cutoff },
-      // Só checa partidas que não foram sincronizadas nos últimos 5 minutos
       updatedAt: { lte: lastSyncCutoff },
     },
     include: {
@@ -107,103 +190,188 @@ export async function syncPendingMatchesFromRiot(): Promise<SyncResult> {
       },
     },
     orderBy: { createdAt: "desc" },
-    take: 5, // Reduzido para 5 partidas (max 10 requisições por execução)
+    take: 5,
   });
 
   for (const match of pendingMatches) {
-    const participants = match.participants.filter(
-      (p) => p.user.riotId && p.user.tagline
-    );
-    if (participants.length === 0) continue;
+    const participants = match.participants.filter((p) => p.user.riotId && p.user.tagline);
+    if (participants.length === 0) {
+      await touchMatchUpdatedAt(match.id);
+      continue;
+    }
 
     const creator = participants.find((p) => p.userId === match.creatorId) ?? participants[0];
     const name = creator.user.riotId!.trim();
     const tag = creator.user.tagline!.trim();
 
+    // 1) pega última custom do criador
     await new Promise((r) => setTimeout(r, DELAY_MS));
     let lastCustom;
     try {
       lastCustom = await getLastCustomMatchFresh(name, tag);
     } catch (e) {
       if (e instanceof Error && e.message === VALORANT_RATE_LIMIT_ERROR) {
-        errors.push("Rate limit da API Riot");
+        errors.push(`[${match.matchId}] Rate limit da API Riot (lastCustom)`);
+      } else {
+        errors.push(`[${match.matchId}] Erro lastCustom: ${e instanceof Error ? e.message : "Erro"}`);
       }
+      await touchMatchUpdatedAt(match.id);
       continue;
     }
-    if (!lastCustom || "error" in lastCustom) continue;
+
+    if (!lastCustom || "error" in lastCustom) {
+      await touchMatchUpdatedAt(match.id);
+      continue;
+    }
 
     const first = extractFirstMatch(lastCustom.data);
-    if (!first) continue;
-    if (!isMatchCompleted(first)) continue;
+    if (!first) {
+      await touchMatchUpdatedAt(match.id);
+      continue;
+    }
+    if (!isMatchCompleted(first)) {
+      await touchMatchUpdatedAt(match.id);
+      continue;
+    }
 
     const riotMatchId = getMatchIdFromMetadata(first);
-    if (!riotMatchId) continue;
+    if (!riotMatchId) {
+      await touchMatchUpdatedAt(match.id);
+      continue;
+    }
 
     const settings = match.settings ? JSON.parse(match.settings) : {};
-    if (settings.riot_match_id === riotMatchId) continue;
+    if (settings.riot_match_id === riotMatchId) {
+      // já sincronizado com esse riotMatchId
+      await touchMatchUpdatedAt(match.id);
+      continue;
+    }
 
+    // 2) busca detalhes
     await new Promise((r) => setTimeout(r, DELAY_MS));
     let detailsRes;
     try {
       detailsRes = await getMatchByMatchId("br", riotMatchId);
     } catch (e) {
       if (e instanceof Error && e.message === VALORANT_RATE_LIMIT_ERROR) {
-        errors.push("Rate limit da API Riot");
+        errors.push(`[${match.matchId}] Rate limit da API Riot (details)`);
+      } else {
+        errors.push(`[${match.matchId}] Erro details: ${e instanceof Error ? e.message : "Erro"}`);
       }
+      await touchMatchUpdatedAt(match.id);
       continue;
     }
-    if (!detailsRes?.data) continue;
+
+    if (!detailsRes?.data) {
+      await touchMatchUpdatedAt(match.id);
+      continue;
+    }
+
     const details = detailsRes.data as ValorantMatchDetails;
 
-    const teams = details.teams as
-      | { red?: { has_won?: boolean }; blue?: { has_won?: boolean } }
-      | Array<{ team_id?: string; has_won?: boolean }>
-      | undefined;
-    let redWon = false;
-    let blueWon = false;
-    if (teams && !Array.isArray(teams)) {
-      redWon = (teams as { red?: { has_won?: boolean } }).red?.has_won === true;
-      blueWon = (teams as { blue?: { has_won?: boolean } }).blue?.has_won === true;
-    } else if (Array.isArray(teams)) {
-      for (const t of teams) {
-        const id = String(t.team_id ?? "").toLowerCase();
-        if (id === "red" && (t as { has_won?: boolean }).has_won) redWon = true;
-        if (id === "blue" && (t as { has_won?: boolean }).has_won) blueWon = true;
+    // 3) valida mapa (DB vs Riot)
+    // DB: match.map (String?)
+    // Riot: metadata.map.name (ou metadata.map_name)
+    if (match.map) {
+      const riotMap = getDetailsMapName(details);
+      if (!riotMap) {
+        // sem mapa no payload, não finaliza (pra não arriscar)
+        errors.push(`[${match.matchId}] details sem mapa (metadata.map.name)`);
+        await touchMatchUpdatedAt(match.id);
+        continue;
+      }
+
+      const dbMapN = normalizeMapName(match.map);
+      const riotMapN = normalizeMapName(riotMap);
+
+      if (dbMapN && riotMapN && dbMapN !== riotMapN) {
+        // mapa não bate => provavelmente pegou custom errada do criador
+        errors.push(`[${match.matchId}] mapa não bate (db="${match.map}" riot="${riotMap}")`);
+        await touchMatchUpdatedAt(match.id);
+        continue;
       }
     }
-    const winnerTeam = redWon ? "red" : blueWon ? "blue" : null;
-    if (!winnerTeam) continue;
 
-    const hubRiotKeys = new Map(
+    // 4) valida jogadores + times batendo
+    const hubByKey = new Map(
       participants.map((p) => [
         normalizeRiotKey(p.user.riotId!, p.user.tagline!),
-        p,
+        { userId: p.userId, team: normalizeTeam(p.team) },
       ])
     );
 
-    const playersRaw = details.players as { all_players?: unknown[] } | unknown[] | undefined;
-    const allPlayers = Array.isArray(playersRaw)
-      ? playersRaw
-      : (playersRaw?.all_players ?? []);
+    const allPlayers = getAllPlayers(details);
+    const riotByKey = new Map(
+      allPlayers.map((pl) => [
+        normalizeRiotKey(pl.name ?? "", pl.tag ?? ""),
+        { team: normalizeTeam(pl.team) },
+      ])
+    );
+
+    // precisa bater pelo menos TODOS os participantes com riotId/tagline
+    // (se tu quiser permitir “mínimo 8”, troca o expected)
+    const expected = hubByKey.size;
+
+    let matchedPlayers = 0;
+    let mismatchedTeams = 0;
+    let missingOnRiot = 0;
+
+    for (const [key, hub] of hubByKey.entries()) {
+      const riot = riotByKey.get(key);
+      if (!riot) {
+        missingOnRiot++;
+        continue;
+      }
+      matchedPlayers++;
+      if (hub.team && riot.team && hub.team !== riot.team) {
+        mismatchedTeams++;
+      }
+    }
+
+    // se não bate todo mundo, provavelmente é a custom errada
+    if (matchedPlayers < expected) {
+      errors.push(
+        `[${match.matchId}] players não batem (matched=${matchedPlayers}/${expected}, missing=${missingOnRiot})`
+      );
+      await touchMatchUpdatedAt(match.id);
+      continue;
+    }
+
+    // se time não bate, pula (isso é exatamente o que você pediu)
+    if (mismatchedTeams > 0) {
+      errors.push(`[${match.matchId}] times não batem (mismatches=${mismatchedTeams}/${expected})`);
+      await touchMatchUpdatedAt(match.id);
+      continue;
+    }
+
+    // 5) winnerTeam
+    const winnerTeam = computeWinnerTeam(details);
+    if (!winnerTeam) {
+      await touchMatchUpdatedAt(match.id);
+      continue;
+    }
+
+    // 6) stats por player
     const statsByKey = new Map<string, { kills: number; deaths: number; assists: number; score: number }>();
     for (const pl of allPlayers) {
-      const p = pl as { name?: string; tag?: string; stats?: { kills?: number; deaths?: number; assists?: number; score?: number } };
-      const key = normalizeRiotKey(p.name ?? "", p.tag ?? "");
+      const key = normalizeRiotKey(pl.name ?? "", pl.tag ?? "");
       statsByKey.set(key, {
-        kills: p.stats?.kills ?? 0,
-        deaths: p.stats?.deaths ?? 0,
-        assists: p.stats?.assists ?? 0,
-        score: p.stats?.score ?? 0,
+        kills: pl.stats?.kills ?? 0,
+        deaths: pl.stats?.deaths ?? 0,
+        assists: pl.stats?.assists ?? 0,
+        score: pl.stats?.score ?? 0,
       });
     }
 
-    const metadata = details.metadata as { game_length_in_ms?: number; game_length?: number } | undefined;
-    const durationMs = metadata?.game_length_in_ms ?? metadata?.game_length ?? 0;
+    const meta = details.metadata as { game_length_in_ms?: number; game_length?: number } | undefined;
+    const durationMs = meta?.game_length_in_ms ?? meta?.game_length ?? 0;
     const matchDurationSec = durationMs > 0 ? Math.round(durationMs / 1000) : null;
 
+    // 7) aplica no banco
     try {
       await prisma.$transaction(async (tx) => {
         settings.riot_match_id = riotMatchId;
+
         await tx.gameMatch.update({
           where: { id: match.id },
           data: {
@@ -216,9 +384,9 @@ export async function syncPendingMatchesFromRiot(): Promise<SyncResult> {
         });
 
         for (const p of match.participants) {
-          const key = p.user.riotId && p.user.tagline
-            ? normalizeRiotKey(p.user.riotId, p.user.tagline)
-            : null;
+          const key =
+            p.user.riotId && p.user.tagline ? normalizeRiotKey(p.user.riotId, p.user.tagline) : null;
+
           const stats = key ? statsByKey.get(key) : null;
           if (stats) {
             await tx.gameMatchUser.updateMany({
@@ -233,17 +401,21 @@ export async function syncPendingMatchesFromRiot(): Promise<SyncResult> {
           }
 
           const won = p.team === winnerTeam;
+
           const user = await tx.user.findUnique({
             where: { id: p.userId },
             select: { elo: true, xp: true },
           });
+
           if (user) {
             let newElo = user.elo ?? 0;
             if (won) newElo = Math.min(MAX_ELO, newElo + ELO_WIN);
             else newElo = Math.max(MIN_ELO, newElo - ELO_LOSS);
+
             const xpGain = XP_PER_MATCH_PLAYED + (won ? XP_MATCH_WIN_BONUS : 0);
             const newXp = Math.max(0, (user.xp ?? 0) + xpGain);
             const newLevel = levelFromXp(newXp);
+
             await tx.user.update({
               where: { id: p.userId },
               data: { elo: newElo, xp: newXp, level: newLevel },
@@ -263,16 +435,17 @@ export async function syncPendingMatchesFromRiot(): Promise<SyncResult> {
         }
       }
     } catch (e) {
-      errors.push(`${match.matchId}: ${e instanceof Error ? e.message : "Erro"}`);
+      errors.push(`[${match.matchId}] TX erro: ${e instanceof Error ? e.message : "Erro"}`);
     }
   }
 
   const endedAt = new Date();
   const result: SyncResult = { checked: pendingMatches.length, updated, errors };
+
   try {
     await sendDiscordMatchSyncWebhook(result, startedAt, endedAt);
   } catch {
-    // ignore webhook errors
+    // ignore
   }
 
   return result;

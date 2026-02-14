@@ -148,26 +148,36 @@ export type ValorantMatchDetails = {
     game_length_in_ms?: number;
     rounds_played?: number;
     is_completed?: boolean;
+
+    map?: {
+      name?: string;
+      [key: string]: unknown;
+    };
+
     [key: string]: unknown;
   };
+
   teams?: {
-    red?: { has_won?: boolean; rounds_won?: number; rounds_lost?: number;[key: string]: unknown };
-    blue?: { has_won?: boolean; rounds_won?: number; rounds_lost?: number;[key: string]: unknown };
+    red?: { has_won?: boolean; rounds_won?: number; rounds_lost?: number; [key: string]: unknown };
+    blue?: { has_won?: boolean; rounds_won?: number; rounds_lost?: number; [key: string]: unknown };
   };
+
   players?: {
     all_players?: Array<{
       puuid?: string;
       name?: string;
       tag?: string;
       team?: string;
-      stats?: { kills?: number; deaths?: number; assists?: number; score?: number;[key: string]: unknown };
+      stats?: { kills?: number; deaths?: number; assists?: number; score?: number; [key: string]: unknown };
       [key: string]: unknown;
     }>;
     red?: unknown[];
     blue?: unknown[];
   };
+
   [key: string]: unknown;
 };
+
 
 /**
  * Dados da conta Riot por nome#tag.
