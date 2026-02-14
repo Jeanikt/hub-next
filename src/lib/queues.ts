@@ -4,7 +4,7 @@
  */
 
 /** Filas visíveis para todos (10 jogadores, 5v5). */
-export const PUBLIC_QUEUE_TYPES = ["low_elo", "high_elo", "inclusive"] as const;
+export const PUBLIC_QUEUE_TYPES = ["low_elo", "mid_elo", "high_elo", "inclusive"] as const;
 
 /** 4ª fila: apenas 2 jogadores (1 de cada lado), visível só para jeandev003 e yagobtelles. */
 export const FOURTH_QUEUE_TYPE = "test_2v2";

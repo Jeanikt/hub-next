@@ -104,11 +104,14 @@ export async function POST(request: NextRequest) {
     }
 
     const rankPoints = user.elo ?? 0;
-    if (qt !== FOURTH_QUEUE_TYPE && !canJoinQueue(qt as "low_elo" | "high_elo" | "inclusive", rankPoints)) {
+    if (
+      qt !== FOURTH_QUEUE_TYPE &&
+      !canJoinQueue(qt as "low_elo" | "mid_elo" | "high_elo" | "inclusive", rankPoints)
+    ) {
       return NextResponse.json(
         {
           message:
-            "Sua rank atual não permite esta fila. Low ELO: até Platina 3; High ELO: Diamante ou acima; Inclusiva: qualquer elo.",
+            "Sua rank atual não permite esta fila. Low ELO: até Platina 3; Mid ELO: Diamante 1 até Ascendente 3; High ELO: Imortal+; Inclusiva: qualquer elo.",
         },
         { status: 403 }
       );
