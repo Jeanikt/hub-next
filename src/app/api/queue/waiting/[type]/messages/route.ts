@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/src/lib/prisma";
 import { auth } from "@/src/lib/auth";
-import { ALL_QUEUE_TYPES } from "@/src/lib/queues";
+import { ALL_QUEUE_TYPES, type QueueType } from "@/src/lib/queues";
 
 const MAX_MESSAGES = 80;
 const MAX_CONTENT_LENGTH = 500;
@@ -17,7 +17,8 @@ export async function GET(request: NextRequest, { params }: Params) {
     }
 
     const { type } = await params;
-    if (!type || !ALL_QUEUE_TYPES.includes(type)) {
+    const queueType = type as QueueType;
+    if (!type || !ALL_QUEUE_TYPES.includes(queueType)) {
       return NextResponse.json({ message: "Tipo de fila inválido." }, { status: 422 });
     }
 
@@ -25,12 +26,12 @@ export async function GET(request: NextRequest, { params }: Params) {
       where: { userId: session.user.id },
       select: { queueType: true },
     });
-    if (!inQueue || inQueue.queueType !== type) {
+    if (!inQueue || inQueue.queueType !== queueType) {
       return NextResponse.json({ message: "Você não está nesta fila." }, { status: 403 });
     }
 
     const messages = await prisma.queueWaitingMessage.findMany({
-      where: { queueType: type },
+      where: { queueType },
       orderBy: { createdAt: "asc" },
       take: MAX_MESSAGES,
       select: { content: true, createdAt: true },
@@ -60,7 +61,8 @@ export async function POST(request: NextRequest, { params }: Params) {
     }
 
     const { type } = await params;
-    if (!type || !ALL_QUEUE_TYPES.includes(type)) {
+    const queueType = type as QueueType;
+    if (!type || !ALL_QUEUE_TYPES.includes(queueType)) {
       return NextResponse.json({ message: "Tipo de fila inválido." }, { status: 422 });
     }
 
@@ -68,7 +70,7 @@ export async function POST(request: NextRequest, { params }: Params) {
       where: { userId: session.user.id },
       select: { queueType: true },
     });
-    if (!inQueue || inQueue.queueType !== type) {
+    if (!inQueue || inQueue.queueType !== queueType) {
       return NextResponse.json({ message: "Você não está nesta fila." }, { status: 403 });
     }
 
@@ -87,7 +89,7 @@ export async function POST(request: NextRequest, { params }: Params) {
 
     await prisma.queueWaitingMessage.create({
       data: {
-        queueType: type,
+        queueType,
         userId: session.user.id,
         content,
       },
