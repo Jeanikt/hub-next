@@ -25,9 +25,9 @@
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",
     "@prisma/client": "^6.19.2",
-    "@upstash/redis": "^1.34.3",
     "@vercel/analytics": "^1.6.1",
     "bcryptjs": "^3.0.3",
+    "ioredis": "^5.3.5",
     "jose": "^6.1.3",
     "lucide-react": "^0.563.0",
     "next": "16.1.6",

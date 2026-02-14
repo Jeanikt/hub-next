@@ -1,33 +1,39 @@
 /**
- * Redis (Upstash) para cache e configurações.
+ * Redis para cache e configurações.
  * IMPORTANTE: toggles de admin precisam de persistência. Se Redis não estiver configurado,
  * retornamos erro no endpoint (não usamos default silencioso).
  */
 
+import Redis from "ioredis";
+import { randomUUID } from "crypto";
+
 const SETTINGS_PREFIX = "hub:setting:";
 
-type RedisClient = InstanceType<typeof import("@upstash/redis").Redis>;
+type RedisClient = Redis;
 let redisClient: RedisClient | null = null;
 
 function isRedisConfigured() {
-  return Boolean(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN);
+  return Boolean(process.env.REDIS_URL);
 }
 
-async function getClient(): Promise<RedisClient | null> {
+function getClient(): RedisClient | null {
   if (!isRedisConfigured()) return null;
   if (redisClient) return redisClient;
 
   try {
-    const { Redis } = await import("@upstash/redis");
-    redisClient = new Redis({
-      url: process.env.UPSTASH_REDIS_REST_URL!,
-      token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+    redisClient = new Redis(process.env.REDIS_URL!, {
+      maxRetriesPerRequest: null,
+      retryStrategy: (times) => {
+        const delay = Math.min(times * 50, 2000);
+        return delay;
+      },
     });
     return redisClient;
   } catch {
     return null;
   }
 }
+
 
 function toString01(v: unknown): "0" | "1" | null {
   if (v === "0" || v === 0) return "0";
@@ -44,7 +50,7 @@ export async function getRedisHealth(): Promise<{ configured: boolean; ok: boole
   const configured = isRedisConfigured();
   if (!configured) return { configured: false, ok: false };
 
-  const client = await getClient();
+  const client = getClient();
   if (!client) return { configured: true, ok: false };
 
   try {
@@ -57,7 +63,7 @@ export async function getRedisHealth(): Promise<{ configured: boolean; ok: boole
 
 /** Lê configuração do app (Redis-only). Retorna null se não existir ou se Redis indisponível. */
 export async function getAppSetting(key: string): Promise<"0" | "1" | null> {
-  const client = await getClient();
+  const client = getClient();
   if (!client) return null;
 
   try {
@@ -70,7 +76,7 @@ export async function getAppSetting(key: string): Promise<"0" | "1" | null> {
 
 /** Define configuração do app (Redis-only). */
 export async function setAppSetting(key: string, value: "0" | "1"): Promise<void> {
-  const client = await getClient();
+  const client = getClient();
   if (!client) throw new Error("redis_unavailable");
   await client.set(SETTINGS_PREFIX + key, value);
 }
@@ -83,7 +89,7 @@ const QUEUE_STATUS_KEY = "hub:queue:status";
 const QUEUE_STATUS_TTL = 3;
 
 export async function getQueueStatusCache(): Promise<string | null> {
-  const client = await getClient();
+  const client = getClient();
   if (!client) return null;
   try {
     const v = await client.get(QUEUE_STATUS_KEY);
@@ -94,15 +100,15 @@ export async function getQueueStatusCache(): Promise<string | null> {
 }
 
 export async function setQueueStatusCache(json: string): Promise<void> {
-  const client = await getClient();
+  const client = getClient();
   if (!client) return;
   try {
-    await client.set(QUEUE_STATUS_KEY, json, { ex: QUEUE_STATUS_TTL });
+    await client.setex(QUEUE_STATUS_KEY, QUEUE_STATUS_TTL, json);
   } catch {}
 }
 
 export async function invalidateQueueStatusCache(): Promise<void> {
-  const client = await getClient();
+  const client = getClient();
   if (!client) return;
   try {
     await client.del(QUEUE_STATUS_KEY);
@@ -117,7 +123,7 @@ const USERS_COUNT_KEY = "hub:users:count";
 const USERS_COUNT_TTL = 60;
 
 export async function getUsersCountCache(): Promise<number | null> {
-  const client = await getClient();
+  const client = getClient();
   if (!client) return null;
   try {
     const v = await client.get(USERS_COUNT_KEY);
@@ -130,10 +136,10 @@ export async function getUsersCountCache(): Promise<number | null> {
 }
 
 export async function setUsersCountCache(total: number): Promise<void> {
-  const client = await getClient();
+  const client = getClient();
   if (!client) return;
   try {
-    await client.set(USERS_COUNT_KEY, String(total), { ex: USERS_COUNT_TTL });
+    await client.setex(USERS_COUNT_KEY, USERS_COUNT_TTL, String(total));
   } catch {}
 }
 
@@ -144,15 +150,15 @@ export async function setUsersCountCache(total: number): Promise<void> {
 export type QueueMatchLock = { key: string; token: string };
 
 export async function acquireQueueMatchLock(queueType: string, ttlSeconds = 12): Promise<QueueMatchLock | null> {
-  const client = await getClient();
+  const client = getClient();
   if (!client) return null;
 
   const key = `hub:queue:matchlock:${queueType}`;
-  const token = crypto.randomUUID();
+  const token = randomUUID();
 
   try {
-    // Upstash: set(key, value, { nx: true, ex: ttl })
-    const ok = await client.set(key, token, { nx: true, ex: ttlSeconds });
+    // ioredis: set(key, value, "NX", "EX", ttl)
+    const ok = await client.set(key, token, "NX", "EX", ttlSeconds);
     return ok ? { key, token } : null;
   } catch {
     return null;
@@ -160,7 +166,7 @@ export async function acquireQueueMatchLock(queueType: string, ttlSeconds = 12):
 }
 
 export async function releaseQueueMatchLock(lock: QueueMatchLock): Promise<void> {
-  const client = await getClient();
+  const client = getClient();
   if (!client) return;
 
   // release seguro: só apaga se o token for o mesmo
@@ -173,8 +179,7 @@ export async function releaseQueueMatchLock(lock: QueueMatchLock): Promise<void>
   `;
 
   try {
-    // @ts-ignore Upstash Redis tem eval
-    await client.eval(lua, [lock.key], [lock.token]);
+    await client.eval(lua, 1, lock.key, lock.token);
   } catch {
     // fallback simples
     try {
