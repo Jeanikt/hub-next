@@ -52,12 +52,12 @@ export default function WaitingRoomPage() {
       const json: QueueStatus = await res.json();
       setData(json);
 
-      // ✅ PRIMEIRO verifica se encontrou partida
+      // Partida formada: avisar e redirecionar todos para a tela da partida
       if (json.matchFound && json.matchId) {
         setMatchFoundAlert(true);
         setTimeout(() => {
-          router.push(`/matches/${json.matchId}`);
-        }, 800);
+          router.replace(`/matches/${json.matchId}`);
+        }, 1200);
         return;
       }
 
@@ -127,8 +127,10 @@ export default function WaitingRoomPage() {
   return (
     <div className="space-y-6">
       {matchFoundAlert && (
-        <div className="border border-green-500/40 p-4 rounded text-center">
-          Partida encontrada! Redirecionando...
+        <div className="rounded-xl border-2 border-[var(--hub-accent)] bg-[var(--hub-accent)]/20 p-6 text-center">
+          <p className="text-lg font-bold text-[var(--hub-text)]">Partida formada!</p>
+          <p className="mt-2 text-sm text-[var(--hub-text-muted)]">Você será levado à tela da partida em instantes. Lá o criador informará o código do Valorant para todos entrarem.</p>
+          <p className="mt-3 text-xs text-[var(--hub-accent)]">Redirecionando...</p>
         </div>
       )}
 

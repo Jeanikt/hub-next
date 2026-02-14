@@ -119,6 +119,34 @@ export async function resetQueueCache(): Promise<void> {
   await invalidateQueueStatusCache();
 }
 
+/** Remove todo o cache e locks do hub (hub:*). Use em reset completo (ex.: admin). */
+export async function clearAllHubCache(): Promise<number> {
+  const client = getClient();
+  if (!client) return 0;
+  const keys: string[] = [];
+  return new Promise((resolve, reject) => {
+    const stream = client.scanStream({ match: "hub:*", count: 100 });
+    stream.on("data", (chunk: string[]) => keys.push(...chunk));
+    stream.on("end", async () => {
+      if (keys.length === 0) {
+        resolve(0);
+        return;
+      }
+      try {
+        let deleted = 0;
+        for (let i = 0; i < keys.length; i += 100) {
+          const batch = keys.slice(i, i + 100);
+          deleted += await client.del(...batch);
+        }
+        resolve(deleted);
+      } catch {
+        resolve(0);
+      }
+    });
+    stream.on("error", () => resolve(0));
+  });
+}
+
 const USERS_COUNT_KEY = "hub:users:count";
 const USERS_COUNT_TTL = 60;
 

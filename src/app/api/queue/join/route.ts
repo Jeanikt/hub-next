@@ -163,6 +163,7 @@ export async function POST(request: NextRequest) {
             const matchCode = generateMatchCode();
             const matchUuid = randomUUID();
 
+            // Partida da fila SEMPRE in_progress e startedAt agora (nunca pending)
             const match = await prisma.$transaction(async (tx) => {
               const created = await tx.gameMatch.create({
                 data: {

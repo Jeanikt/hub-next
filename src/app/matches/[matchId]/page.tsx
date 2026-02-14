@@ -219,8 +219,7 @@ export default function MatchDetailPage() {
           </div>
         </div>
 
-        {((match.status === "in_progress" && (match.map || match.settings?.match_code || match.settings?.valorant_room_code)) ||
-          (match.status === "pending" && match.isFull && (match.settings?.match_code || match.settings?.valorant_room_code || isCreator))) && (
+        {(match.status === "pending" || match.status === "in_progress") && match.userInMatch && (
           <div className="mt-6 rounded-xl border-2 border-[var(--hub-accent)] bg-[var(--hub-accent)]/10 p-5">
             {isCreator && !match.settings?.valorant_room_code && (
               <p className="text-sm font-bold text-[var(--hub-accent)] mb-3 rounded-lg bg-[var(--hub-accent)]/20 p-3">

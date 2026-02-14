@@ -3,11 +3,11 @@ import { serverError } from "@/src/lib/serverLog";
 import { prisma } from "@/src/lib/prisma";
 import { auth } from "@/src/lib/auth";
 import { isAllowedAdmin } from "@/src/lib/admin";
-import { invalidateQueueStatusCache } from "@/src/lib/redis";
+import { clearAllHubCache } from "@/src/lib/redis";
 
 /**
  * POST /api/admin/reset-queues-and-matches
- * Admin only. Cancela todas as partidas pendentes ou em andamento e esvazia todas as filas.
+ * Admin only. Zera todas as filas, cancela partidas pendentes/em andamento e apaga todo o cache (Redis hub:*).
  * Use para "começar do zero".
  */
 export async function POST() {
@@ -17,21 +17,21 @@ export async function POST() {
       return NextResponse.json({ message: "Acesso negado." }, { status: 403 });
     }
 
-    const [cancelledResult, deletedResult] = await Promise.all([
+    const [cancelledResult, deletedResult, cacheKeysDeleted] = await Promise.all([
       prisma.gameMatch.updateMany({
         where: { status: { in: ["pending", "in_progress"] } },
         data: { status: "cancelled", finishedAt: new Date() },
       }),
       prisma.queueEntry.deleteMany({}),
+      clearAllHubCache(),
     ]);
-
-    await invalidateQueueStatusCache();
 
     return NextResponse.json({
       success: true,
-      message: "Filas zeradas e partidas pendentes/em andamento canceladas.",
+      message: "Filas zeradas, partidas pendentes/em andamento canceladas e cache do sistema apagado.",
       cancelled: cancelledResult.count,
       queuesDeleted: deletedResult.count,
+      cacheKeysDeleted,
     });
   } catch (e) {
     serverError("POST /api/admin/reset-queues-and-matches", "error", { err: e instanceof Error ? e.message : String(e) });

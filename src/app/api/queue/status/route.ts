@@ -94,17 +94,29 @@ export async function GET(request: NextRequest) {
 
     let queues: Record<string, { count: number; players: unknown[]; players_needed: number; estimated_time: string }>;
 
-    // Se usuário logado, verificar se está na fila; se estiver, ignorar cache para dados em tempo real
+    // Se usuário logado, verificar se está na fila ou tem partida recente (para não usar cache e retornar matchFound)
     let userInQueue: string | null = null;
+    let userHasRecentMatch = false;
     if (session?.user?.id) {
-      const entry = await prisma.queueEntry.findUnique({
-        where: { userId: session.user.id },
-        select: { queueType: true },
-      });
+      const [entry, recentMatch] = await Promise.all([
+        prisma.queueEntry.findUnique({
+          where: { userId: session.user.id },
+          select: { queueType: true },
+        }),
+        prisma.gameMatchUser.findFirst({
+          where: { userId: session.user.id },
+          orderBy: { joinedAt: "desc" },
+          select: { gameMatch: { select: { matchId: true, createdAt: true } } },
+        }),
+      ]);
       if (entry) userInQueue = entry.queueType;
+      if (!entry && recentMatch?.gameMatch) {
+        const created = recentMatch.gameMatch.createdAt.getTime();
+        userHasRecentMatch = Date.now() - created < 300_000; // 5 min: garantir que os 10 recebam matchFound
+      }
     }
 
-    const useCache = !userInQueue && !includeFourthQueue;
+    const useCache = !userInQueue && !includeFourthQueue && !userHasRecentMatch;
     const cached = useCache ? await getQueueStatusCache() : null;
     if (cached) {
       try {
@@ -170,7 +182,7 @@ export async function GET(request: NextRequest) {
       }
       if (!myEntry && recentMatch?.gameMatch) {
         const createdAt = recentMatch.gameMatch.createdAt.getTime();
-        if (Date.now() - createdAt < 120_000) {
+        if (Date.now() - createdAt < 300_000) {
           matchFound = true;
           matchId = recentMatch.gameMatch.matchId;
         }
