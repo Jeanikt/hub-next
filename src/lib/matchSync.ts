@@ -6,11 +6,14 @@ import { prisma } from "@/src/lib/prisma";
 import { getLastCustomMatchFresh, getMatchByMatchId, VALORANT_RATE_LIMIT_ERROR, type ValorantMatch, type ValorantMatchDetails } from "@/src/lib/valorant";
 import { invalidateQueueStatusCache } from "@/src/lib/redis";
 import { verifyAndCompleteMissions } from "@/src/lib/missions/verify";
+import { levelFromXp } from "@/src/lib/xpLevel";
 
 const MIN_ELO = 0;
 const MAX_ELO = 20;
 const ELO_WIN = 1;
 const ELO_LOSS = 1;
+const XP_PER_MATCH_PLAYED = 10;
+const XP_MATCH_WIN_BONUS = 5;
 const MATCH_MAX_AGE_MS = 4 * 60 * 60 * 1000; // 4h
 const DELAY_MS = 800;
 
@@ -189,15 +192,18 @@ export async function syncPendingMatchesFromRiot(): Promise<SyncResult> {
           const won = p.team === winnerTeam;
           const user = await tx.user.findUnique({
             where: { id: p.userId },
-            select: { elo: true },
+            select: { elo: true, xp: true },
           });
           if (user) {
             let newElo = user.elo ?? 0;
             if (won) newElo = Math.min(MAX_ELO, newElo + ELO_WIN);
             else newElo = Math.max(MIN_ELO, newElo - ELO_LOSS);
+            const xpGain = XP_PER_MATCH_PLAYED + (won ? XP_MATCH_WIN_BONUS : 0);
+            const newXp = Math.max(0, (user.xp ?? 0) + xpGain);
+            const newLevel = levelFromXp(newXp);
             await tx.user.update({
               where: { id: p.userId },
-              data: { elo: newElo },
+              data: { elo: newElo, xp: newXp, level: newLevel },
             });
           }
         }

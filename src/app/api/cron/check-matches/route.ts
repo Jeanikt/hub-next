@@ -5,9 +5,10 @@ import { VALORANT_RATE_LIMIT_ERROR } from "@/src/lib/valorant";
 const CRON_SECRET = process.env.CRON_SECRET ?? process.env.CRON_API_KEY;
 
 /**
- * GET /api/cron/check-matches – verifica partidas pendentes/in_progress e sincroniza
- * com partidas encerradas no Valorant (API Henrik). Protegido por CRON_SECRET.
- * Agende a cada 1–3 min para atualização quase em tempo real das estatísticas ao finalizar.
+ * GET /api/cron/check-matches – verifica partidas in_progress e sincroniza com partidas
+ * encerradas no Valorant (API Henrik). Ao detectar fim da partida: status → finished,
+ * K/D/A, ELO, XP e nível no banco; missões verificadas. Protegido por CRON_SECRET.
+ * Agende a cada 1 minuto para resultado e histórico rápidos sem sobrecarregar a API Riot.
  */
 export async function GET(request: NextRequest) {
   if (!CRON_SECRET) {

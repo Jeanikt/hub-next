@@ -1,6 +1,23 @@
-# Cron: check-matches (sincronizar partidas com Valorant)
+# Crons: partidas (iniciar pendentes + sincronizar com Valorant)
 
-O endpoint `GET /api/cron/check-matches` verifica partidas pendentes/em andamento e sincroniza com partidas **encerradas** no Valorant (API Henrik). Deve ser chamado a cada 1–3 minutos.
+## 1. Start pending matches (a cada 15 segundos)
+
+O endpoint `GET /api/cron/start-pending-matches` verifica partidas com status **pending** que já têm 10 jogadores (5 red, 5 blue) e atualiza no banco: `status` → `in_progress`, `startedAt` → now. Leve (só DB).
+
+**Agendamento:** a cada 15 segundos. Mesmo segredo: `?secret=...` ou `Authorization: Bearer CRON_SECRET`.
+
+**Exemplo (Schedule Dokploy):**
+- **Task:** Start pending matches  
+- **Schedule:** `* * * * *` (a cada minuto; para 15s use agendador com segundos, ex. node-cron)  
+- **Command:** `curl -s "https://www.hubexpresso.com/api/cron/start-pending-matches?secret=SEU_CRON_SECRET"`
+
+---
+
+## 2. Check matches (sincronizar com Valorant – a cada 1 minuto)
+
+O endpoint `GET /api/cron/check-matches` verifica partidas **in_progress** e sincroniza com partidas **encerradas** no Valorant (API Henrik). Ao detectar fim: `status` → `finished`, K/D/A, ELO, XP e nível no banco; missões verificadas.
+
+**Agendamento:** a cada **1 minuto** (ex.: `*/1 * * * *`). Assim o resultado e o histórico aparecem rápido sem sobrecarregar a API Riot.
 
 ---
 

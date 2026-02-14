@@ -155,7 +155,9 @@ Sem Pusher/Redis o app continua funcionando: filas usam polling; cache de status
 
 **Cron – Sync ELO:** para atualizar o ELO de todos os usuários com conta Riot em background, agende uma requisição para `GET /api/cron/sync-elo` passando o segredo em query ou no header `Authorization: Bearer ...`. Ex.: a cada 6–12 horas.
 
-**Cron – Check matches:** para sincronizar partidas pendentes com o resultado do jogo (Valorant/API Henrik), agende `GET /api/cron/check-matches` com o mesmo segredo. Recomendado a cada 3–5 minutos para que, quando a partida for encerrada no jogo, o site atualize com vencedor, K/D/A e variação de ELO.
+**Cron – Start pending matches:** para iniciar partidas com status "pending" que já têm 10 jogadores (5v5), agende `GET /api/cron/start-pending-matches` com o mesmo segredo. Recomendado a cada 15 segundos (ou 1 minuto se o agendador não suportar segundos).
+
+**Cron – Check matches:** para sincronizar partidas em andamento com o resultado do jogo (Valorant/API Henrik), agende `GET /api/cron/check-matches` com o mesmo segredo. Recomendado a cada **1 minuto**: ao finalizar no jogo, o site atualiza status, vencedor, K/D/A, ELO, XP e nível.
 
 ### Configurando os crons no Dokploy
 
