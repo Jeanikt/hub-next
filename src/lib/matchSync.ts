@@ -15,8 +15,8 @@ const ELO_LOSS = 1;
 const XP_PER_MATCH_PLAYED = 10;
 const XP_MATCH_WIN_BONUS = 5;
 const MATCH_MAX_AGE_MS = 4 * 60 * 60 * 1000; // 4h
-const DELAY_MS = 2000; // 2 segundos = 30 req/min com 2 req por partida
-const LAST_SYNC_CHECK_MS = 5 * 60 * 1000; // Não checa a mesma partida dentro de 5 minutos
+const DELAY_MS = 3000; // 3 segundos entre requisições
+const LAST_SYNC_CHECK_MS = 10 * 60 * 1000; // Não checa a mesma partida dentro de 10 minutos
 
 function normalizeRiotKey(name: string, tag: string): string {
   return `${String(name || "").trim().toLowerCase()}#${String(tag || "").trim().toLowerCase()}`;
@@ -68,7 +68,7 @@ export async function syncPendingMatchesFromRiot(): Promise<SyncResult> {
       },
     },
     orderBy: { createdAt: "desc" },
-    take: 10, // Reduzido de 20 para 10 (max 20 requisições por execução)
+    take: 5, // Reduzido para 5 partidas (max 10 requisições por execução)
   });
 
   for (const match of pendingMatches) {
