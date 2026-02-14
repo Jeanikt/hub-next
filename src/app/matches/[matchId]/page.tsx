@@ -219,10 +219,16 @@ export default function MatchDetailPage() {
           </div>
         </div>
 
-        {match.status === "in_progress" && (match.map || match.settings?.match_code || match.settings?.valorant_room_code) && (
+        {((match.status === "in_progress" && (match.map || match.settings?.match_code || match.settings?.valorant_room_code)) ||
+          (match.status === "pending" && match.isFull && (match.settings?.match_code || match.settings?.valorant_room_code || isCreator))) && (
           <div className="mt-6 rounded-xl border-2 border-[var(--hub-accent)] bg-[var(--hub-accent)]/10 p-5">
+            {isCreator && !match.settings?.valorant_room_code && (
+              <p className="text-sm font-bold text-[var(--hub-accent)] mb-3 rounded-lg bg-[var(--hub-accent)]/20 p-3">
+                Você é o criador: informe o código da sala do Valorant abaixo (o código que aparece no jogo ao criar a partida). Todos na partida verão aqui.
+              </p>
+            )}
             <p className="text-sm font-bold uppercase tracking-wider text-[var(--hub-accent)] mb-3">
-              Partida iniciada — entre no Valorant
+              {match.status === "in_progress" ? "Partida iniciada — entre no Valorant" : "Código da sala — entre no Valorant"}
             </p>
             <div className="flex flex-wrap gap-6 text-[var(--hub-text)]">
               {match.map && (

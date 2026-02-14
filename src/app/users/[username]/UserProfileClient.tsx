@@ -177,23 +177,33 @@ export default function UserProfileClient({ username }: { username: string }) {
 
   const displayName = profile.username ?? profile.name ?? "Jogador";
   const isOwnProfile = (session?.user as { id?: string })?.id === profile.id;
+  const hasFullPageBg = Boolean(profile.profileBackgroundUrl);
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
-      {/* Header com background */}
+    <div className="relative min-h-screen">
+      {/* Fundo da página inteira (GIF/imagem) atrás de todos os componentes */}
+      {hasFullPageBg && (
+        <div className="fixed inset-0 z-0" aria-hidden>
+          <img
+            src={profile.profileBackgroundUrl!}
+            alt=""
+            className="h-full w-full object-cover"
+          />
+          <div
+            className="absolute inset-0 bg-[var(--hub-bg)]/85"
+            style={{ backgroundBlendMode: "multiply" }}
+          />
+        </div>
+      )}
+
+      <div className="relative z-10 mx-auto max-w-3xl space-y-6">
+      {/* Header (gradiente quando há fundo full-page; senão mantém o visual anterior) */}
       <div
         className="relative overflow-hidden rounded-2xl border border-[var(--hub-border)] clip-card"
         style={{ borderTopWidth: "4px", borderTopColor: "var(--hub-accent)" }}
       >
-        {profile.profileBackgroundUrl ? (
-          <div className="absolute inset-0">
-            <img
-              src={profile.profileBackgroundUrl}
-              alt=""
-              className="h-52 w-full object-cover opacity-50 sm:h-64"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-[var(--hub-bg-card)] via-[var(--hub-bg-card)]/70 to-transparent" />
-          </div>
+        {hasFullPageBg ? (
+          <div className="absolute inset-0 bg-gradient-to-t from-[var(--hub-bg-card)]/95 via-[var(--hub-bg-card)]/80 to-transparent" />
         ) : (
           <div className="absolute inset-0 bg-gradient-to-br from-[var(--hub-accent)]/15 via-transparent to-[var(--hub-accent-cyan)]/10" />
         )}
@@ -419,6 +429,7 @@ export default function UserProfileClient({ username }: { username: string }) {
           <ChevronLeft size={16} />
           Voltar à listagem
         </Link>
+      </div>
       </div>
     </div>
   );
