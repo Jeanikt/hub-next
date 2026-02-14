@@ -182,6 +182,7 @@ export async function POST(request: NextRequest) {
                 },
               });
 
+              console.log("Fila criada", created)
               await tx.gameMatchUser.createMany({
                 data: orderedEntries.map((e, i) => {
                   const team = i < redSize ? "red" : "blue";

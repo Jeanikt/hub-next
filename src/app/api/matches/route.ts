@@ -94,6 +94,7 @@ export async function POST(request: NextRequest) {
         }),
       },
     });
+    console.log("Partida criada", match)
 
     await prisma.gameMatchUser.create({
       data: {
