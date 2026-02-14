@@ -8,7 +8,7 @@ const MESSAGES: Record<string, { title: string; description: string }> = {
   Configuration: {
     title: "Erro de configuração no login",
     description:
-      "O login com Google falhou por um problema no servidor (geralmente falta de atualização do banco de dados). Se você é administrador, execute no banco de produção o script prisma/add-cpf-columns.sql ou npm run db:add-cpf. Caso contrário, tente novamente mais tarde ou entre em contato com o suporte.",
+      "O login com Google falhou por um problema no servidor. Tente novamente mais tarde ou entre em contato com o suporte.",
   },
   AccessDenied: {
     title: "Acesso negado",
