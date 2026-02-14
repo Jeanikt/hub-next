@@ -231,13 +231,13 @@ export default function MatchDetailPage() {
               )}
               {match.settings?.match_code && (
                 <div>
-                  <span className="text-xs text-[var(--hub-text-muted)] uppercase">Código da partida</span>
+                  <span className="text-xs text-[var(--hub-text-muted)] uppercase">Código da partida (referência)</span>
                   <p className="text-xl font-mono font-bold tracking-wider text-[var(--hub-accent)]">{match.settings.match_code}</p>
                 </div>
               )}
             </div>
             <p className="mt-3 text-sm text-[var(--hub-text-muted)]">
-              O criador deve abrir uma partida custom no Valorant e compartilhar o código do jogo com os times. Após o fim da partida, o resultado será sincronizado automaticamente.
+              O criador abre uma partida custom no Valorant, escolhe o mapa acima, e informa o código que aparecer no jogo para os jogadores entrarem. Após o fim da partida, o resultado será sincronizado automaticamente.
             </p>
           </div>
         )}
