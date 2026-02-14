@@ -10,7 +10,7 @@ import {
 import { randomUUID } from "crypto";
 import { ROLE_IDS } from "@/src/lib/roles";
 import { generateMatchCode } from "@/src/lib/inviteCode";
-import { isAllowedAdmin } from "@/src/lib/admin";
+import { canSeeSecretQueue } from "@/src/lib/admin";
 
 const VALID_TYPES = ["low_elo", "high_elo", "inclusive", "secret"] as const;
 type QueueType = (typeof VALID_TYPES)[number];
@@ -78,9 +78,9 @@ export async function POST(request: NextRequest) {
     const qt = queue_type as QueueType;
 
     if (qt === "secret") {
-      if (!isAllowedAdmin(session)) {
+      if (!canSeeSecretQueue(session)) {
         return NextResponse.json(
-          { message: "A fila secreta é apenas para administradores (teste de partidas)." },
+          { message: "A fila secreta é apenas para super admins (teste de partidas)." },
           { status: 403 }
         );
       }

@@ -3,7 +3,7 @@ import { prisma } from "@/src/lib/prisma";
 import { auth } from "@/src/lib/auth";
 import { getAllowedQueues } from "@/src/lib/rankPoints";
 import { getQueueStatusCache, setQueueStatusCache } from "@/src/lib/redis";
-import { isAllowedAdmin } from "@/src/lib/admin";
+import { canSeeSecretQueue } from "@/src/lib/admin";
 
 const QUEUE_TYPES = ["low_elo", "high_elo", "inclusive"] as const;
 const SECRET_QUEUE = "secret";
@@ -78,8 +78,15 @@ async function computeQueues(
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
-    const isAdmin = session ? isAllowedAdmin(session) : false;
-    const includeSecret = !!isAdmin;
+    // Fila secreta: verificar por e-mail (sessão ou DB, para garantir que super admins vejam)
+    let includeSecret = canSeeSecretQueue(session);
+    if (!includeSecret && session?.user?.id) {
+      const user = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { email: true },
+      });
+      includeSecret = canSeeSecretQueue({ user: { email: user?.email ?? null } });
+    }
 
     const searchParams = request.nextUrl.searchParams;
     const queueTypeParam = searchParams.get("queue_type");
@@ -153,7 +160,7 @@ export async function GET(request: NextRequest) {
       ]);
       hasRiotLinked = !!me?.riotAccount;
       allowed_queues = hasRiotLinked ? getAllowedQueues(me?.elo ?? 0) : [];
-      if (isAdmin) allowed_queues.push(SECRET_QUEUE);
+      if (includeSecret) allowed_queues.push(SECRET_QUEUE);
       if (myEntry) {
         inQueue = true;
         currentQueue = myEntry.queueType;

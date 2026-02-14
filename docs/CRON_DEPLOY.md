@@ -4,6 +4,23 @@ O endpoint `GET /api/cron/check-matches` verifica partidas pendentes/em andament
 
 ---
 
+## Erro: "Cannot find module '/app/scripts/cron-check-matches.js'"
+
+Se a imagem Docker não tiver a pasta `scripts` (build antigo ou deploy que não copia), **use o comando one-liner** abaixo no agendador — não depende de nenhum arquivo, só do Node e da variável `CRON_SECRET` no ambiente do container.
+
+**Comando para colar no Schedule (Dokploy):**
+
+```bash
+node -e "const s=process.env.CRON_SECRET||process.env.CRON_API_KEY||'';const u='https://www.hubexpresso.com/api/cron/check-matches?secret='+encodeURIComponent(s);fetch(u).then(r=>r.text().then(t=>({s:r.status,t}))).then(({s,t})=>{if(s===401){console.error('Não autorizado');process.exit(1);}if(!t.trim().startsWith('{')){console.warn('Resposta não JSON');process.exit(0);}try{console.log(JSON.parse(t));}catch(e){process.exit(0);}}).catch(e=>{console.error(e.message);process.exit(1);});"
+```
+
+**URL usada:** `https://www.hubexpresso.com`. No container/deploy, defina a variável **`CRON_SECRET`** com o valor configurado na aplicação (mesmo do `.env`).
+
+- O container **precisa** ter a variável **`CRON_SECRET`** (ou `CRON_API_KEY`) com o mesmo valor da aplicação.
+- Requer Node 18+ (fetch nativo). Não quebra se a resposta for HTML (deploy/manutenção).
+
+---
+
 ## Erro: "Unexpected token 'T', \"The deploy\"... is not valid JSON"
 
 Isso acontece quando:
@@ -45,17 +62,9 @@ No **agendador do Dokploy** (Schedule):
 
 ---
 
-## Solução 2: One-liner com secret do ambiente
+## Solução 2: One-liner (quando o script não está na imagem)
 
-Se preferir um one-liner (secret do ambiente, não literal `CRON_SECRET`):
-
-```bash
-node -e "const s=process.env.CRON_SECRET||process.env.CRON_API_KEY||''; const url='https://www.hubexpresso.com/api/cron/check-matches?secret='+encodeURIComponent(s); fetch(url).then(r=>r.text().then(t=>({status:r.status,text:t}))).then(({status,text})=>{ if(status===401){console.error('Não autorizado');process.exit(1);} try{console.log(JSON.parse(text));}catch{console.warn('Resposta não JSON:',text.slice(0,80));} }).catch(e=>{console.error(e.message);process.exit(1);});"
-```
-
-(Requer Node 18+ para `fetch`. Use o script abaixo em caso de dúvida.)
-
-Ainda assim, se a resposta for HTML (deploy, 502, etc.), o script pode dar erro ao fazer `JSON.parse`. Por isso o **script `scripts/cron-check-matches.js`** é mais seguro.
+É o mesmo comando da seção acima. Não depende de arquivo; use quando der `MODULE_NOT_FOUND` para o script.
 
 ---
 
