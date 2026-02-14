@@ -76,7 +76,7 @@ export async function setAppSetting(key: string, value: "0" | "1"): Promise<void
 }
 
 /* =======================
-   (seu cache de fila pode ficar como estava)
+   cache de fila
    ======================= */
 
 const QUEUE_STATUS_KEY = "hub:queue:status";
@@ -135,4 +135,50 @@ export async function setUsersCountCache(total: number): Promise<void> {
   try {
     await client.set(USERS_COUNT_KEY, String(total), { ex: USERS_COUNT_TTL });
   } catch {}
+}
+
+/* =======================
+   LOCKS (para evitar race na criação de partida)
+   ======================= */
+
+export type QueueMatchLock = { key: string; token: string };
+
+export async function acquireQueueMatchLock(queueType: string, ttlSeconds = 12): Promise<QueueMatchLock | null> {
+  const client = await getClient();
+  if (!client) return null;
+
+  const key = `hub:queue:matchlock:${queueType}`;
+  const token = crypto.randomUUID();
+
+  try {
+    // Upstash: set(key, value, { nx: true, ex: ttl })
+    const ok = await client.set(key, token, { nx: true, ex: ttlSeconds });
+    return ok ? { key, token } : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function releaseQueueMatchLock(lock: QueueMatchLock): Promise<void> {
+  const client = await getClient();
+  if (!client) return;
+
+  // release seguro: só apaga se o token for o mesmo
+  const lua = `
+    if redis.call("GET", KEYS[1]) == ARGV[1] then
+      return redis.call("DEL", KEYS[1])
+    else
+      return 0
+    end
+  `;
+
+  try {
+    // @ts-ignore Upstash Redis tem eval
+    await client.eval(lua, [lock.key], [lock.token]);
+  } catch {
+    // fallback simples
+    try {
+      await client.del(lock.key);
+    } catch {}
+  }
 }

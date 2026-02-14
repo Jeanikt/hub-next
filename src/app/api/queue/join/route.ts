@@ -2,12 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/src/lib/prisma";
 import { auth } from "@/src/lib/auth";
 import { canJoinQueue } from "@/src/lib/rankPoints";
-import { invalidateQueueStatusCache } from "@/src/lib/redis";
+import {
+  invalidateQueueStatusCache,
+  acquireQueueMatchLock,
+  releaseQueueMatchLock,
+} from "@/src/lib/redis";
 import { randomUUID } from "crypto";
 import { ROLE_IDS } from "@/src/lib/roles";
 import { generateMatchCode } from "@/src/lib/inviteCode";
 
 const VALID_TYPES = ["low_elo", "high_elo", "inclusive"] as const;
+type QueueType = (typeof VALID_TYPES)[number];
+
 /** 5v5 = 10 jogadores por partida (5 vs 5). */
 const PLAYERS_NEEDED = 10;
 
@@ -15,9 +21,9 @@ const RED_SIZE = 5;
 const BLUE_SIZE = 5;
 
 /** Agrupa 10 jogadores em dois times (red/blue): no máximo um por função primária por time quando possível. */
-function assignTeamsByRole<T extends { userId: string; user: { primaryRole: string | null } }>(
-  entries: T[]
-): T[][] {
+function assignTeamsByRole<
+  T extends { userId: string; user: { primaryRole: string | null } }
+>(entries: T[]): T[][] {
   const red: T[] = [];
   const blue: T[] = [];
   const assigned = new Set<string>();
@@ -27,6 +33,7 @@ function assignTeamsByRole<T extends { userId: string; user: { primaryRole: stri
     withRole.forEach((e, i) => {
       if (assigned.has(e.userId)) return;
       assigned.add(e.userId);
+
       if (i % 2 === 0 && red.length < RED_SIZE) {
         red.push(e);
       } else if (blue.length < BLUE_SIZE) {
@@ -36,11 +43,13 @@ function assignTeamsByRole<T extends { userId: string; user: { primaryRole: stri
       }
     });
   }
+
   const remaining = entries.filter((e) => !assigned.has(e.userId));
   for (const e of remaining) {
     if (red.length < RED_SIZE) red.push(e);
     else blue.push(e);
   }
+
   return [red, blue];
 }
 
@@ -51,6 +60,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: "Não autenticado." }, { status: 401 });
     }
 
+    // toggle filas
     const { getAppSetting } = await import("@/src/lib/redis");
     const queuesDisabled = (await getAppSetting("queues_disabled")) ?? "0";
     if (queuesDisabled === "1") {
@@ -63,7 +73,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json().catch(() => ({}));
     const queue_type = body.queue_type as string | undefined;
 
-    if (!queue_type || !VALID_TYPES.includes(queue_type as (typeof VALID_TYPES)[number])) {
+    if (!queue_type || !VALID_TYPES.includes(queue_type as QueueType)) {
       return NextResponse.json(
         { message: "queue_type inválido. Use: low_elo, high_elo, inclusive." },
         { status: 422 }
@@ -74,14 +84,18 @@ export async function POST(request: NextRequest) {
       where: { id: session.user.id },
       select: { riotAccount: true, elo: true },
     });
+
     if (!user?.riotAccount) {
       return NextResponse.json(
         { message: "Vincule sua conta Riot no perfil ou no onboarding para entrar na fila." },
         { status: 403 }
       );
     }
+
+    const qt = queue_type as QueueType;
     const rankPoints = user.elo ?? 0;
-    if (!canJoinQueue(queue_type as (typeof VALID_TYPES)[number], rankPoints)) {
+
+    if (!canJoinQueue(qt, rankPoints)) {
       return NextResponse.json(
         {
           message:
@@ -91,6 +105,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // já tá em uma fila?
     const existing = await prisma.queueEntry.findUnique({
       where: { userId: session.user.id },
     });
@@ -101,94 +116,115 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // entra na fila
     await prisma.queueEntry.create({
-      data: {
-        userId: session.user.id,
-        queueType: queue_type,
-      },
+      data: { userId: session.user.id, queueType: qt },
     });
     await invalidateQueueStatusCache();
 
+    // pega 10 primeiros
     const entries = await prisma.queueEntry.findMany({
-      where: { queueType: queue_type },
+      where: { queueType: qt },
       orderBy: { joinedAt: "asc" },
       take: PLAYERS_NEEDED,
       include: { user: { select: { primaryRole: true } } },
     });
 
-    const count = entries.length;
     let matchFound = false;
     let matchId: string | null = null;
 
-    if (count >= PLAYERS_NEEDED) {
-      const [redTeam, blueTeam] = assignTeamsByRole(entries);
-      const orderedEntries = [...redTeam, ...blueTeam];
+    // se bateu 10, tenta criar partida (com lock)
+    if (entries.length >= PLAYERS_NEEDED) {
+      const lock = await acquireQueueMatchLock(qt, 12);
+      if (lock) {
+        try {
+          // revalida dentro do lock
+          const lockedEntries = await prisma.queueEntry.findMany({
+            where: { queueType: qt },
+            orderBy: { joinedAt: "asc" },
+            take: PLAYERS_NEEDED,
+            include: { user: { select: { primaryRole: true } } },
+          });
 
-      const mapPool = ["Ascent", "Bind", "Haven", "Split", "Icebox"];
-      const chosenMap = mapPool[Math.floor(Math.random() * mapPool.length)];
-      const matchCode = generateMatchCode();
+          if (lockedEntries.length >= PLAYERS_NEEDED) {
+            const [redTeam, blueTeam] = assignTeamsByRole(lockedEntries);
+            const orderedEntries = [...redTeam, ...blueTeam].slice(
+              0,
+              PLAYERS_NEEDED
+            );
 
-      const matchUuid = randomUUID();
-      const match = await prisma.gameMatch.create({
-        data: {
-          matchId: matchUuid,
-          type: queue_type,
-          status: "in_progress",
-          map: chosenMap,
-          maxPlayers: PLAYERS_NEEDED,
-          startedAt: new Date(),
-          settings: JSON.stringify({
-            visibility: "public",
-            from_queue: true,
-            queue_type,
-            map_pool: mapPool,
-            match_code: matchCode,
-          }),
-          creatorId: orderedEntries[0].userId,
-        },
-      });
+            const mapPool = ["Ascent", "Bind", "Haven", "Split", "Icebox"];
+            const chosenMap = mapPool[Math.floor(Math.random() * mapPool.length)];
+            const matchCode = generateMatchCode();
+            const matchUuid = randomUUID();
 
-      for (let i = 0; i < PLAYERS_NEEDED && i < orderedEntries.length; i++) {
-        const team = i < RED_SIZE ? "red" : "blue";
-        const role = i === 0 ? "creator" : orderedEntries[i].user.primaryRole ?? "player";
-        await prisma.gameMatchUser.create({
-          data: {
-            gameMatchId: match.id,
-            userId: orderedEntries[i].userId,
-            team,
-            role,
-          },
-        });
+            const match = await prisma.$transaction(async (tx) => {
+              const created = await tx.gameMatch.create({
+                data: {
+                  matchId: matchUuid,
+                  type: qt,
+                  status: "in_progress",
+                  map: chosenMap,
+                  maxPlayers: PLAYERS_NEEDED,
+                  startedAt: new Date(),
+                  settings: JSON.stringify({
+                    visibility: "public",
+                    from_queue: true,
+                    queue_type: qt,
+                    map_pool: mapPool,
+                    match_code: matchCode,
+                  }),
+                  creatorId: orderedEntries[0].userId,
+                },
+              });
+
+              await tx.gameMatchUser.createMany({
+                data: orderedEntries.map((e, i) => {
+                  const team = i < RED_SIZE ? "red" : "blue";
+                  const role =
+                    i === 0 ? "creator" : e.user.primaryRole ?? "player";
+
+                  return {
+                    gameMatchId: created.id,
+                    userId: e.userId,
+                    team,
+                    role,
+                  };
+                }),
+              });
+
+              await tx.queueEntry.deleteMany({
+                where: { userId: { in: orderedEntries.map((e) => e.userId) } },
+              });
+
+              return created;
+            });
+
+            await invalidateQueueStatusCache();
+
+            matchFound = true;
+            matchId = match.matchId;
+          }
+        } finally {
+          await releaseQueueMatchLock(lock);
+        }
       }
-
-      await prisma.queueEntry.deleteMany({
-        where: {
-          userId: { in: entries.map((e) => e.userId) },
-        },
-      });
-      await invalidateQueueStatusCache();
-
-      matchFound = true;
-      matchId = match.matchId;
     }
 
     const playersInQueue = await prisma.queueEntry.count({
-      where: { queueType: queue_type },
+      where: { queueType: qt },
     });
 
     return NextResponse.json({
       success: true,
       message: matchFound ? "Partida encontrada!" : "Você entrou na fila!",
-      queue_type,
+      queue_type: qt,
       players_in_queue: playersInQueue,
       matchFound,
       matchId,
     });
   } catch (e) {
     console.error("queue join", e);
-    return NextResponse.json(
-      { message: "Erro ao entrar na fila." },
-      { status: 500 }
-    );
+    return NextResponse.json({ message: "Erro ao entrar na fila." }, { status: 500 });
   }
 }
