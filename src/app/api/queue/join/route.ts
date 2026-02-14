@@ -114,6 +114,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
+      // bloqueia se já está em uma partida pendente ou em andamento (exceto canceled)
+      const activeMatch = await prisma.gameMatchUser.findFirst({
+        where: { userId: session.user.id, gameMatch: { status: { in: ["pending", "in_progress"] } } },
+      });
+      if (activeMatch) {
+        return NextResponse.json(
+          { message: "Você já está em uma partida pendente ou em andamento; não é possível entrar na fila." },
+          { status: 409 }
+        );
+      }
+
     // já tá em uma fila?
     const existing = await prisma.queueEntry.findUnique({
       where: { userId: session.user.id },

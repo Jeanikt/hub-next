@@ -26,6 +26,20 @@ export async function POST(request: NextRequest, { params }: Params) {
       return NextResponse.json({ message: "Partida não encontrada." }, { status: 404 });
     }
 
+    // bloqueia se já está em uma partida pendente ou em andamento (exceto canceled) diferente desta
+    const activeOther = await prisma.gameMatchUser.findFirst({
+      where: {
+        userId: session.user.id,
+        gameMatch: { status: { in: ["pending", "in_progress"] }, matchId: { not: matchId } },
+      },
+    });
+    if (activeOther) {
+      return NextResponse.json(
+        { message: "Você já está em outra partida pendente ou em andamento; não é possível entrar nesta." },
+        { status: 409 }
+      );
+    }
+
     if (match.status !== "pending") {
       return NextResponse.json(
         { message: "Esta partida não está mais disponível." },
