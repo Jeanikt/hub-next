@@ -236,12 +236,6 @@ export default function MatchDetailPage() {
                   <p className="text-lg font-semibold">{match.map}</p>
                 </div>
               )}
-              {match.settings?.match_code && (
-                <div>
-                  <span className="text-xs text-[var(--hub-text-muted)] uppercase">Código da partida (referência)</span>
-                  <p className="text-xl font-mono font-bold tracking-wider text-[var(--hub-accent)]">{match.settings.match_code}</p>
-                </div>
-              )}
               {match.settings?.valorant_room_code ? (
                 <div>
                   <span className="text-xs text-[var(--hub-text-muted)] uppercase">Código para entrar no Valorant</span>
