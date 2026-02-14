@@ -157,8 +157,8 @@ export async function acquireQueueMatchLock(queueType: string, ttlSeconds = 12):
   const token = randomUUID();
 
   try {
-    // ioredis: set(key, value, "NX", "EX", ttl)
-    const ok = await client.set(key, token, "NX", "EX", ttlSeconds);
+    // ioredis: set with NX and EX options
+    const ok = await client.set(key, token, "EX", ttlSeconds, "NX");
     return ok ? { key, token } : null;
   } catch {
     return null;
