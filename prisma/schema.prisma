@@ -98,6 +98,7 @@ model User {
   profileLikesReceived   ProfileLike[]          @relation("ProfileLikesReceived")
   profileLikesSent       ProfileLike[]          @relation("ProfileLikesSent")
   queueEntries           QueueEntry?
+  queueWaitingMessages   QueueWaitingMessage[]
   referredBy             Referral?              @relation("ReferredBy")
   referralsSent          Referral[]             @relation("ReferralsSent")
   reports                Report[]
@@ -177,6 +178,20 @@ model QueueEntry {
 
   @@index([queueType])
   @@map("queue_entries")
+}
+
+/// Mensagens do chat da sala de espera da fila. Autor não é exposto (usuários anônimos).
+model QueueWaitingMessage {
+  id        Int      @id @default(autoincrement())
+  queueType String
+  userId    String
+  content   String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([queueType])
+  @@index([queueType, createdAt])
+  @@map("queue_waiting_messages")
 }
 
 model GameMatch {
