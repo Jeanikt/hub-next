@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl"]
 }
 
 datasource db {
@@ -391,5 +392,6 @@ model RoadmapLike {
 model AppSetting {
   key   String @id
   value String
+
   @@map("app_settings")
 }
