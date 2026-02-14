@@ -78,6 +78,9 @@ async function computeQueues(
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
+    const isAdmin = session ? isAllowedAdmin(session) : false;
+    const includeSecret = !!isAdmin;
+
     const searchParams = request.nextUrl.searchParams;
     const queueTypeParam = searchParams.get("queue_type");
 
@@ -110,8 +113,6 @@ export async function GET(request: NextRequest) {
       queues = await computeQueues(queueTypeParam || null, includeSecret);
       if (!userInQueue && !includeSecret) await setQueueStatusCache(JSON.stringify(queues));
     }
-    const isAdmin = session ? isAllowedAdmin(session) : false;
-    const includeSecret = !!isAdmin;
 
     let inQueue = false;
     let currentQueue: string | null = null;
