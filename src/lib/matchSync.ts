@@ -16,7 +16,7 @@ const XP_PER_MATCH_PLAYED = 10;
 const XP_MATCH_WIN_BONUS = 5;
 const MATCH_MAX_AGE_MS = 4 * 60 * 60 * 1000; // 4h
 const DELAY_MS = 3000; // 3 segundos entre requisições
-const LAST_SYNC_CHECK_MS = 10 * 60 * 1000; // Não checa a mesma partida dentro de 10 minutos
+const LAST_SYNC_CHECK_MS = 3 * 60 * 1000; // Não checa a mesma partida dentro de 3 minutos
 
 function normalizeRiotKey(name: string, tag: string): string {
   return `${String(name || "").trim().toLowerCase()}#${String(tag || "").trim().toLowerCase()}`;
