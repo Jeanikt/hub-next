@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Prisma } from "@prisma/client";
 import { prisma } from "@/src/lib/prisma";
 import { auth } from "@/src/lib/auth";
 import { canJoinQueue } from "@/src/lib/rankPoints";
@@ -145,79 +144,71 @@ export async function POST(request: NextRequest) {
 
     if (entries.length >= playersNeeded) {
       const lock = await acquireQueueMatchLock(qt, 12);
-      if (!lock && process.env.NODE_ENV !== "test") {
-        console.warn("[queue/join] Redis lock unavailable; using DB row lock for match formation.");
-      }
-      try {
-        const match = await prisma.$transaction(async (tx) => {
-          if (!lock) {
-            await tx.$queryRaw(
-              Prisma.sql`SELECT id FROM queue_entries WHERE "queueType" = ${qt} ORDER BY "joinedAt" ASC LIMIT 1 FOR UPDATE`
-            );
-          }
-          const lockedEntries = await tx.queueEntry.findMany({
+      if (lock) {
+        try {
+          const lockedEntries = await prisma.queueEntry.findMany({
             where: { queueType: qt },
             orderBy: { joinedAt: "asc" },
             take: playersNeeded,
             include: { user: { select: { primaryRole: true } } },
           });
 
-          if (lockedEntries.length < playersNeeded) return null;
+          if (lockedEntries.length >= playersNeeded) {
+            const [redTeam, blueTeam] = assignTeamsByRole(lockedEntries, redSize, blueSize);
+            const orderedEntries = [...redTeam, ...blueTeam].slice(0, playersNeeded);
 
-          const [redTeam, blueTeam] = assignTeamsByRole(lockedEntries, redSize, blueSize);
-          const orderedEntries = [...redTeam, ...blueTeam].slice(0, playersNeeded);
+            const mapPool = ["Ascent", "Bind", "Haven", "Split", "Icebox"];
+            const chosenMap = mapPool[Math.floor(Math.random() * mapPool.length)];
+            const matchCode = generateMatchCode();
+            const matchUuid = randomUUID();
 
-          const mapPool = ["Ascent", "Bind", "Haven", "Split", "Icebox"];
-          const chosenMap = mapPool[Math.floor(Math.random() * mapPool.length)];
-          const matchCode = generateMatchCode();
-          const matchUuid = randomUUID();
+            const match = await prisma.$transaction(async (tx) => {
+              const created = await tx.gameMatch.create({
+                data: {
+                  matchId: matchUuid,
+                  type: qt,
+                  status: "in_progress",
+                  map: chosenMap,
+                  maxPlayers: playersNeeded,
+                  startedAt: new Date(),
+                  settings: JSON.stringify({
+                    visibility: qt === FOURTH_QUEUE_TYPE ? "test" : "public",
+                    queue_type: qt,
+                    map_pool: mapPool,
+                    match_code: matchCode,
+                  }),
+                  creatorId: orderedEntries[0].userId,
+                },
+              });
 
-          const created = await tx.gameMatch.create({
-            data: {
-              matchId: matchUuid,
-              type: qt,
-              status: "in_progress",
-              map: chosenMap,
-              maxPlayers: playersNeeded,
-              startedAt: new Date(),
-              settings: JSON.stringify({
-                visibility: qt === FOURTH_QUEUE_TYPE ? "test" : "public",
-                from_queue: true,
-                queue_type: qt,
-                map_pool: mapPool,
-                match_code: matchCode,
-              }),
-              creatorId: orderedEntries[0].userId,
-            },
-          });
+              await tx.gameMatchUser.createMany({
+                data: orderedEntries.map((e, i) => {
+                  const team = i < redSize ? "red" : "blue";
+                  const role = i === 0 ? "creator" : e.user.primaryRole ?? "player";
+                  return {
+                    gameMatchId: created.id,
+                    userId: e.userId,
+                    team,
+                    role,
+                  };
+                }),
+              });
 
-          await tx.gameMatchUser.createMany({
-            data: orderedEntries.map((e, i) => {
-              const team = i < redSize ? "red" : "blue";
-              const role = i === 0 ? "creator" : e.user.primaryRole ?? "player";
-              return {
-                gameMatchId: created.id,
-                userId: e.userId,
-                team,
-                role,
-              };
-            }),
-          });
+              await tx.queueEntry.deleteMany({
+                where: { userId: { in: orderedEntries.map((e) => e.userId) } },
+              });
 
-          await tx.queueEntry.deleteMany({
-            where: { userId: { in: orderedEntries.map((e) => e.userId) } },
-          });
+              return created;
+            });
 
-          return created;
-        });
+            await invalidateQueueStatusCache();
 
-        if (match) {
-          await invalidateQueueStatusCache();
-          matchFound = true;
-          matchId = match.matchId;
+            matchFound = true;
+            matchId = match.matchId;
+          }
+        } finally {
+          await releaseQueueMatchLock(lock);
         }
-      } finally {
-        if (lock) await releaseQueueMatchLock(lock);
       }
     }
 
