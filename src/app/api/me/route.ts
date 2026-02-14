@@ -28,6 +28,7 @@ const ME_SELECT_FULL = {
   name: true,
   email: true,
   username: true,
+  bio: true,
   image: true,
   rank: true,
   elo: true,
@@ -52,6 +53,7 @@ const ME_SELECT_MINIMAL = {
   email: true,
   username: true,
   image: true,
+  bio: true,
   rank: true,
   elo: true,
   xp: true,
@@ -86,6 +88,7 @@ export async function GET() {
     email: string | null;
     username: string | null;
     image: string | null;
+    bio: string | null;
     rank: string | null;
     elo: number;
     xp: number;
@@ -168,5 +171,6 @@ export async function GET() {
     xpProgress: progress,
     isBanned: banStatus?.isBanned ?? false,
     bannedUntil: banStatus?.bannedUntil ?? null,
+    bio: user.bio ?? null
   });
 }

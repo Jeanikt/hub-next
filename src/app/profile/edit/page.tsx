@@ -12,6 +12,7 @@ export default function ProfileEditPage() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
+  const [bio, setBio] = useState("");
   const [riotId, setRiotId] = useState("");
   const [tagline, setTagline] = useState("");
   const [image, setImage] = useState("");
@@ -52,9 +53,10 @@ export default function ProfileEditPage() {
           setFavoriteChampion(d.favoriteChampion ?? "");
           setPrimaryRole(d.primaryRole ?? "");
           setSecondaryRole(d.secondaryRole ?? "");
+          setBio(d.bio ?? "")
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }, [status]);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -76,6 +78,7 @@ export default function ProfileEditPage() {
           favoriteChampion: favoriteChampion || null,
           primaryRole: primaryRole || null,
           secondaryRole: secondaryRole || null,
+          bio: bio || null
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -158,6 +161,19 @@ export default function ProfileEditPage() {
                 pattern="[a-zA-Z0-9_-]+"
                 className="w-full px-4 py-3 bg-black/30 border border-[var(--hub-border)] text-white rounded-lg focus:border-[var(--hub-accent)] focus:outline-none transition-colors"
                 placeholder="username"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-[var(--hub-text-muted)] mb-1.5">
+                Bio
+              </label>
+              <input
+                type="text"
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                pattern="[a-zA-Z0-9_-]+"
+                className="w-full px-4 py-3 bg-black/30 border border-[var(--hub-border)] text-white rounded-lg focus:border-[var(--hub-accent)] focus:outline-none transition-colors"
+                placeholder="Fale sobre você..."
               />
             </div>
           </section>
@@ -290,13 +306,13 @@ export default function ProfileEditPage() {
               <label className="block text-sm font-medium text-[var(--hub-text-muted)] mb-1.5">
                 Agente favorito
               </label>
-                <input
-                  type="text"
-                  value={favoriteChampion}
-                  onChange={(e) => setFavoriteChampion(e.target.value)}
-                  className="w-full px-4 py-3 bg-black/30 border border-[var(--hub-border)] text-white focus:border-[var(--hub-accent)] focus:outline-none clip-button"
-                  placeholder="Ex: Jett, Sage..."
-                />
+              <input
+                type="text"
+                value={favoriteChampion}
+                onChange={(e) => setFavoriteChampion(e.target.value)}
+                className="w-full px-4 py-3 bg-black/30 border border-[var(--hub-border)] text-white focus:border-[var(--hub-accent)] focus:outline-none clip-button"
+                placeholder="Ex: Jett, Sage..."
+              />
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>

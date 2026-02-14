@@ -16,6 +16,7 @@ const updateProfileSchema = z.object({
   profileBackgroundUrl: z.string().url().max(2000).optional().nullable(),
   favoriteChampion: z.string().max(80).optional().nullable(),
   image: z.union([z.string().url().max(2000), z.string().startsWith("/uploads/").max(2000)]).optional().nullable(),
+  bio: z.string().min(1).max(190).optional().nullable()
 });
 
 /** PATCH /api/profile – atualizar perfil (nome, username, Riot ID). Ao vincular Riot: valida na API, verifica duplicado e atualiza rank/elo. */
@@ -54,6 +55,7 @@ export async function PATCH(request: NextRequest) {
     riotAccount?: string | null;
     rank?: string | null;
     elo?: number;
+    bio?: string | null;
     primaryRole?: string | null;
     secondaryRole?: string | null;
     profileBackgroundUrl?: string | null;
@@ -67,8 +69,9 @@ export async function PATCH(request: NextRequest) {
     ...(data.profileBackgroundUrl !== undefined && { profileBackgroundUrl: data.profileBackgroundUrl }),
     ...(data.favoriteChampion !== undefined && { favoriteChampion: data.favoriteChampion }),
     ...(data.image !== undefined && { image: data.image }),
+    ...(data.bio !== undefined && { bio: data.bio }),
   };
-
+  console.log(updateData)
   // Alteração de conta Riot: dois campos (nome e tag); no back verificamos como nome#tag
   if (data.riotId !== undefined && data.tagline !== undefined) {
     const riotIdRaw = data.riotId?.trim() || null;
@@ -148,6 +151,7 @@ export async function PATCH(request: NextRequest) {
       image: true,
       riotId: true,
       tagline: true,
+      bio: true,
       rank: true,
       elo: true,
       level: true,

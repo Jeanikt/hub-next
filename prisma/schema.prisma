@@ -54,6 +54,7 @@ model User {
   image                  String?
   password               String?
   username               String?                @unique
+  bio                    String?                @db.Text
   riotAccount            String?                @unique
   riotId                 String?
   tagline                String?
