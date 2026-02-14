@@ -4,10 +4,20 @@
 
 const CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const CODE_LENGTH = 8;
+const MATCH_CODE_LENGTH = 6;
 
 export function generateInviteCode(): string {
   let code = "";
   for (let i = 0; i < CODE_LENGTH; i++) {
+    code += CHARS[Math.floor(Math.random() * CHARS.length)];
+  }
+  return code;
+}
+
+/** Código curto para partida (ex.: sala custom Valorant). */
+export function generateMatchCode(): string {
+  let code = "";
+  for (let i = 0; i < MATCH_CODE_LENGTH; i++) {
     code += CHARS[Math.floor(Math.random() * CHARS.length)];
   }
   return code;

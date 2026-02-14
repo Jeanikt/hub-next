@@ -50,7 +50,7 @@ export async function syncPendingMatchesFromRiot(): Promise<SyncResult> {
   const cutoff = new Date(Date.now() - MATCH_MAX_AGE_MS);
   const pendingMatches = await prisma.gameMatch.findMany({
     where: {
-      status: "pending",
+      status: { in: ["pending", "in_progress"] },
       createdAt: { gte: cutoff },
     },
     include: {

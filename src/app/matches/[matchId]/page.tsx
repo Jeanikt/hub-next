@@ -9,6 +9,7 @@ type Match = {
   matchId: string;
   type: string;
   status: string;
+  map?: string | null;
   maxPlayers: number;
   playerCount: number;
   isFull: boolean;
@@ -18,7 +19,7 @@ type Match = {
   finishedAt?: string | null;
   winnerTeam?: string | null;
   matchDuration?: number | null;
-  settings?: { mvpUserId?: string } | null;
+  settings?: { mvpUserId?: string; match_code?: string } | null;
   creator: { id: string; username: string | null; name: string | null } | null;
   participants: {
     userId: string;
@@ -153,7 +154,7 @@ export default function MatchDetailPage() {
 
   const isCreator = match.isCreator === true;
   const isAdmin = match.isAdmin === true;
-  const canFinish = isAdmin && match.status === "pending";
+  const canFinish = isAdmin && (match.status === "pending" || match.status === "in_progress");
   const isFinished = match.status === "finished";
   const red = match.participants.filter((p) => p.team === "red");
   const blue = match.participants.filter((p) => p.team === "blue");
@@ -170,13 +171,13 @@ export default function MatchDetailPage() {
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-xl font-black uppercase tracking-tight text-[var(--hub-text)]">
-              Partida {match.type} · {match.status === "finished" ? "Encerrada" : match.status}
+              Partida {match.type} · {match.status === "finished" ? "Encerrada" : match.status === "in_progress" ? "Iniciada" : match.status}
             </h1>
             <p className="text-sm text-[var(--hub-text-muted)] mt-1">
               {match.playerCount}/{match.maxPlayers} jogadores
               {match.creator && ` · Criador: ${match.creator.username ?? match.creator.name ?? "—"}`}
             </p>
-            {match.status === "pending" && match.userInMatch && !isAdmin && (
+            {(match.status === "pending" || match.status === "in_progress") && match.userInMatch && !isAdmin && (
               <p className="text-xs text-[var(--hub-accent)]/90 mt-1">
                 Quando a partida for encerrada no jogo, o resultado e as estatísticas serão atualizados automaticamente no site.
               </p>
@@ -192,7 +193,7 @@ export default function MatchDetailPage() {
                 {joining ? "Entrando..." : "Entrar na partida"}
               </button>
             )}
-            {match.userInMatch && match.status === "pending" && (
+            {match.userInMatch && (match.status === "pending" || match.status === "in_progress") && (
               <>
                 {canFinish && (
                   <button
@@ -202,7 +203,7 @@ export default function MatchDetailPage() {
                     Encerrar partida
                   </button>
                 )}
-                {isCreator && (
+                {isCreator && match.status === "pending" && (
                   <button
                     onClick={cancelMatch}
                     disabled={cancelling}
@@ -215,6 +216,31 @@ export default function MatchDetailPage() {
             )}
           </div>
         </div>
+
+        {match.status === "in_progress" && (match.map || match.settings?.match_code) && (
+          <div className="mt-6 rounded-xl border-2 border-[var(--hub-accent)] bg-[var(--hub-accent)]/10 p-5">
+            <p className="text-sm font-bold uppercase tracking-wider text-[var(--hub-accent)] mb-3">
+              Partida iniciada — entre no Valorant
+            </p>
+            <div className="flex flex-wrap gap-6 text-[var(--hub-text)]">
+              {match.map && (
+                <div>
+                  <span className="text-xs text-[var(--hub-text-muted)] uppercase">Mapa</span>
+                  <p className="text-lg font-semibold">{match.map}</p>
+                </div>
+              )}
+              {match.settings?.match_code && (
+                <div>
+                  <span className="text-xs text-[var(--hub-text-muted)] uppercase">Código da partida</span>
+                  <p className="text-xl font-mono font-bold tracking-wider text-[var(--hub-accent)]">{match.settings.match_code}</p>
+                </div>
+              )}
+            </div>
+            <p className="mt-3 text-sm text-[var(--hub-text-muted)]">
+              O criador deve abrir uma partida custom no Valorant e compartilhar o código do jogo com os times. Após o fim da partida, o resultado será sincronizado automaticamente.
+            </p>
+          </div>
+        )}
 
         {isFinished && match.winnerTeam && (
           <div className="mt-6 rounded-xl border-2 border-[var(--hub-accent)] bg-[var(--hub-accent)]/10 p-4 flex flex-wrap items-center gap-4">

@@ -5,6 +5,7 @@ import { canJoinQueue } from "@/src/lib/rankPoints";
 import { invalidateQueueStatusCache } from "@/src/lib/redis";
 import { randomUUID } from "crypto";
 import { ROLE_IDS } from "@/src/lib/roles";
+import { generateMatchCode } from "@/src/lib/inviteCode";
 
 const VALID_TYPES = ["low_elo", "high_elo", "inclusive"] as const;
 /** 5v5 = 10 jogadores por partida (5 vs 5). */
@@ -123,18 +124,25 @@ export async function POST(request: NextRequest) {
       const [redTeam, blueTeam] = assignTeamsByRole(entries);
       const orderedEntries = [...redTeam, ...blueTeam];
 
+      const mapPool = ["Ascent", "Bind", "Haven", "Split", "Icebox"];
+      const chosenMap = mapPool[Math.floor(Math.random() * mapPool.length)];
+      const matchCode = generateMatchCode();
+
       const matchUuid = randomUUID();
       const match = await prisma.gameMatch.create({
         data: {
           matchId: matchUuid,
           type: queue_type,
-          status: "pending",
+          status: "in_progress",
+          map: chosenMap,
           maxPlayers: PLAYERS_NEEDED,
+          startedAt: new Date(),
           settings: JSON.stringify({
             visibility: "public",
             from_queue: true,
             queue_type,
-            map_pool: ["Ascent", "Bind", "Haven", "Split", "Icebox"],
+            map_pool: mapPool,
+            match_code: matchCode,
           }),
           creatorId: orderedEntries[0].userId,
         },
