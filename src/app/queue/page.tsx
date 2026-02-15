@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { getQueueAliasFromId } from "@/src/lib/valorant";
-import { getQueueDisplayName, getPlayersRequired } from "@/src/lib/queues";
+import { getQueueDisplayName, getPlayersRequired, QUEUE_COLORS, QUEUE_ELO_DESCRIPTION } from "@/src/lib/queues";
 import { requestNotificationPermission } from "@/src/lib/useNotificationSound";
 
 type QueuePlayer = {
@@ -179,17 +179,20 @@ export default function QueuePage() {
           const progress = required > 0 ? Math.min(100, (st.count / required) * 100) : 0;
           const canJoin = !data?.inQueue && data?.hasRiotLinked && data.allowed_queues?.includes(key);
           const isJoining = joining === key;
+          const queueColor = QUEUE_COLORS[key] ?? "var(--hub-accent)";
+          const eloDesc = QUEUE_ELO_DESCRIPTION[key];
 
           return (
             <div
               key={key}
-              className="group relative overflow-hidden rounded-2xl border border-[var(--hub-border)] bg-[var(--hub-bg-card)] p-6 clip-card transition-all duration-300 hover:border-[var(--hub-accent)]/40 hover:shadow-[0_0_24px_var(--hub-accent)]/10"
+              className="group relative overflow-hidden rounded-2xl border-2 bg-[var(--hub-bg-card)] p-6 clip-card transition-all duration-300 hover:shadow-[0_0_24px_rgba(0,0,0,0.3)]"
+              style={{ borderColor: queueColor + "40" }}
             >
-              <div className="absolute inset-0 bg-gradient-to-br from-[var(--hub-accent)]/5 via-transparent to-[var(--hub-accent-cyan)]/5 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+              <div className="absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100" style={{ background: `linear-gradient(135deg, ${queueColor}08, transparent, ${queueColor}05)` }} />
               <div className="relative">
                 <div className="flex items-center justify-between">
-                  <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[var(--hub-accent)]/20">
-                    <Sparkles size={22} className="text-[var(--hub-accent)]" />
+                  <span className="flex h-11 w-11 items-center justify-center rounded-xl shrink-0" style={{ backgroundColor: queueColor + "25" }}>
+                    <Sparkles size={22} style={{ color: queueColor }} />
                   </span>
                   <span className="rounded-lg bg-[var(--hub-bg-elevated)] px-2.5 py-1 text-xs font-bold uppercase tracking-wider text-[var(--hub-text-muted)]">
                     {st.count}/{required}
@@ -198,6 +201,11 @@ export default function QueuePage() {
                 <h2 className="mt-4 text-lg font-black uppercase tracking-tight text-[var(--hub-text)]">
                   {getQueueDisplayName(key)}
                 </h2>
+                {eloDesc && (
+                  <p className="mt-1 text-xs font-medium" style={{ color: queueColor }}>
+                    {eloDesc}
+                  </p>
+                )}
                 <div className="mt-3 flex items-center gap-2 text-sm text-[var(--hub-text-muted)]">
                   <Clock size={16} />
                   <span>{st.estimated_time}</span>
@@ -205,12 +213,12 @@ export default function QueuePage() {
                 <div className="mt-4">
                   <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--hub-bg)]">
                     <div
-                      className="h-full rounded-full bg-gradient-to-r from-[var(--hub-accent)] to-[var(--hub-accent-cyan)] transition-all duration-500"
-                      style={{ width: `${progress}%` }}
+                      className="h-full rounded-full transition-all duration-500"
+                      style={{ width: `${progress}%`, backgroundColor: queueColor }}
                     />
                   </div>
                 </div>
-                <div className="mt-4 space-y-2 max-h-24 overflow-y-auto">
+                <div className="mt-4 space-y-2 overflow-hidden" style={{ maxHeight: 96 }}>
                   {st.players.slice(0, 10).map((p) => (
                     <div
                       key={p.id}

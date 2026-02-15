@@ -64,6 +64,7 @@ export default function MatchDetailPage() {
   const [sendingChat, setSendingChat] = useState(false);
   const hadCodeRef = useRef(false);
   const [matchRulesModalSeen, setMatchRulesModalSeen] = useState(true);
+  const [concluding, setConcluding] = useState(false);
 
   const fetchMatch = () => {
     if (!matchId) return;
@@ -398,6 +399,36 @@ export default function MatchDetailPage() {
                 </form>
               )}
             </div>
+          </div>
+        )}
+
+        {(match.status === "pending" || match.status === "in_progress") && match.userInMatch && isCreator && (
+          <div className="mt-6 rounded-xl border border-[var(--hub-border)] bg-[var(--hub-bg-card)] p-4">
+            <p className="text-sm text-[var(--hub-text-muted)] mb-2">Quando a partida terminar no Valorant, sincronize e distribua os pontos:</p>
+            <button
+              type="button"
+              disabled={concluding}
+              onClick={async () => {
+                setConcluding(true);
+                try {
+                  const res = await fetch(`/api/matches/${matchId}/conclude`, { method: "POST", credentials: "include" });
+                  const data = await res.json().catch(() => ({}));
+                  if (res.ok) {
+                    fetchMatch();
+                    alert("Partida concluída. Pontos distribuídos.");
+                  } else {
+                    alert(data.message || "Não foi possível concluir. Verifique se a partida já terminou no jogo.");
+                  }
+                } finally {
+                  setConcluding(false);
+                }
+              }}
+              className="flex items-center gap-2 rounded-lg bg-green-600 hover:bg-green-500 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50"
+            >
+              {concluding ? <Loader2 size={18} className="animate-spin" /> : <Trophy size={18} />}
+              {concluding ? "Verificando Riot…" : "Partida terminou – concluir e distribuir pontos"}
+            </button>
+            <p className="text-xs text-[var(--hub-text-muted)] mt-2">Entre no Discord da Hub: <a href="https://discord.gg/dTafBSDEXg" target="_blank" rel="noopener noreferrer" className="text-[var(--hub-accent)] underline">discord.gg/dTafBSDEXg</a></p>
           </div>
         )}
 

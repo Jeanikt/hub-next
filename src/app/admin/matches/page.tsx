@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Gamepad2, XCircle, RotateCcw, Loader2 } from "lucide-react";
+import { Gamepad2, XCircle, RotateCcw, Loader2, Trophy } from "lucide-react";
 
 type Match = {
   id: number;
@@ -20,11 +20,12 @@ export default function AdminMatchesPage() {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("");
   const [acting, setActing] = useState<number | null>(null);
+  const [concludingMatchId, setConcludingMatchId] = useState<string | null>(null);
 
   const load = (status?: string) => {
     setLoading(true);
     const params = new URLSearchParams({ per_page: "20" });
-    if (status) params.set("status", status);
+    if (status) params.set("status", status === "completed" ? "finished" : status);
     fetch(`/api/matches?${params}`, { credentials: "include" })
       .then((r) => r.json())
       .then((d) => {
@@ -51,6 +52,21 @@ export default function AdminMatchesPage() {
       if (res.ok) load(statusFilter || undefined);
     } finally {
       setActing(null);
+    }
+  };
+
+  const concludeMatch = async (matchId: string) => {
+    setConcludingMatchId(matchId);
+    try {
+      const res = await fetch(`/api/matches/${matchId}/conclude`, { method: "POST", credentials: "include" });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        load(statusFilter || undefined);
+      } else {
+        alert(data.message || "Não foi possível concluir a partida.");
+      }
+    } finally {
+      setConcludingMatchId(null);
     }
   };
 
@@ -105,7 +121,7 @@ export default function AdminMatchesPage() {
                     <td className="px-4 py-3">
                       <span
                         className={`rounded px-2 py-0.5 text-xs font-medium ${
-                          m.status === "completed"
+                          m.status === "completed" || m.status === "finished"
                             ? "bg-green-500/20 text-green-400"
                             : m.status === "cancelled"
                               ? "bg-red-500/20 text-red-400"

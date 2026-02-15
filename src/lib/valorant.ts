@@ -346,14 +346,29 @@ const VALORANT_ALIASES = [
   "Arcade",
 ];
 
+/** Cores para diferenciar jogadores no chat da fila (determinístico por id). */
+const QUEUE_CHAT_COLORS = [
+  "#22c55e", "#3b82f6", "#a855f7", "#f59e0b", "#ef4444",
+  "#06b6d4", "#ec4899", "#84cc16", "#f97316", "#8b5cf6",
+];
+
+function hashUserId(id: string): number {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  return h;
+}
+
 /** Gera um alias determinístico a partir do id do jogador. */
 export function getQueueAliasFromId(id: string | number): string {
   const s = String(id);
-  let hash = 0;
-  for (let i = 0; i < s.length; i += 1) {
-    hash = (hash * 31 + s.charCodeAt(i)) >>> 0;
-  }
-  const index = hash % VALORANT_ALIASES.length;
+  const index = hashUserId(s) % VALORANT_ALIASES.length;
   return VALORANT_ALIASES[index];
+}
+
+/** Cor hex determinística para o jogador (chat da fila). */
+export function getQueueColorFromId(id: string | number): string {
+  const s = String(id);
+  const index = hashUserId(s) % QUEUE_CHAT_COLORS.length;
+  return QUEUE_CHAT_COLORS[index];
 }
 

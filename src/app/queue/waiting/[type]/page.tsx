@@ -5,7 +5,7 @@ import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { MessageCircle, Send, Users, Loader2 } from "lucide-react";
 import { getQueueAliasFromId } from "@/src/lib/valorant";
-import { getQueueDisplayName, getPlayersRequired } from "@/src/lib/queues";
+import { getQueueDisplayName, getPlayersRequired, QUEUE_COLORS } from "@/src/lib/queues";
 import { playMatchFoundSound, notifyMatchFound } from "@/src/lib/useNotificationSound";
 
 type QueuePlayer = {
@@ -23,7 +23,7 @@ type QueueStatus = {
   matchId?: string | null;
 };
 
-type ChatMessage = { content: string; createdAt: string };
+type ChatMessage = { content: string; createdAt: string; authorLabel?: string; authorColor?: string };
 
 export default function WaitingRoomPage() {
   const params = useParams();
@@ -93,7 +93,7 @@ export default function WaitingRoomPage() {
       }
     }
     fetchMessages();
-    const interval = setInterval(fetchMessages, 2500);
+    const interval = setInterval(fetchMessages, 1000);
     return () => clearInterval(interval);
   }, [type]);
 
@@ -169,9 +169,9 @@ export default function WaitingRoomPage() {
         </button>
       </div>
 
-      <div className="border-l-4 border-[var(--hub-accent)] pl-6 py-2">
+      <div className="pl-6 py-2 border-l-4" style={{ borderColor: QUEUE_COLORS[type] ?? "var(--hub-accent)" }}>
         <h1 className="text-2xl font-black uppercase tracking-tight text-[var(--hub-text)] flex items-center gap-2">
-          <Users size={28} className="text-[var(--hub-accent)]" />
+          <Users size={28} style={{ color: QUEUE_COLORS[type] ?? "var(--hub-accent)" }} />
           Sala de espera — {getQueueDisplayName(type)}
         </h1>
         <p className="mt-2 text-sm text-[var(--hub-text-muted)]">
@@ -210,16 +210,18 @@ export default function WaitingRoomPage() {
         <div className="flex items-center gap-2 px-4 py-3 border-b border-[var(--hub-border)] bg-[var(--hub-bg-elevated)]">
           <MessageCircle size={20} className="text-[var(--hub-accent)]" />
           <h2 className="font-bold text-[var(--hub-text)]">Chat da sala</h2>
-          <span className="text-xs text-[var(--hub-text-muted)]">(todos anônimos)</span>
+          <span className="text-xs text-[var(--hub-text-muted)]">(nomes aleatórios)</span>
         </div>
-        <div className="max-h-[280px] overflow-y-auto p-4 space-y-2 min-h-[120px]" role="log" aria-live="polite">
+        <div className="queue-chat max-h-[280px] overflow-y-auto overflow-x-hidden p-4 space-y-2 min-h-[120px]" role="log" aria-live="polite">
           {messages.length === 0 && (
             <p className="text-sm text-[var(--hub-text-muted)]">Nenhuma mensagem ainda. Seja o primeiro a falar.</p>
           )}
           {messages.map((m, i) => (
-            <div key={i} className="text-sm">
-              <span className="text-[var(--hub-text-muted)]">Jogador:</span>{" "}
-              <span className="text-[var(--hub-text)]">{m.content}</span>
+            <div key={i} className="text-sm flex flex-wrap items-baseline gap-1.5">
+              <span className="font-semibold shrink-0" style={{ color: m.authorColor ?? "var(--hub-text-muted)" }}>
+                {m.authorLabel ?? "Jogador"}:
+              </span>
+              <span className="text-[var(--hub-text)] break-words">{m.content}</span>
             </div>
           ))}
           <div ref={chatEndRef} />

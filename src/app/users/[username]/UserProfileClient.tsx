@@ -301,18 +301,20 @@ export default function UserProfileClient({ username }: { username: string }) {
                       <Heart size={16} className={liked ? "fill-current" : ""} />
                       {liked ? "Curtido" : "Curtir"}
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => setReportOpen(true)}
-                      className="flex items-center gap-1.5 rounded-xl border border-[var(--hub-border)] px-3.5 py-2 text-sm font-medium text-[var(--hub-text-muted)] transition-colors hover:border-red-500/50 hover:text-red-400 clip-button"
-                      title="Reportar jogador"
-                    >
-                      <Flag size={16} />
-                      Reportar
-                    </button>
+                    {profile.id && (
+                      <button
+                        type="button"
+                        onClick={() => setReportOpen(true)}
+                        className="flex items-center gap-1.5 rounded-xl border border-[var(--hub-border)] px-3.5 py-2 text-sm font-medium text-[var(--hub-text-muted)] transition-colors hover:border-red-500/50 hover:text-red-400 clip-button"
+                        title="Reportar jogador"
+                      >
+                        <Flag size={16} />
+                        Reportar
+                      </button>
+                    )}
                   </>
                 )}
-                {!isOwnProfile && profile && (
+                {!isOwnProfile && profile?.id && (
                   <ReportModal
                     isOpen={reportOpen}
                     onClose={() => setReportOpen(false)}

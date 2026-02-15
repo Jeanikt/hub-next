@@ -221,6 +221,8 @@ model GameMatch {
 
   @@index([status])
   @@index([type])
+  @@index([creatorId])
+  @@index([status, updatedAt])
   @@map("game_matches")
 }
 
@@ -254,6 +256,7 @@ model GameMatchUser {
 
   @@unique([gameMatchId, userId])
   @@index([userId])
+  @@index([gameMatchId])
   @@map("game_match_user")
 }
 
@@ -299,6 +302,7 @@ model LobbyMessage {
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([gameMatchId])
+  @@index([gameMatchId, createdAt])
   @@map("lobby_messages")
 }
 

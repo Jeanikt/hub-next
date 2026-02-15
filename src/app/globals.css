@@ -127,3 +127,12 @@ body {
   opacity: 0.03;
   pointer-events: none;
 }
+
+/* Chat da fila: scroll sem barra visível */
+.queue-chat {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.queue-chat::-webkit-scrollbar {
+  display: none;
+}

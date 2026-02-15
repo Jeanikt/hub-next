@@ -31,6 +31,10 @@ export function ReportModal({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!targetId?.trim()) {
+      setMessage({ type: "error", text: "Alvo do report não identificado. Recarregue a página." });
+      return;
+    }
     const r = reason.trim();
     if (!r) {
       setMessage({ type: "error", text: "Informe o motivo do report." });

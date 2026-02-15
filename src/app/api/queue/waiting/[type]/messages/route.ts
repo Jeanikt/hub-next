@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/src/lib/prisma";
 import { auth } from "@/src/lib/auth";
 import { ALL_QUEUE_TYPES, type QueueType } from "@/src/lib/queues";
+import { getQueueAliasFromId, getQueueColorFromId } from "@/src/lib/valorant";
 import { serverError } from "@/src/lib/serverLog";
 
 const MAX_MESSAGES = 80;
@@ -35,13 +36,15 @@ export async function GET(request: NextRequest, { params }: Params) {
       where: { queueType },
       orderBy: { createdAt: "asc" },
       take: MAX_MESSAGES,
-      select: { content: true, createdAt: true },
+      select: { userId: true, content: true, createdAt: true },
     });
 
     return NextResponse.json({
       messages: messages.map((m) => ({
         content: m.content,
         createdAt: m.createdAt.toISOString(),
+        authorLabel: getQueueAliasFromId(m.userId),
+        authorColor: getQueueColorFromId(m.userId),
       })),
     });
   } catch (e) {

@@ -34,3 +34,21 @@ export function getQueueDisplayName(type: string): string {
   if (type === FOURTH_QUEUE_TYPE) return FOURTH_QUEUE_DISPLAY_NAME;
   return type.replace("_", " ");
 }
+
+/** Cor da fila (border/acento) para UI. */
+export const QUEUE_COLORS: Record<string, string> = {
+  low_elo: "#22c55e",
+  mid_elo: "#3b82f6",
+  high_elo: "#a855f7",
+  aberta: "#f59e0b",
+  test_2v2: "#06b6d4",
+};
+
+/** Descrição do ELO aceito na fila. */
+export const QUEUE_ELO_DESCRIPTION: Record<string, string> = {
+  low_elo: "Até Platina 3",
+  mid_elo: "Diamond 1 – Ascendente 3",
+  high_elo: "Imortal+",
+  aberta: "Qualquer ELO",
+  test_2v2: "Teste",
+};

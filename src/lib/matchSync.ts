@@ -23,7 +23,7 @@ const XP_MATCH_WIN_BONUS = 5;
 
 const MATCH_MAX_AGE_MS = 4 * 60 * 60 * 1000; // 4h
 const DELAY_MS = 3000; // 3s entre requests
-const LAST_SYNC_CHECK_MS = 3 * 60 * 1000; // 3min
+const LAST_SYNC_CHECK_MS = 1 * 60 * 1000; // 1min – rechecagem de partidas em andamento
 
 function normalizeRiotKey(name: string, tag: string): string {
   return `${String(name || "").trim().toLowerCase()}#${String(tag || "").trim().toLowerCase()}`;
@@ -403,4 +403,189 @@ export async function syncPendingMatchesFromRiot(): Promise<SyncResult> {
   }
 
   return result;
+}
+
+export type ConcludeResult = { success: true; winnerTeam: string } | { success: false; error: string };
+
+/**
+ * Sincroniza uma única partida com a API Riot (perfil do criador → última partida finalizada).
+ * Usado pelo criador ("Partida terminou – concluir") e por admin ("Concluir").
+ */
+export async function syncSingleMatchFromRiot(matchId: string): Promise<ConcludeResult> {
+  const match = await prisma.gameMatch.findUnique({
+    where: { matchId },
+    include: {
+      participants: {
+        include: {
+          user: { select: { id: true, riotId: true, tagline: true } },
+        },
+      },
+    },
+  });
+
+  if (!match) return { success: false, error: "Partida não encontrada." };
+  if (match.status !== "pending" && match.status !== "in_progress") {
+    return { success: false, error: "Partida já foi encerrada ou cancelada." };
+  }
+
+  const participants = match.participants.filter((p) => p.user.riotId && p.user.tagline);
+  if (participants.length === 0) {
+    return { success: false, error: "Nenhum participante com Riot vinculado." };
+  }
+
+  const creator = participants.find((p) => p.userId === match.creatorId) ?? participants[0];
+  const name = creator.user.riotId!.trim();
+  const tag = creator.user.tagline!.trim();
+
+  await new Promise((r) => setTimeout(r, DELAY_MS));
+  let recentData;
+  try {
+    recentData = await getRecentCustomMatches(name, tag, 10);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Erro na API Riot";
+    return { success: false, error: msg.includes("rate") ? "Rate limit da API Riot. Tente em 1 minuto." : msg };
+  }
+
+  if (!recentData?.data?.length) {
+    return { success: false, error: "Nenhuma partida custom finalizada encontrada no perfil do criador." };
+  }
+
+  const settings = match.settings ? JSON.parse(match.settings) : {};
+  let details: ValorantMatchDetails | null = null;
+  let riotMatchId: string | null = null;
+
+  for (const first of recentData.data) {
+    if (!isMatchCompleted(first)) continue;
+    const mid = getMatchIdFromMetadata(first);
+    if (!mid || settings.riot_match_id === mid) continue;
+
+    await new Promise((r) => setTimeout(r, DELAY_MS));
+    let detailsRes;
+    try {
+      detailsRes = await getMatchByMatchId("br", mid);
+    } catch {
+      continue;
+    }
+    if (!detailsRes?.data) continue;
+
+    const d = detailsRes.data as ValorantMatchDetails;
+    const riotMap = getDetailsMapName(d);
+    if (match.map && riotMap) {
+      const dbMapN = normalizeMapName(match.map);
+      const riotMapN = normalizeMapName(riotMap);
+      if (dbMapN && riotMapN && dbMapN !== riotMapN) continue;
+    } else if (match.map && !riotMap) continue;
+
+    const hubByKey = new Map(
+      participants.map((p) => [
+        normalizeRiotKey(p.user.riotId!, p.user.tagline!),
+        { userId: p.userId, team: normalizeTeam(p.team) },
+      ])
+    );
+    const allPlayers = getAllPlayers(d);
+    const riotByKey = new Map(
+      allPlayers.map((pl) => [
+        normalizeRiotKey(pl.name ?? "", pl.tag ?? ""),
+        { team: normalizeTeam(pl.team) },
+      ])
+    );
+    const expected = hubByKey.size;
+    let matchedPlayers = 0;
+    let mismatchedTeams = 0;
+    for (const [key, hub] of hubByKey.entries()) {
+      const riot = riotByKey.get(key);
+      if (!riot) break;
+      matchedPlayers++;
+      if (hub.team && riot.team && hub.team !== riot.team) mismatchedTeams++;
+    }
+    if (matchedPlayers < expected || mismatchedTeams > 0) continue;
+
+    details = d;
+    riotMatchId = mid;
+    break;
+  }
+
+  if (!details || !riotMatchId) {
+    return {
+      success: false,
+      error: "Nenhuma partida finalizada no Valorant bateu com esta partida (mapa/jogadores). Confira se a partida já terminou no jogo.",
+    };
+  }
+
+  const hubByKey = new Map(
+    participants.map((p) => [
+      normalizeRiotKey(p.user.riotId!, p.user.tagline!),
+      { userId: p.userId, team: normalizeTeam(p.team) },
+    ])
+  );
+  const allPlayers = getAllPlayers(details);
+  const winnerTeam = computeWinnerTeam(details);
+  if (!winnerTeam) return { success: false, error: "Não foi possível definir o time vencedor na partida da Riot." };
+
+  const statsByKey = new Map<string, { kills: number; deaths: number; assists: number; score: number }>();
+  for (const pl of allPlayers) {
+    const key = normalizeRiotKey(pl.name ?? "", pl.tag ?? "");
+    statsByKey.set(key, {
+      kills: pl.stats?.kills ?? 0,
+      deaths: pl.stats?.deaths ?? 0,
+      assists: pl.stats?.assists ?? 0,
+      score: pl.stats?.score ?? 0,
+    });
+  }
+  const meta = details.metadata as { game_length_in_ms?: number; game_length?: number } | undefined;
+  const durationMs = meta?.game_length_in_ms ?? meta?.game_length ?? 0;
+  const matchDurationSec = durationMs > 0 ? Math.round(durationMs / 1000) : null;
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      settings.riot_match_id = riotMatchId;
+      await tx.gameMatch.update({
+        where: { id: match.id },
+        data: {
+          status: "finished",
+          winnerTeam,
+          finishedAt: new Date(),
+          matchDuration: matchDurationSec,
+          settings: JSON.stringify(settings),
+        },
+      });
+
+      for (const p of match.participants) {
+        const key = p.user.riotId && p.user.tagline ? normalizeRiotKey(p.user.riotId, p.user.tagline) : null;
+        const stats = key ? statsByKey.get(key) : null;
+        if (stats) {
+          await tx.gameMatchUser.updateMany({
+            where: { gameMatchId: match.id, userId: p.userId },
+            data: { kills: stats.kills, deaths: stats.deaths, assists: stats.assists, score: stats.score },
+          });
+        }
+        const won = p.team === winnerTeam;
+        const user = await tx.user.findUnique({ where: { id: p.userId }, select: { elo: true, xp: true } });
+        if (user) {
+          let newElo = user.elo ?? 0;
+          if (won) newElo = Math.min(MAX_ELO, newElo + ELO_WIN);
+          else newElo = Math.max(MIN_ELO, newElo - ELO_LOSS);
+          const xpGain = XP_PER_MATCH_PLAYED + (won ? XP_MATCH_WIN_BONUS : 0);
+          const newXp = Math.max(0, (user.xp ?? 0) + xpGain);
+          const newLevel = levelFromXp(newXp);
+          await tx.user.update({
+            where: { id: p.userId },
+            data: { elo: newElo, xp: newXp, level: newLevel },
+          });
+        }
+      }
+    });
+
+    await invalidateQueueStatusCache();
+    for (const p of match.participants) {
+      try {
+        await verifyAndCompleteMissions(p.userId);
+      } catch {
+        // ignore
+      }
+    }
+    return { success: true, winnerTeam };
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : "Erro ao salvar no banco." };
+  }
 }
