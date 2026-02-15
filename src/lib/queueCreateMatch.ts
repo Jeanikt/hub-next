@@ -53,11 +53,19 @@ export async function createMatchFromQueue(queueType: QueueType): Promise<{ matc
       where: { queueType },
       orderBy: { joinedAt: "asc" },
       take: playersNeeded,
-      include: { user: { select: { primaryRole: true } } },
+      include: { user: { select: { primaryRole: true, hex: true } } },
     });
     if (entries.length < playersNeeded) return null;
 
-    const [redTeam, blueTeam] = assignTeamsByRole(entries, redSize, blueSize);
+    // Ordenar por role e depois por HEX desc para balancear times (elos próximos)
+    const sorted = [...entries].sort((a, b) => {
+      const rA = ROLE_IDS.indexOf(a.user.primaryRole ?? "");
+      const rB = ROLE_IDS.indexOf(b.user.primaryRole ?? "");
+      if (rA !== rB) return rA - rB;
+      return (b.user.hex ?? 0) - (a.user.hex ?? 0);
+    });
+
+    const [redTeam, blueTeam] = assignTeamsByRole(sorted, redSize, blueSize);
     const orderedEntries = [...redTeam, ...blueTeam].slice(0, playersNeeded);
 
     const mapPool = ["Abyss", "Bind", "Breeze", "Corrode", "Haven", "Pearl", "Split"];

@@ -44,6 +44,7 @@ type Profile = {
   primaryRoleLabel: string;
   secondaryRoleLabel: string;
   profileBackgroundUrl: string | null;
+  profileBackgroundMode: string | null;
   favoriteChampion: string | null;
   bestWinrateChampion: string | null;
   isOnline: boolean;
@@ -178,11 +179,14 @@ export default function UserProfileClient({ username }: { username: string }) {
 
   const displayName = profile.username ?? profile.name ?? "Jogador";
   const isOwnProfile = (session?.user as { id?: string })?.id === profile.id;
-  const hasFullPageBg = Boolean(profile.profileBackgroundUrl);
+  const mode = (profile.profileBackgroundMode ?? "full") as "full" | "banner" | "both";
+  const hasUrl = Boolean(profile.profileBackgroundUrl);
+  const hasFullPageBg = hasUrl && (mode === "full" || mode === "both");
+  const hasBannerBg = hasUrl && (mode === "banner" || mode === "both");
 
   return (
     <div className="relative min-h-screen">
-      {/* Fundo da página inteira (GIF/imagem) atrás de todos os componentes */}
+      {/* Fundo da página inteira (quando modo full ou both) */}
       {hasFullPageBg && (
         <div className="fixed inset-0 z-0" aria-hidden>
           <img
@@ -198,11 +202,20 @@ export default function UserProfileClient({ username }: { username: string }) {
       )}
 
       <div className="relative z-10 mx-auto max-w-3xl space-y-6">
-        {/* Header (gradiente quando há fundo full-page; senão mantém o visual anterior) */}
+        {/* Header: banner com imagem (modo banner/both) ou gradiente */}
         <div
           className="relative overflow-hidden rounded-2xl clip-card"
         >
-          {hasFullPageBg ? (
+          {hasBannerBg ? (
+            <>
+              <img
+                src={profile.profileBackgroundUrl!}
+                alt=""
+                className="absolute inset-0 h-full w-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-[var(--hub-bg-card)]/95 via-[var(--hub-bg-card)]/80 to-transparent" />
+            </>
+          ) : hasFullPageBg ? (
             <div className="absolute inset-0 bg-gradient-to-t from-[var(--hub-bg-card)]/95 via-[var(--hub-bg-card)]/80 to-transparent" />
           ) : (
             <div className="absolute inset-0 bg-gradient-to-br from-[var(--hub-accent)]/15 via-transparent to-[var(--hub-accent-cyan)]/10" />

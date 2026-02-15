@@ -18,6 +18,7 @@ export default function ProfileEditPage() {
   const [image, setImage] = useState("");
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [profileBackgroundUrl, setProfileBackgroundUrl] = useState("");
+  const [profileBackgroundMode, setProfileBackgroundMode] = useState<"full" | "banner" | "both">("full");
   const [favoriteChampion, setFavoriteChampion] = useState("");
   const [primaryRole, setPrimaryRole] = useState<string>("");
   const [secondaryRole, setSecondaryRole] = useState<string>("");
@@ -50,6 +51,11 @@ export default function ProfileEditPage() {
           setTagline(d.tagline ?? "");
           setImage(d.image ?? "");
           setProfileBackgroundUrl(d.profileBackgroundUrl ?? "");
+          setProfileBackgroundMode(
+            d.profileBackgroundMode === "banner" || d.profileBackgroundMode === "both"
+              ? d.profileBackgroundMode
+              : "full"
+          );
           setFavoriteChampion(d.favoriteChampion ?? "");
           setPrimaryRole(d.primaryRole ?? "");
           setSecondaryRole(d.secondaryRole ?? "");
@@ -75,6 +81,7 @@ export default function ProfileEditPage() {
           tagline: tagline || null,
           image: image || undefined,
           profileBackgroundUrl: profileBackgroundUrl || null,
+          profileBackgroundMode: profileBackgroundMode || null,
           favoriteChampion: favoriteChampion || null,
           primaryRole: primaryRole || null,
           secondaryRole: secondaryRole || null,
@@ -307,6 +314,20 @@ export default function ProfileEditPage() {
                 className="w-full px-4 py-3 bg-black/30 border border-[var(--hub-border)] text-white rounded-lg focus:border-[var(--hub-accent)] focus:outline-none transition-colors"
                 placeholder="https://..."
               />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-[var(--hub-text-muted)] mb-1.5">
+                Onde exibir o background
+              </label>
+              <select
+                value={profileBackgroundMode}
+                onChange={(e) => setProfileBackgroundMode(e.target.value as "full" | "banner" | "both")}
+                className="w-full px-4 py-3 bg-black/30 border border-[var(--hub-border)] text-white rounded-lg focus:border-[var(--hub-accent)] focus:outline-none transition-colors"
+              >
+                <option value="full">Página inteira</option>
+                <option value="banner">Só o banner</option>
+                <option value="both">Ambos</option>
+              </select>
             </div>
           </section>
 

@@ -42,6 +42,7 @@ const ME_SELECT_FULL = {
   primaryRole: true,
   secondaryRole: true,
   profileBackgroundUrl: true,
+  profileBackgroundMode: true,
   favoriteChampion: true,
   bestWinrateChampion: true,
   isOnline: true,
@@ -104,6 +105,7 @@ export async function GET() {
     isOnline: boolean;
     lastLoginAt: Date | null;
     profileBackgroundUrl?: string | null;
+    profileBackgroundMode?: string | null;
     favoriteChampion?: string | null;
     bestWinrateChampion?: string | null;
   } | null = null;
@@ -121,6 +123,7 @@ export async function GET() {
       });
       if (user) {
         (user as { profileBackgroundUrl?: null }).profileBackgroundUrl = null;
+        (user as { profileBackgroundMode?: null }).profileBackgroundMode = null;
         (user as { favoriteChampion?: null }).favoriteChampion = null;
         (user as { bestWinrateChampion?: null }).bestWinrateChampion = null;
       }
@@ -165,6 +168,7 @@ export async function GET() {
     primaryRole: user.primaryRole,
     secondaryRole: user.secondaryRole,
     profileBackgroundUrl: user.profileBackgroundUrl ?? null,
+    profileBackgroundMode: (user as { profileBackgroundMode?: string | null }).profileBackgroundMode ?? null,
     favoriteChampion: user.favoriteChampion ?? null,
     bestWinrateChampion: user.bestWinrateChampion ?? null,
     isOnline: isUserOnline(user.lastLoginAt),

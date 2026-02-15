@@ -18,8 +18,14 @@ const MIN_ELO = 0;
 const MAX_ELO = 20;
 const ELO_WIN = 1;
 const ELO_LOSS = 1;
+/** HEX - Hub Expresso Rating: ganho por vitória / perda por derrota. */
+const HEX_WIN = 25;
+const HEX_LOSS = 20;
+const HEX_LOSS_REDUCED = 10; // time perdedor quando há troll: não-trolls perdem menos
+const HEX_LOSS_TROLL = 60; // troll no time perdedor perde o triplo (3x 20)
 const XP_PER_MATCH_PLAYED = 10;
 const XP_MATCH_WIN_BONUS = 5;
+const TROLL_BADGE = "troll";
 
 const MATCH_MAX_AGE_MS = 4 * 60 * 60 * 1000; // 4h
 const DELAY_MS = 3000; // 3s entre requests
@@ -185,7 +191,7 @@ export async function syncPendingMatchesFromRiot(): Promise<SyncResult> {
     include: {
       participants: {
         include: {
-          user: { select: { id: true, riotId: true, tagline: true } },
+          user: { select: { id: true, riotId: true, tagline: true, hex: true, profileBadge: true } },
         },
       },
     },
@@ -352,10 +358,15 @@ export async function syncPendingMatchesFromRiot(): Promise<SyncResult> {
           }
 
           const won = p.team === winnerTeam;
+          const losingTeamUserIds = match.participants.filter((x) => x.team !== winnerTeam).map((x) => x.userId);
+          const hasTrollOnLosingTeam = losingTeamUserIds.some(
+            (uid) => match.participants.find((x) => x.userId === uid)?.user?.profileBadge?.toLowerCase() === TROLL_BADGE
+          );
+          const isTroll = (p.user as { profileBadge?: string | null }).profileBadge?.toLowerCase() === TROLL_BADGE;
 
           const user = await tx.user.findUnique({
             where: { id: p.userId },
-            select: { elo: true, xp: true },
+            select: { elo: true, xp: true, hex: true },
           });
 
           if (user) {
@@ -363,13 +374,20 @@ export async function syncPendingMatchesFromRiot(): Promise<SyncResult> {
             if (won) newElo = Math.min(MAX_ELO, newElo + ELO_WIN);
             else newElo = Math.max(MIN_ELO, newElo - ELO_LOSS);
 
+            let hexDelta = 0;
+            if (won) hexDelta = HEX_WIN;
+            else if (hasTrollOnLosingTeam && isTroll) hexDelta = -HEX_LOSS_TROLL;
+            else if (hasTrollOnLosingTeam) hexDelta = -HEX_LOSS_REDUCED;
+            else hexDelta = -HEX_LOSS;
+            const newHex = Math.max(0, (user.hex ?? 0) + hexDelta);
+
             const xpGain = XP_PER_MATCH_PLAYED + (won ? XP_MATCH_WIN_BONUS : 0);
             const newXp = Math.max(0, (user.xp ?? 0) + xpGain);
             const newLevel = levelFromXp(newXp);
 
             await tx.user.update({
               where: { id: p.userId },
-              data: { elo: newElo, xp: newXp, level: newLevel },
+              data: { elo: newElo, xp: newXp, level: newLevel, hex: newHex },
             });
           }
         }
@@ -414,7 +432,7 @@ export async function syncSingleMatchFromRiot(matchId: string): Promise<Conclude
     include: {
       participants: {
         include: {
-          user: { select: { id: true, riotId: true, tagline: true } },
+          user: { select: { id: true, riotId: true, tagline: true, hex: true, profileBadge: true } },
         },
       },
     },
@@ -553,17 +571,29 @@ export async function syncSingleMatchFromRiot(matchId: string): Promise<Conclude
           });
         }
         const won = p.team === winnerTeam;
-        const user = await tx.user.findUnique({ where: { id: p.userId }, select: { elo: true, xp: true } });
+        const losingTeamUserIds = match.participants.filter((x) => x.team !== winnerTeam).map((x) => x.userId);
+        const hasTrollOnLosingTeam = losingTeamUserIds.some(
+          (uid) => match.participants.find((x) => x.userId === uid)?.user?.profileBadge?.toLowerCase() === TROLL_BADGE
+        );
+        const isTroll = p.user.profileBadge?.toLowerCase() === TROLL_BADGE;
+
+        const user = await tx.user.findUnique({ where: { id: p.userId }, select: { elo: true, xp: true, hex: true } });
         if (user) {
           let newElo = user.elo ?? 0;
           if (won) newElo = Math.min(MAX_ELO, newElo + ELO_WIN);
           else newElo = Math.max(MIN_ELO, newElo - ELO_LOSS);
+          let hexDelta = 0;
+          if (won) hexDelta = HEX_WIN;
+          else if (hasTrollOnLosingTeam && isTroll) hexDelta = -HEX_LOSS_TROLL;
+          else if (hasTrollOnLosingTeam) hexDelta = -HEX_LOSS_REDUCED;
+          else hexDelta = -HEX_LOSS;
+          const newHex = Math.max(0, (user.hex ?? 0) + hexDelta);
           const xpGain = XP_PER_MATCH_PLAYED + (won ? XP_MATCH_WIN_BONUS : 0);
           const newXp = Math.max(0, (user.xp ?? 0) + xpGain);
           const newLevel = levelFromXp(newXp);
           await tx.user.update({
             where: { id: p.userId },
-            data: { elo: newElo, xp: newXp, level: newLevel },
+            data: { elo: newElo, xp: newXp, level: newLevel, hex: newHex },
           });
         }
       }

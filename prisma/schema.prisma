@@ -64,6 +64,8 @@ model User {
   secondaryRole          String?
   xp                     Int                    @default(0)
   elo                    Int                    @default(0)
+  /// HEX - Hub Expresso Rating: pontuação das filas competitivas (ranking).
+  hex                    Int                    @default(0)
   level                  Int                    @default(1)
   isAdmin                Boolean                @default(false)
   isBanned               Boolean                @default(false)
@@ -75,6 +77,8 @@ model User {
   onboardingSkipped      Boolean                @default(false)
   onboardingCompletedAt  DateTime?
   profileBackgroundUrl   String?
+  /// Modo do background: "full" (página inteira), "banner" (só o banner), "both" (ambos).
+  profileBackgroundMode  String?
   favoriteChampion       String?
   bestWinrateChampion    String?
   inviteCode             String?                @unique

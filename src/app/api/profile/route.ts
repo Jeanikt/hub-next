@@ -14,6 +14,7 @@ const updateProfileSchema = z.object({
   primaryRole: z.enum(["controller", "duelist", "initiator", "sentinel"]).optional().nullable(),
   secondaryRole: z.enum(["controller", "duelist", "initiator", "sentinel"]).optional().nullable(),
   profileBackgroundUrl: z.string().url().max(2000).optional().nullable(),
+  profileBackgroundMode: z.enum(["full", "banner", "both"]).optional().nullable(),
   favoriteChampion: z.string().max(80).optional().nullable(),
   image: z.union([z.string().url().max(2000), z.string().startsWith("/uploads/").max(2000)]).optional().nullable(),
   bio: z.string().min(1).max(190).optional().nullable()
@@ -59,6 +60,7 @@ export async function PATCH(request: NextRequest) {
     primaryRole?: string | null;
     secondaryRole?: string | null;
     profileBackgroundUrl?: string | null;
+    profileBackgroundMode?: string | null;
     favoriteChampion?: string | null;
     image?: string | null;
   } = {
@@ -67,11 +69,12 @@ export async function PATCH(request: NextRequest) {
     ...(data.primaryRole !== undefined && { primaryRole: data.primaryRole }),
     ...(data.secondaryRole !== undefined && { secondaryRole: data.secondaryRole }),
     ...(data.profileBackgroundUrl !== undefined && { profileBackgroundUrl: data.profileBackgroundUrl }),
+    ...(data.profileBackgroundMode !== undefined && { profileBackgroundMode: data.profileBackgroundMode }),
     ...(data.favoriteChampion !== undefined && { favoriteChampion: data.favoriteChampion }),
     ...(data.image !== undefined && { image: data.image }),
     ...(data.bio !== undefined && { bio: data.bio }),
   };
-  console.log(updateData)
+
   // Alteração de conta Riot: dois campos (nome e tag); no back verificamos como nome#tag
   if (data.riotId !== undefined && data.tagline !== undefined) {
     const riotIdRaw = data.riotId?.trim() || null;
@@ -158,6 +161,7 @@ export async function PATCH(request: NextRequest) {
       primaryRole: true,
       secondaryRole: true,
       profileBackgroundUrl: true,
+      profileBackgroundMode: true,
       favoriteChampion: true,
     },
   });
@@ -181,6 +185,7 @@ export async function PATCH(request: NextRequest) {
     primaryRole: user.primaryRole,
     secondaryRole: user.secondaryRole,
     profileBackgroundUrl: user.profileBackgroundUrl,
+    profileBackgroundMode: user.profileBackgroundMode,
     favoriteChampion: user.favoriteChampion,
   });
 }

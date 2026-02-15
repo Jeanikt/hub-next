@@ -20,6 +20,7 @@ const PROFILE_SELECT_FULL = {
   primaryRole: true,
   secondaryRole: true,
   profileBackgroundUrl: true,
+  profileBackgroundMode: true,
   favoriteChampion: true,
   bestWinrateChampion: true,
   isOnline: true,
@@ -72,6 +73,7 @@ export async function GET(_request: Request, { params }: Params) {
       });
       if (user) {
         user.profileBackgroundUrl = null;
+        user.profileBackgroundMode = null;
         user.favoriteChampion = null;
         user.bestWinrateChampion = null;
       }
