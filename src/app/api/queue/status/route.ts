@@ -3,7 +3,6 @@ import { prisma } from "@/src/lib/prisma";
 import { auth } from "@/src/lib/auth";
 import { getAllowedQueues } from "@/src/lib/rankPoints";
 import { getQueueStatusCache, setQueueStatusCache, getPendingAccept, expirePendingAcceptIfNeeded, invalidateQueueStatusCache } from "@/src/lib/redis";
-import { canSeeFourthQueue } from "@/src/lib/admin";
 import {
   PUBLIC_QUEUE_TYPES,
   FOURTH_QUEUE_TYPE,
@@ -15,10 +14,7 @@ async function computeQueues(
   queueTypeParam: string | null,
   includeFourthQueue: boolean
 ) {
-  const types = [
-    ...PUBLIC_QUEUE_TYPES,
-    ...(includeFourthQueue ? [FOURTH_QUEUE_TYPE] : []),
-  ] as string[];
+  const types = [...PUBLIC_QUEUE_TYPES, FOURTH_QUEUE_TYPE] as string[];
 
   const queues: Record<string, { count: number; players: unknown[]; players_needed: number; estimated_time: string; required: number }> = {};
 
@@ -80,15 +76,6 @@ export async function GET(request: NextRequest) {
   try {
     const session = await auth();
     // 4ª fila: apenas jeandev003 e yagobtelles (e-mail na sessão ou no DB)
-    let includeFourthQueue = canSeeFourthQueue(session);
-    if (!includeFourthQueue && session?.user?.id) {
-      const user = await prisma.user.findUnique({
-        where: { id: session.user.id },
-        select: { email: true },
-      });
-      includeFourthQueue = canSeeFourthQueue({ user: { email: user?.email ?? null } });
-    }
-
     const searchParams = request.nextUrl.searchParams;
     const queueTypeParam = searchParams.get("queue_type");
 
@@ -118,7 +105,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const useCache = !userInQueue && !includeFourthQueue && !userHasRecentMatch;
+    const useCache = !userInQueue && !userHasRecentMatch;
     const cached = useCache ? await getQueueStatusCache() : null;
     if (cached) {
       try {
@@ -132,8 +119,8 @@ export async function GET(request: NextRequest) {
         await setQueueStatusCache(JSON.stringify(queues));
       }
     } else {
-      queues = await computeQueues(queueTypeParam || null, includeFourthQueue);
-      if (!userInQueue && !includeFourthQueue) await setQueueStatusCache(JSON.stringify(queues));
+      queues = await computeQueues(queueTypeParam || null, true);
+      if (!userInQueue) await setQueueStatusCache(JSON.stringify(queues));
     }
 
     let inQueue = false;
@@ -177,7 +164,7 @@ export async function GET(request: NextRequest) {
       ]);
       hasRiotLinked = !!me?.riotAccount;
       allowed_queues = hasRiotLinked ? getAllowedQueues(me?.elo ?? 0) : [];
-      if (includeFourthQueue) allowed_queues.push(FOURTH_QUEUE_TYPE);
+      allowed_queues.push(FOURTH_QUEUE_TYPE);
       if (myEntry) {
         inQueue = true;
         currentQueue = myEntry.queueType;

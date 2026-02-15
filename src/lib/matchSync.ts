@@ -129,13 +129,28 @@ function computeWinnerTeam(details: ValorantMatchDetails): "red" | "blue" | null
 }
 
 function getAllPlayers(details: ValorantMatchDetails) {
-  const playersRaw = details.players as { all_players?: unknown[] } | unknown[] | undefined;
-  const allPlayers = Array.isArray(playersRaw) ? playersRaw : (playersRaw?.all_players ?? []);
-  return allPlayers as Array<{
+  const playersRaw = details.players as
+    | { all_players?: unknown[]; red?: unknown[]; blue?: unknown[] }
+    | unknown[]
+    | undefined;
+  if (Array.isArray(playersRaw)) {
+    return playersRaw as Array<{ name?: string; tag?: string; team?: string; team_id?: string; stats?: { kills?: number; deaths?: number; assists?: number; score?: number } }>;
+  }
+  const all = playersRaw?.all_players ?? [];
+  const redList = (playersRaw as { red?: unknown[] })?.red ?? [];
+  const blueList = (playersRaw as { blue?: unknown[] })?.blue ?? [];
+  const merged =
+    all.length > 0
+      ? all
+      : [
+          ...redList.map((pl) => (typeof pl === "object" && pl && !("team" in pl) ? { ...pl, team: "red" } : pl)),
+          ...blueList.map((pl) => (typeof pl === "object" && pl && !("team" in pl) ? { ...pl, team: "blue" } : pl)),
+        ];
+  return merged as Array<{
     name?: string;
     tag?: string;
     team?: string;
-    team_id?: string; // ⬅️ ajuda se o provider usa isso
+    team_id?: string;
     stats?: { kills?: number; deaths?: number; assists?: number; score?: number };
   }>;
 }
@@ -307,7 +322,7 @@ export async function syncPendingMatchesFromRiot(): Promise<SyncResult> {
 
     let recentData: { data?: ValorantMatch[] } | null = null;
     try {
-      recentData = await getRecentCustomMatches(name, tag, 10);
+      recentData = await getRecentCustomMatches(name, tag, 20);
     } catch (e) {
       const msg =
         e instanceof Error && e.message === VALORANT_RATE_LIMIT_ERROR

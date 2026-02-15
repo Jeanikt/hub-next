@@ -7,7 +7,6 @@ import {
   getPendingAccept,
   setPendingAccept,
 } from "@/src/lib/redis";
-import { canSeeFourthQueue } from "@/src/lib/admin";
 import {
   ALL_QUEUE_TYPES,
   FOURTH_QUEUE_TYPE,
@@ -49,15 +48,6 @@ export async function POST(request: NextRequest) {
     }
 
     const qt = queue_type as QueueType;
-
-    if (qt === FOURTH_QUEUE_TYPE) {
-      if (!canSeeFourthQueue(session)) {
-        return NextResponse.json(
-          { message: "A 4ª fila (Teste 2v2) é restrita a usuários autorizados." },
-          { status: 403 }
-        );
-      }
-    }
 
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/src/lib/prisma";
 import { auth } from "@/src/lib/auth";
-import { invalidateQueueStatusCache } from "@/src/lib/redis";
+import { getPendingAccept, invalidateQueueStatusCache } from "@/src/lib/redis";
 import { serverError } from "@/src/lib/serverLog";
 
 export async function POST() {
@@ -20,6 +20,17 @@ export async function POST() {
         { message: "Você não está em nenhuma fila." },
         { status: 409 }
       );
+    }
+
+    const pending = await getPendingAccept(entry.queueType);
+    if (pending?.userIds.includes(session.user.id)) {
+      const elapsed = Date.now() - pending.createdAt;
+      if (elapsed < 10_000) {
+        return NextResponse.json(
+          { message: "Você já aceitou a partida. Não é possível sair durante os 10 segundos de confirmação. Use Recusar no modal se não quiser jogar." },
+          { status: 409 }
+        );
+      }
     }
 
     const queueType = entry.queueType;

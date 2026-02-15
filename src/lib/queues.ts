@@ -10,7 +10,7 @@ export const PUBLIC_QUEUE_TYPES = ["low_elo", "mid_elo", "high_elo", "aberta"] a
 export const FOURTH_QUEUE_TYPE = "test_2v2";
 
 /** Nome exibido da 4ª fila na UI. */
-export const FOURTH_QUEUE_DISPLAY_NAME = "Teste 2v2 (2 jogadores)";
+export const FOURTH_QUEUE_DISPLAY_NAME = "Teste 1X1";
 
 /** Quantidade de jogadores para fechar a 4ª fila. */
 export const FOURTH_QUEUE_PLAYERS_REQUIRED = 2;
