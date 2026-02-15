@@ -180,6 +180,18 @@ export default function ProfileEditPage() {
 
           <section className="space-y-4">
             <h2 className="text-xs font-bold uppercase tracking-wider text-[var(--hub-text-muted)] border-b border-[var(--hub-border)] pb-2">
+              Discord
+            </h2>
+            <p className="text-sm text-[var(--hub-text-muted)]">Vincule sua conta do Discord para facilitar identificação. Você será redirecionado para o Discord para autorizar.</p>
+            <div>
+              <Link href="/profile/discord" className="inline-flex items-center gap-2 px-4 py-3 border border-[var(--hub-border)] rounded-lg hover:bg-[var(--hub-bg-card)]">
+                Vincular Discord
+              </Link>
+            </div>
+          </section>
+
+          <section className="space-y-4">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-[var(--hub-text-muted)] border-b border-[var(--hub-border)] pb-2">
               Riot / Valorant
             </h2>
             <div className="grid gap-4 sm:grid-cols-2">
