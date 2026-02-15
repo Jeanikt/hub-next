@@ -10,7 +10,7 @@ const CRON_SECRET = process.env.CRON_SECRET ?? process.env.CRON_API_KEY;
  * encerradas no Valorant (API Henrik). Ao detectar fim da partida: status → finished,
  * K/D/A, ELO, XP e nível no banco; missões verificadas. Protegido por CRON_SECRET.
  * Agende a cada 1 minuto para resultado e histórico rápidos sem sobrecarregar a API Riot.
- */
+ */ 
 export async function GET(request: NextRequest) {
   if (!CRON_SECRET) {
     return NextResponse.json(
