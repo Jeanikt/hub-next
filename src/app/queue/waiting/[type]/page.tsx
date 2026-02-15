@@ -39,6 +39,10 @@ export default function WaitingRoomPage() {
   const [sending, setSending] = useState(false);
   const [leavingQueue, setLeavingQueue] = useState(false);
   const [acceptSecondsLeft, setAcceptSecondsLeft] = useState<number | null>(null);
+
+  // ⬇️ novo: trava os botões depois que o user clicar em aceitar/recusar
+  const [acceptChoiceLocked, setAcceptChoiceLocked] = useState(false);
+
   const [accepting, setAccepting] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const acceptPromptSoundPlayedRef = useRef(false);
@@ -57,10 +61,15 @@ export default function WaitingRoomPage() {
       }
 
       const json: QueueStatus = await res.json();
+
+      // se o backend tirou o pendingAccept, libera o lock (pra caso apareça de novo depois)
+      if (!json.pendingAccept) setAcceptChoiceLocked(false);
+
       if (json.pendingAccept && !acceptPromptSoundPlayedRef.current) {
         acceptPromptSoundPlayedRef.current = true;
         playAcceptPromptSound();
       }
+
       setData(json);
 
       // Partida formada: som, notificação e redirecionar
@@ -126,8 +135,13 @@ export default function WaitingRoomPage() {
   }, [showAcceptModal, data?.acceptDeadline]);
 
   async function handleAccept(accept: boolean) {
-    if (accepting) return;
+    // ⬇️ se já clicou uma vez, trava geral
+    if (accepting || acceptChoiceLocked) return;
+
+    // ⬇️ desabilita os 2 botões na hora do clique
+    setAcceptChoiceLocked(true);
     setAccepting(true);
+
     try {
       const res = await fetch("/api/queue/accept", {
         method: "POST",
@@ -135,18 +149,30 @@ export default function WaitingRoomPage() {
         credentials: "include",
         body: JSON.stringify({ accept }),
       });
+
       const json = await res.json().catch(() => ({}));
+
       if (json.matchFound && json.matchId) {
         playMatchFoundSound();
         notifyMatchFound(json.matchId).catch(() => {});
         router.replace(`/matches/${json.matchId}`);
         return;
       }
+
       if (res.ok && !accept) {
         router.push("/queue");
-      } else if (res.ok) {
-        setData((d) => d ? { ...d, pendingAccept: true, acceptDeadline: d.acceptDeadline } : d);
+        return;
       }
+
+      if (res.ok) {
+        setData((d) => (d ? { ...d, pendingAccept: true, acceptDeadline: d.acceptDeadline } : d));
+      } else {
+        // ⬇️ deu erro -> libera os botões pra tentar de novo
+        setAcceptChoiceLocked(false);
+      }
+    } catch {
+      // ⬇️ falha de rede -> libera
+      setAcceptChoiceLocked(false);
     } finally {
       setAccepting(false);
     }
@@ -194,12 +220,16 @@ export default function WaitingRoomPage() {
   const players = data?.queuePlayers ?? [];
   const needed = getPlayersRequired(type);
 
+  const acceptButtonsDisabled = accepting || acceptChoiceLocked;
+
   return (
-      <div className="space-y-8">
+    <div className="space-y-8">
       {matchFoundAlert && (
         <div className="rounded-2xl border-2 border-[var(--hub-accent)] bg-[var(--hub-accent)]/20 p-8 text-center clip-card animate-pulse">
           <p className="text-2xl font-black uppercase tracking-tight text-[var(--hub-text)]">Partida formada!</p>
-          <p className="mt-3 text-sm text-[var(--hub-text-muted)]">Você será levado à tela da partida em instantes. O criador informará o código do Valorant lá.</p>
+          <p className="mt-3 text-sm text-[var(--hub-text-muted)]">
+            Você será levado à tela da partida em instantes. O criador informará o código do Valorant lá.
+          </p>
           <p className="mt-4 flex items-center justify-center gap-2 text-[var(--hub-accent)]">
             <Loader2 size={18} className="animate-spin" />
             Redirecionando...
@@ -214,24 +244,27 @@ export default function WaitingRoomPage() {
             <p className="mt-2 text-sm text-[var(--hub-text-muted)]">Aceite em até 10 segundos para entrar na partida.</p>
             <p className="mt-4 text-4xl font-mono font-bold text-[var(--hub-accent)]">{acceptSecondsLeft ?? 10}</p>
             <p className="text-xs text-[var(--hub-text-muted)]">segundos restantes</p>
+
             <div className="mt-6 flex gap-3 justify-center">
               <button
                 type="button"
-                disabled={accepting}
+                disabled={acceptButtonsDisabled}
                 onClick={() => handleAccept(false)}
                 className="rounded-xl border-2 border-red-500/50 px-5 py-2.5 text-sm font-bold text-red-400 hover:bg-red-500/10 disabled:opacity-50"
               >
-                Recusar
+                {acceptChoiceLocked && !accepting ? "Aguardando..." : "Recusar"}
               </button>
+
               <button
                 type="button"
-                disabled={accepting}
+                disabled={acceptButtonsDisabled}
                 onClick={() => handleAccept(true)}
                 className="rounded-xl border-2 border-[var(--hub-accent)] bg-[var(--hub-accent)]/20 px-5 py-2.5 text-sm font-bold text-[var(--hub-accent)] hover:bg-[var(--hub-accent)]/30 disabled:opacity-50"
               >
-                {accepting ? "..." : "Aceitar"}
+                {accepting ? "..." : acceptChoiceLocked ? "Aguardando..." : "Aceitar"}
               </button>
             </div>
+
             <p className="mt-4 text-xs text-[var(--hub-text-muted)]">Quem não aceitar será removido da fila.</p>
           </div>
         </div>
@@ -260,7 +293,14 @@ export default function WaitingRoomPage() {
         </p>
         <p className="mt-1 text-sm text-[var(--hub-text-muted)]">
           Entre no Discord da Hub:{" "}
-          <a href="https://discord.gg/dTafBSDEXg" target="_blank" rel="noopener noreferrer" className="text-[var(--hub-accent)] font-medium underline hover:no-underline">discord.gg/dTafBSDEXg</a>
+          <a
+            href="https://discord.gg/dTafBSDEXg"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[var(--hub-accent)] font-medium underline hover:no-underline"
+          >
+            discord.gg/dTafBSDEXg
+          </a>
         </p>
       </div>
 
@@ -273,10 +313,7 @@ export default function WaitingRoomPage() {
         </div>
         <div className="grid md:grid-cols-5 gap-4">
           {players.map((p) => (
-            <div
-              key={p.id}
-              className="rounded-xl border border-[var(--hub-border)] bg-[var(--hub-bg-elevated)]/50 p-4 text-center"
-            >
+            <div key={p.id} className="rounded-xl border border-[var(--hub-border)] bg-[var(--hub-bg-elevated)]/50 p-4 text-center">
               <p className="text-sm font-medium text-[var(--hub-text)] truncate">{getQueueAliasFromId(p.id)}</p>
             </div>
           ))}
@@ -297,6 +334,7 @@ export default function WaitingRoomPage() {
           <h2 className="font-bold text-[var(--hub-text)]">Chat da sala</h2>
           <span className="text-xs text-[var(--hub-text-muted)]">(nomes aleatórios)</span>
         </div>
+
         <div className="queue-chat max-h-[280px] overflow-y-auto overflow-x-hidden p-4 space-y-2 min-h-[120px]" role="log" aria-live="polite">
           {messages.length === 0 && (
             <p className="text-sm text-[var(--hub-text-muted)]">Nenhuma mensagem ainda. Seja o primeiro a falar.</p>
@@ -311,6 +349,7 @@ export default function WaitingRoomPage() {
           ))}
           <div ref={chatEndRef} />
         </div>
+
         <form onSubmit={sendMessage} className="p-3 border-t border-[var(--hub-border)] flex gap-2">
           <input
             type="text"
