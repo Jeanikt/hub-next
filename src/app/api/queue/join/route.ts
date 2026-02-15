@@ -175,7 +175,7 @@ export async function POST(request: NextRequest) {
             const [redTeam, blueTeam] = assignTeamsByRole(lockedEntries, redSize, blueSize);
             const orderedEntries = [...redTeam, ...blueTeam].slice(0, playersNeeded);
 
-            const mapPool = ["Ascent", "Bind", "Haven", "Split", "Icebox"];
+            const mapPool = ["Abyss", "Bind", "Breeze", "Corrode", "Haven", "Pearl", "Split"]
             const chosenMap = mapPool[Math.floor(Math.random() * mapPool.length)];
             const matchCode = generateMatchCode();
             const matchUuid = randomUUID();
