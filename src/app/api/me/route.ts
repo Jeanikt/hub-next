@@ -27,6 +27,7 @@ const ME_SELECT_FULL = {
   id: true,
   name: true,
   email: true,
+  discordId: true,
   username: true,
   bio: true,
   image: true,
@@ -51,6 +52,7 @@ const ME_SELECT_MINIMAL = {
   id: true,
   name: true,
   email: true,
+  discordId: true,
   username: true,
   image: true,
   bio: true,
@@ -157,6 +159,7 @@ export async function GET() {
 
   return NextResponse.json({
     ...toSafeUser(user),
+    discordId: (user as any).discordId ?? null,
     riotId: user.riotId,
     tagline: user.tagline,
     primaryRole: user.primaryRole,
