@@ -106,13 +106,15 @@ export async function GET(request: NextRequest) {
         prisma.gameMatchUser.findFirst({
           where: { userId: session.user.id },
           orderBy: { joinedAt: "desc" },
-          select: { gameMatch: { select: { matchId: true, createdAt: true } } },
+          select: { gameMatch: { select: { matchId: true, createdAt: true, status: true } } },
         }),
       ]);
       if (entry) userInQueue = entry.queueType;
       if (!entry && recentMatch?.gameMatch) {
+        const status = recentMatch.gameMatch.status;
+        const isActive = status === "pending" || status === "in_progress";
         const created = recentMatch.gameMatch.createdAt.getTime();
-        userHasRecentMatch = Date.now() - created < 300_000; // 5 min: garantir que os 10 recebam matchFound
+        userHasRecentMatch = isActive && Date.now() - created < 300_000; // 5 min: só partida ativa redireciona
       }
     }
 
@@ -170,7 +172,7 @@ export async function GET(request: NextRequest) {
         prisma.gameMatchUser.findFirst({
           where: { userId: session.user.id },
           orderBy: { joinedAt: "desc" },
-          include: { gameMatch: { select: { matchId: true, createdAt: true } } },
+          include: { gameMatch: { select: { matchId: true, createdAt: true, status: true } } },
         }),
       ]);
       hasRiotLinked = !!me?.riotAccount;
@@ -196,8 +198,10 @@ export async function GET(request: NextRequest) {
         }
       }
       if (!myEntry && recentMatch?.gameMatch) {
+        const status = recentMatch.gameMatch.status;
+        const isActive = status === "pending" || status === "in_progress";
         const createdAt = recentMatch.gameMatch.createdAt.getTime();
-        if (Date.now() - createdAt < 300_000) {
+        if (isActive && Date.now() - createdAt < 300_000) {
           matchFound = true;
           matchId = recentMatch.gameMatch.matchId;
         }
