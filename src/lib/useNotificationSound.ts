@@ -31,6 +31,13 @@ export function playMatchFoundSound(): void {
   setTimeout(() => playBeep(784, 220), 180);
 }
 
+/** Beep de "aceite a partida" (10 na fila, 10s para aceitar) */
+export function playAcceptPromptSound(): void {
+  playBeep(660, 120);
+  setTimeout(() => playBeep(660, 120), 150);
+  setTimeout(() => playBeep(880, 180), 320);
+}
+
 /** Beep de "código da partida disponível" */
 export function playCodeAvailableSound(): void {
   playBeep(659, 120);

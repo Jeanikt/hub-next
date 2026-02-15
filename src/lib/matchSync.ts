@@ -81,25 +81,39 @@ function getDetailsMapName(details: ValorantMatchDetails): string | null {
 
 function computeWinnerTeam(details: ValorantMatchDetails): "red" | "blue" | null {
   const teams = details.teams as
-    | { red?: { has_won?: boolean }; blue?: { has_won?: boolean } }
-    | Array<{ team_id?: string; has_won?: boolean }>
+    | { red?: { has_won?: boolean; rounds_won?: number }; blue?: { has_won?: boolean; rounds_won?: number } }
+    | Array<{ team_id?: string; has_won?: boolean; rounds_won?: number }>
     | undefined;
 
   let redWon = false;
   let blueWon = false;
+  let redRounds = 0;
+  let blueRounds = 0;
 
   if (teams && !Array.isArray(teams)) {
     redWon = teams.red?.has_won === true;
     blueWon = teams.blue?.has_won === true;
+    redRounds = teams.red?.rounds_won ?? 0;
+    blueRounds = teams.blue?.rounds_won ?? 0;
   } else if (Array.isArray(teams)) {
     for (const t of teams) {
       const id = String(t.team_id ?? "").toLowerCase();
-      if (id === "red" && t.has_won) redWon = true;
-      if (id === "blue" && t.has_won) blueWon = true;
+      if (id === "red") {
+        if (t.has_won) redWon = true;
+        redRounds = t.rounds_won ?? redRounds;
+      }
+      if (id === "blue") {
+        if (t.has_won) blueWon = true;
+        blueRounds = t.rounds_won ?? blueRounds;
+      }
     }
   }
 
-  return redWon ? "red" : blueWon ? "blue" : null;
+  if (redWon) return "red";
+  if (blueWon) return "blue";
+  if (redRounds > blueRounds) return "red";
+  if (blueRounds > redRounds) return "blue";
+  return null;
 }
 
 function getAllPlayers(details: ValorantMatchDetails) {
@@ -455,7 +469,7 @@ export async function syncSingleMatchFromRiot(matchId: string): Promise<Conclude
   await new Promise((r) => setTimeout(r, DELAY_MS));
   let recentData;
   try {
-    recentData = await getRecentCustomMatches(name, tag, 10);
+    recentData = await getRecentCustomMatches(name, tag, 20);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Erro na API Riot";
     return { success: false, error: msg.includes("rate") ? "Rate limit da API Riot. Tente em 1 minuto." : msg };
@@ -528,8 +542,13 @@ export async function syncSingleMatchFromRiot(matchId: string): Promise<Conclude
     ])
   );
   const allPlayers = getAllPlayers(details);
-  const winnerTeam = computeWinnerTeam(details);
-  if (!winnerTeam) return { success: false, error: "Não foi possível definir o time vencedor na partida da Riot." };
+  let winnerTeam = computeWinnerTeam(details);
+  if (!winnerTeam) {
+    return {
+      success: false,
+      error: "Não foi possível definir o time vencedor na partida da Riot (has_won e rounds_won ausentes). Tente novamente em alguns segundos.",
+    };
+  }
 
   const statsByKey = new Map<string, { kills: number; deaths: number; assists: number; score: number }>();
   for (const pl of allPlayers) {

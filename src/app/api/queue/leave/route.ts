@@ -22,9 +22,14 @@ export async function POST() {
       );
     }
 
+    const queueType = entry.queueType;
     await prisma.queueEntry.delete({
       where: { userId: session.user.id },
     });
+    const remaining = await prisma.queueEntry.count({ where: { queueType } });
+    if (remaining === 0) {
+      await prisma.queueWaitingMessage.deleteMany({ where: { queueType } });
+    }
     await invalidateQueueStatusCache();
 
     return NextResponse.json({

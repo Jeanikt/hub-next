@@ -134,7 +134,7 @@ export default function MatchDetailPage() {
   useEffect(() => {
     if (!match?.userInMatch) return;
     fetchLobbyMessages();
-    const interval = setInterval(fetchLobbyMessages, 4000);
+    const interval = setInterval(fetchLobbyMessages, 5000);
     return () => clearInterval(interval);
   }, [matchId, match?.userInMatch]);
 

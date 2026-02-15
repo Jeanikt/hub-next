@@ -6,7 +6,7 @@ import Link from "next/link";
 import { MessageCircle, Send, Users, Loader2 } from "lucide-react";
 import { getQueueAliasFromId } from "@/src/lib/valorant";
 import { getQueueDisplayName, getPlayersRequired, QUEUE_COLORS } from "@/src/lib/queues";
-import { playMatchFoundSound, notifyMatchFound } from "@/src/lib/useNotificationSound";
+import { playMatchFoundSound, playAcceptPromptSound, notifyMatchFound } from "@/src/lib/useNotificationSound";
 
 type QueuePlayer = {
   id: string;
@@ -41,6 +41,7 @@ export default function WaitingRoomPage() {
   const [acceptSecondsLeft, setAcceptSecondsLeft] = useState<number | null>(null);
   const [accepting, setAccepting] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const acceptPromptSoundPlayedRef = useRef(false);
 
   useEffect(() => {
     if (!type) return;
@@ -56,6 +57,10 @@ export default function WaitingRoomPage() {
       }
 
       const json: QueueStatus = await res.json();
+      if (json.pendingAccept && !acceptPromptSoundPlayedRef.current) {
+        acceptPromptSoundPlayedRef.current = true;
+        playAcceptPromptSound();
+      }
       setData(json);
 
       // Partida formada: som, notificação e redirecionar
@@ -97,7 +102,7 @@ export default function WaitingRoomPage() {
       }
     }
     fetchMessages();
-    const interval = setInterval(fetchMessages, 1000);
+    const interval = setInterval(fetchMessages, 2500);
     return () => clearInterval(interval);
   }, [type]);
 

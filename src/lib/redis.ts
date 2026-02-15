@@ -258,23 +258,37 @@ export async function setPendingAccept(queueType: string, userIds: string[]): Pr
   }
 }
 
+/** Atualização atômica (WATCH + multi) para evitar race quando vários jogadores aceitam ao mesmo tempo. */
 export async function setUserAcceptedInPending(queueType: string, userId: string, accept: boolean): Promise<{ allAccepted: boolean; accepted: Record<string, boolean> } | null> {
   const client = getClient();
   if (!client) return null;
   const key = PENDING_ACCEPT_PREFIX + queueType;
-  try {
-    const raw = await client.get(key);
-    if (!raw) return null;
-    const data = JSON.parse(raw) as PendingAcceptData;
-    if (!data.userIds.includes(userId)) return null;
-    data.accepted[userId] = accept;
-    const acceptedCount = Object.values(data.accepted).filter(Boolean).length;
-    const allAccepted = data.userIds.length === acceptedCount && data.userIds.every((id) => data.accepted[id] === true);
-    await client.setex(key, PENDING_ACCEPT_TTL, JSON.stringify(data));
-    return { allAccepted, accepted: data.accepted };
-  } catch {
-    return null;
+  const maxRetries = 10;
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      await client.watch(key);
+      const raw = await client.get(key);
+      if (!raw) {
+        await client.unwatch();
+        return null;
+      }
+      const data = JSON.parse(raw) as PendingAcceptData;
+      if (!data.userIds.includes(userId)) {
+        await client.unwatch();
+        return null;
+      }
+      data.accepted[userId] = accept;
+      const acceptedCount = Object.values(data.accepted).filter(Boolean).length;
+      const allAccepted = data.userIds.length === acceptedCount && data.userIds.every((id) => data.accepted[id] === true);
+      const result = await client.multi().setex(key, PENDING_ACCEPT_TTL, JSON.stringify(data)).exec();
+      if (result === null) continue; // WATCH detectou mudança, retry
+      return { allAccepted, accepted: data.accepted };
+    } catch {
+      await client.unwatch().catch(() => {});
+      if (attempt === maxRetries - 1) return null;
+    }
   }
+  return null;
 }
 
 export async function deletePendingAccept(queueType: string): Promise<void> {

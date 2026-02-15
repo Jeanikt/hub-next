@@ -3,7 +3,7 @@
  */
 import { prisma } from "@/src/lib/prisma";
 import { randomUUID } from "crypto";
-import { ROLE_IDS } from "@/src/lib/roles";
+import { ROLE_IDS, type RoleId } from "@/src/lib/roles";
 import { generateMatchCode } from "@/src/lib/inviteCode";
 import {
   acquireQueueMatchLock,
@@ -59,8 +59,8 @@ export async function createMatchFromQueue(queueType: QueueType): Promise<{ matc
 
     // Ordenar por role e depois por HEX desc para balancear times (elos próximos)
     const sorted = [...entries].sort((a, b) => {
-      const rA = ROLE_IDS.indexOf(a.user.primaryRole ?? "");
-      const rB = ROLE_IDS.indexOf(b.user.primaryRole ?? "");
+      const rA = ROLE_IDS.indexOf((a.user.primaryRole ?? "") as RoleId);
+      const rB = ROLE_IDS.indexOf((b.user.primaryRole ?? "") as RoleId);
       if (rA !== rB) return rA - rB;
       return (b.user.hex ?? 0) - (a.user.hex ?? 0);
     });

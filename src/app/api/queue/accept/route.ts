@@ -50,6 +50,10 @@ export async function POST(request: NextRequest) {
       await prisma.queueEntry.deleteMany({
         where: { userId: { in: notAccepted } },
       });
+      const remaining = await prisma.queueEntry.count({ where: { queueType } });
+      if (remaining === 0) {
+        await prisma.queueWaitingMessage.deleteMany({ where: { queueType } });
+      }
       await invalidateQueueStatusCache();
     }
 

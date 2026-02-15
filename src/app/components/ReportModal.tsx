@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Flag, X } from "lucide-react";
 
 type ReportModalProps = {
@@ -26,6 +27,9 @@ export function ReportModal({
   const [reason, setReason] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   if (!isOpen) return null;
 
@@ -72,15 +76,15 @@ export function ReportModal({
     }
   }
 
-  return (
+  const modal = (
     <>
       <div
-        className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
+        className="fixed inset-0 z-[9998] bg-black/60 backdrop-blur-sm"
         aria-hidden
         onClick={onClose}
       />
       <div
-        className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-[var(--hub-border)] bg-[var(--hub-bg-card)] p-6 shadow-xl"
+        className="fixed left-1/2 top-1/2 z-[9999] w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-[var(--hub-border)] bg-[var(--hub-bg-card)] p-6 shadow-xl"
         role="dialog"
         aria-labelledby="report-title"
         aria-modal="true"
@@ -142,4 +146,8 @@ export function ReportModal({
       </div>
     </>
   );
+
+  return mounted && typeof document !== "undefined"
+    ? createPortal(modal, document.body)
+    : null;
 }
