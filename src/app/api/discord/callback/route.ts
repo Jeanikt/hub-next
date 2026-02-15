@@ -165,17 +165,19 @@ export async function GET(request: NextRequest) {
           discordId,
           userAccessToken: accessToken,
         });
-      } catch {
-        // ignore
+      } catch (err) {
+        console.warn(err);
       }
     }
-
-    const redirectBase = process.env.NEXTAUTH_URL || "https://hubexpresso.com";
+    //Commit bobo pra acionar deploy
+    const redirectBase =
+      process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL;
 
     return NextResponse.redirect(
       new URL("/profile/discord", redirectBase ?? "https://hubexpresso.com")
     );
-  } catch {
+  } catch (e) {
+    console.error(e);
     return NextResponse.json(
       { message: "Erro ao vincular Discord." },
       { status: 500 }
