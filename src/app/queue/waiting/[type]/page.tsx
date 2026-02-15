@@ -3,7 +3,7 @@
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
-import { MessageCircle, Send, Users, Loader2 } from "lucide-react";
+import { MessageCircle, Send, Users, Loader2, CheckCircle2 } from "lucide-react";
 import { getQueueAliasFromId } from "@/src/lib/valorant";
 import { getQueueDisplayName, getPlayersRequired, QUEUE_COLORS } from "@/src/lib/queues";
 import { playMatchFoundSound, playAcceptPromptSound, notifyMatchFound } from "@/src/lib/useNotificationSound";
@@ -40,10 +40,11 @@ export default function WaitingRoomPage() {
   const [leavingQueue, setLeavingQueue] = useState(false);
   const [acceptSecondsLeft, setAcceptSecondsLeft] = useState<number | null>(null);
 
-  // ⬇️ novo: trava os botões depois que o user clicar em aceitar/recusar
   const [acceptChoiceLocked, setAcceptChoiceLocked] = useState(false);
-
   const [accepting, setAccepting] = useState(false);
+
+  const [acceptedNotice, setAcceptedNotice] = useState(false);
+
   const chatEndRef = useRef<HTMLDivElement>(null);
   const acceptPromptSoundPlayedRef = useRef(false);
 
@@ -62,8 +63,10 @@ export default function WaitingRoomPage() {
 
       const json: QueueStatus = await res.json();
 
-      // se o backend tirou o pendingAccept, libera o lock (pra caso apareça de novo depois)
-      if (!json.pendingAccept) setAcceptChoiceLocked(false);
+      if (!json.pendingAccept) {
+        setAcceptChoiceLocked(false);
+        setAcceptedNotice(false);
+      }
 
       if (json.pendingAccept && !acceptPromptSoundPlayedRef.current) {
         acceptPromptSoundPlayedRef.current = true;
@@ -72,7 +75,6 @@ export default function WaitingRoomPage() {
 
       setData(json);
 
-      // Partida formada: som, notificação e redirecionar
       if (json.matchFound && json.matchId) {
         setMatchFoundAlert(true);
         playMatchFoundSound();
@@ -83,7 +85,6 @@ export default function WaitingRoomPage() {
         return;
       }
 
-      // ✅ DEPOIS valida fila
       if (!json.inQueue || json.currentQueue !== type) {
         router.push("/queue");
         return;
@@ -135,10 +136,8 @@ export default function WaitingRoomPage() {
   }, [showAcceptModal, data?.acceptDeadline]);
 
   async function handleAccept(accept: boolean) {
-    // ⬇️ se já clicou uma vez, trava geral
     if (accepting || acceptChoiceLocked) return;
 
-    // ⬇️ desabilita os 2 botões na hora do clique
     setAcceptChoiceLocked(true);
     setAccepting(true);
 
@@ -165,14 +164,16 @@ export default function WaitingRoomPage() {
       }
 
       if (res.ok) {
+        if (accept) setAcceptedNotice(true);
+
         setData((d) => (d ? { ...d, pendingAccept: true, acceptDeadline: d.acceptDeadline } : d));
       } else {
-        // ⬇️ deu erro -> libera os botões pra tentar de novo
         setAcceptChoiceLocked(false);
+        setAcceptedNotice(false);
       }
     } catch {
-      // ⬇️ falha de rede -> libera
       setAcceptChoiceLocked(false);
+      setAcceptedNotice(false);
     } finally {
       setAccepting(false);
     }
@@ -234,6 +235,14 @@ export default function WaitingRoomPage() {
             <Loader2 size={18} className="animate-spin" />
             Redirecionando...
           </p>
+        </div>
+      )}
+
+      {/* ⬇️ novo banner: aceitou */}
+      {acceptedNotice && !matchFoundAlert && (
+        <div className="rounded-2xl border border-[var(--hub-border)] bg-[var(--hub-bg-card)] p-4 clip-card flex items-center justify-center gap-2">
+          <CheckCircle2 size={18} className="text-[var(--hub-accent)]" />
+          <p className="text-sm font-semibold text-[var(--hub-text)]">Você aceitou a partida. aguardando os outros jogadores…</p>
         </div>
       )}
 
@@ -336,9 +345,7 @@ export default function WaitingRoomPage() {
         </div>
 
         <div className="queue-chat max-h-[280px] overflow-y-auto overflow-x-hidden p-4 space-y-2 min-h-[120px]" role="log" aria-live="polite">
-          {messages.length === 0 && (
-            <p className="text-sm text-[var(--hub-text-muted)]">Nenhuma mensagem ainda. Seja o primeiro a falar.</p>
-          )}
+          {messages.length === 0 && <p className="text-sm text-[var(--hub-text-muted)]">Nenhuma mensagem ainda. Seja o primeiro a falar.</p>}
           {messages.map((m, i) => (
             <div key={i} className="text-sm flex flex-wrap items-baseline gap-1.5">
               <span className="font-semibold shrink-0" style={{ color: m.authorColor ?? "var(--hub-text-muted)" }}>
