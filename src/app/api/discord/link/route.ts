@@ -17,9 +17,10 @@ export async function GET() {
     client_id: clientId,
     redirect_uri: redirectUri,
     response_type: "code",
-    scope: "identify",
+    scope: "identify guilds.join",
     prompt: "consent",
   });
+
 
   return NextResponse.redirect(`https://discord.com/api/oauth2/authorize?${params.toString()}`);
 }
