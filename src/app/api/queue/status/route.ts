@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/src/lib/prisma";
 import { auth } from "@/src/lib/auth";
 import { getAllowedQueues } from "@/src/lib/rankPoints";
-import { getQueueStatusCache, setQueueStatusCache } from "@/src/lib/redis";
+import { getQueueStatusCache, setQueueStatusCache, getPendingAccept, expirePendingAcceptIfNeeded, invalidateQueueStatusCache } from "@/src/lib/redis";
 import { canSeeFourthQueue } from "@/src/lib/admin";
 import {
   PUBLIC_QUEUE_TYPES,
@@ -142,6 +142,8 @@ export async function GET(request: NextRequest) {
 
     let matchFound = false;
     let matchId: string | null = null;
+    let pendingAccept = false;
+    let acceptDeadline: number | null = null;
 
     if (session?.user?.id) {
       const [me, myEntry, recentMatch] = await Promise.all([
@@ -179,6 +181,19 @@ export async function GET(request: NextRequest) {
         currentQueue = myEntry.queueType;
         const data = queues[myEntry.queueType];
         if (data) queuePlayers = data.players;
+        const pending = await getPendingAccept(myEntry.queueType);
+        if (pending?.userIds.includes(session.user.id)) {
+          const elapsed = Date.now() - pending.createdAt;
+          if (elapsed < 10_000) {
+            pendingAccept = true;
+            acceptDeadline = pending.createdAt + 10_000;
+          }
+        }
+        const notAccepted = await expirePendingAcceptIfNeeded(myEntry.queueType);
+        if (notAccepted?.length) {
+          await prisma.queueEntry.deleteMany({ where: { userId: { in: notAccepted } } });
+          await invalidateQueueStatusCache();
+        }
       }
       if (!myEntry && recentMatch?.gameMatch) {
         const createdAt = recentMatch.gameMatch.createdAt.getTime();
@@ -200,6 +215,8 @@ export async function GET(request: NextRequest) {
       allowed_queues,
       matchFound,
       matchId,
+      pendingAccept: pendingAccept || undefined,
+      acceptDeadline: acceptDeadline ?? undefined,
     };
     const headers: HeadersInit = {};
     if (!session?.user?.id) {

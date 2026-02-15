@@ -4,12 +4,9 @@ import { auth } from "@/src/lib/auth";
 import { canJoinQueue } from "@/src/lib/rankPoints";
 import {
   invalidateQueueStatusCache,
-  acquireQueueMatchLock,
-  releaseQueueMatchLock,
+  getPendingAccept,
+  setPendingAccept,
 } from "@/src/lib/redis";
-import { randomUUID } from "crypto";
-import { ROLE_IDS } from "@/src/lib/roles";
-import { generateMatchCode } from "@/src/lib/inviteCode";
 import { canSeeFourthQueue } from "@/src/lib/admin";
 import {
   ALL_QUEUE_TYPES,
@@ -20,37 +17,8 @@ import { serverError } from "@/src/lib/serverLog";
 
 type QueueType = (typeof ALL_QUEUE_TYPES)[number];
 
-function getQueueSizes(qt: QueueType): { playersNeeded: number; redSize: number; blueSize: number } {
-  const needed = getPlayersRequired(qt);
-  if (needed === 2) return { playersNeeded: 2, redSize: 1, blueSize: 1 };
-  return { playersNeeded: 10, redSize: 5, blueSize: 5 };
-}
-
-/** Agrupa jogadores em dois times (red/blue). Para 2 jogadores: primeiro red, segundo blue. */
-function assignTeamsByRole<
-  T extends { userId: string; user: { primaryRole: string | null } }
->(entries: T[], redSize: number, blueSize: number): T[][] {
-  const red: T[] = [];
-  const blue: T[] = [];
-  const assigned = new Set<string>();
-
-  for (const role of ROLE_IDS) {
-    const withRole = entries.filter((e) => (e.user.primaryRole ?? "") === role);
-    withRole.forEach((e, i) => {
-      if (assigned.has(e.userId)) return;
-      assigned.add(e.userId);
-      if (i % 2 === 0 && red.length < redSize) red.push(e);
-      else if (blue.length < blueSize) blue.push(e);
-      else red.push(e);
-    });
-  }
-
-  const remaining = entries.filter((e) => !assigned.has(e.userId));
-  for (const e of remaining) {
-    if (red.length < redSize) red.push(e);
-    else blue.push(e);
-  }
-  return [red, blue];
+function getQueueSizes(qt: QueueType): { playersNeeded: number } {
+  return { playersNeeded: getPlayersRequired(qt) };
 }
 
 export async function POST(request: NextRequest) {
@@ -148,7 +116,7 @@ export async function POST(request: NextRequest) {
     });
     await invalidateQueueStatusCache();
 
-    const { playersNeeded, redSize, blueSize } = getQueueSizes(qt);
+    const { playersNeeded } = getQueueSizes(qt);
 
     const entries = await prisma.queueEntry.findMany({
       where: { queueType: qt },
@@ -159,74 +127,16 @@ export async function POST(request: NextRequest) {
 
     let matchFound = false;
     let matchId: string | null = null;
+    let pendingAccept = false;
+    const acceptDeadline = Date.now() + 10_000;
 
     if (entries.length >= playersNeeded) {
-      const lock = await acquireQueueMatchLock(qt, 12);
-      if (lock) {
-        try {
-          const lockedEntries = await prisma.queueEntry.findMany({
-            where: { queueType: qt },
-            orderBy: { joinedAt: "asc" },
-            take: playersNeeded,
-            include: { user: { select: { primaryRole: true } } },
-          });
-
-          if (lockedEntries.length >= playersNeeded) {
-            const [redTeam, blueTeam] = assignTeamsByRole(lockedEntries, redSize, blueSize);
-            const orderedEntries = [...redTeam, ...blueTeam].slice(0, playersNeeded);
-
-            const mapPool = ["Abyss", "Bind", "Breeze", "Corrode", "Haven", "Pearl", "Split"]
-            const chosenMap = mapPool[Math.floor(Math.random() * mapPool.length)];
-            const matchCode = generateMatchCode();
-            const matchUuid = randomUUID();
-
-            // Partida da fila SEMPRE in_progress e startedAt agora (nunca pending)
-            const match = await prisma.$transaction(async (tx) => {
-              const created = await tx.gameMatch.create({
-                data: {
-                  matchId: matchUuid,
-                  type: qt,
-                  status: "in_progress",
-                  map: chosenMap,
-                  maxPlayers: playersNeeded,
-                  startedAt: new Date(),
-                  settings: JSON.stringify({
-                    visibility: qt === FOURTH_QUEUE_TYPE ? "test" : "public",
-                    queue_type: qt,
-                    map_pool: mapPool,
-                    match_code: matchCode,
-                  }),
-                  creatorId: orderedEntries[0].userId,
-                },
-              });
-
-              await tx.gameMatchUser.createMany({
-                data: orderedEntries.map((e, i) => {
-                  const team = i < redSize ? "red" : "blue";
-                  const role = i === 0 ? "creator" : e.user.primaryRole ?? "player";
-                  return {
-                    gameMatchId: created.id,
-                    userId: e.userId,
-                    team,
-                    role,
-                  };
-                }),
-              });
-
-              await tx.queueEntry.deleteMany({
-                where: { userId: { in: orderedEntries.map((e) => e.userId) } },
-              });
-
-              return created;
-            });
-
-            await invalidateQueueStatusCache();
-
-            matchFound = true;
-            matchId = match.matchId;
-          }
-        } finally {
-          await releaseQueueMatchLock(lock);
+      const alreadyPending = await getPendingAccept(qt);
+      if (!alreadyPending) {
+        const didSet = await setPendingAccept(qt, entries.map((e) => e.userId));
+        if (didSet) {
+          matchFound = true;
+          pendingAccept = true;
         }
       }
     }
@@ -237,11 +147,13 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: matchFound ? "Partida encontrada!" : "Você entrou na fila!",
+      message: matchFound ? "Partida encontrada! Aceite em 10 segundos." : "Você entrou na fila!",
       queue_type: qt,
       players_in_queue: playersInQueue,
       matchFound,
       matchId,
+      pendingAccept: matchFound ? true : undefined,
+      acceptDeadline: matchFound ? acceptDeadline : undefined,
     });
   } catch (e) {
     serverError("POST /api/queue/join", "error", { err: e instanceof Error ? e.message : String(e) });

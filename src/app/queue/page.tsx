@@ -111,7 +111,11 @@ export default function QueuePage() {
       }
 
       requestNotificationPermission().catch(() => {});
-      router.push(`/queue/waiting/${queueType}`);
+      if (json.pendingAccept) {
+        router.push(`/queue/waiting/${queueType}?accept=1`);
+      } else {
+        router.push(`/queue/waiting/${queueType}`);
+      }
     } catch {
       setError("Erro ao entrar na fila.");
     } finally {
@@ -139,6 +143,10 @@ export default function QueuePage() {
         </h1>
         <p className="text-sm text-[var(--hub-text-muted)] mt-1 uppercase tracking-wider">
           Escolha uma fila e entre na partida
+        </p>
+        <p className="mt-2 text-sm text-[var(--hub-text-muted)]">
+          Entre no Discord da Hub:{" "}
+          <a href="https://discord.gg/dTafBSDEXg" target="_blank" rel="noopener noreferrer" className="text-[var(--hub-accent)] font-medium underline hover:no-underline">discord.gg/dTafBSDEXg</a>
         </p>
       </div>
 

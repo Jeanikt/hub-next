@@ -215,3 +215,83 @@ export async function releaseQueueMatchLock(lock: QueueMatchLock): Promise<void>
     } catch {}
   }
 }
+
+/* =======================
+   Pending accept (10s) – fila com 10 jogadores aguardando aceite
+   ======================= */
+
+const PENDING_ACCEPT_PREFIX = "hub:queue:pending:";
+const PENDING_ACCEPT_TTL = 15;
+
+export type PendingAcceptData = {
+  userIds: string[];
+  accepted: Record<string, boolean>;
+  createdAt: number;
+};
+
+export async function getPendingAccept(queueType: string): Promise<PendingAcceptData | null> {
+  const client = getClient();
+  if (!client) return null;
+  try {
+    const raw = await client.get(PENDING_ACCEPT_PREFIX + queueType);
+    if (!raw) return null;
+    const data = JSON.parse(raw) as PendingAcceptData;
+    return data?.userIds?.length ? data : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function setPendingAccept(queueType: string, userIds: string[]): Promise<boolean> {
+  const client = getClient();
+  if (!client) return false;
+  try {
+    const payload: PendingAcceptData = {
+      userIds,
+      accepted: {},
+      createdAt: Date.now(),
+    };
+    await client.setex(PENDING_ACCEPT_PREFIX + queueType, PENDING_ACCEPT_TTL, JSON.stringify(payload));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function setUserAcceptedInPending(queueType: string, userId: string, accept: boolean): Promise<{ allAccepted: boolean; accepted: Record<string, boolean> } | null> {
+  const client = getClient();
+  if (!client) return null;
+  const key = PENDING_ACCEPT_PREFIX + queueType;
+  try {
+    const raw = await client.get(key);
+    if (!raw) return null;
+    const data = JSON.parse(raw) as PendingAcceptData;
+    if (!data.userIds.includes(userId)) return null;
+    data.accepted[userId] = accept;
+    const acceptedCount = Object.values(data.accepted).filter(Boolean).length;
+    const allAccepted = data.userIds.length === acceptedCount && data.userIds.every((id) => data.accepted[id] === true);
+    await client.setex(key, PENDING_ACCEPT_TTL, JSON.stringify(data));
+    return { allAccepted, accepted: data.accepted };
+  } catch {
+    return null;
+  }
+}
+
+export async function deletePendingAccept(queueType: string): Promise<void> {
+  const client = getClient();
+  if (!client) return;
+  try {
+    await client.del(PENDING_ACCEPT_PREFIX + queueType);
+  } catch {}
+}
+
+/** Retorna os userIds que ainda não aceitaram (para remover da fila ao expirar). */
+export async function expirePendingAcceptIfNeeded(queueType: string): Promise<string[] | null> {
+  const data = await getPendingAccept(queueType);
+  if (!data) return null;
+  const elapsed = Date.now() - data.createdAt;
+  if (elapsed < 10_000) return null; // 10s não passou
+  const notAccepted = data.userIds.filter((id) => data.accepted[id] !== true);
+  await deletePendingAccept(queueType);
+  return notAccepted;
+}

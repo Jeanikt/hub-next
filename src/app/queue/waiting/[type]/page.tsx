@@ -21,6 +21,8 @@ type QueueStatus = {
   queuePlayers: QueuePlayer[];
   matchFound?: boolean;
   matchId?: string | null;
+  pendingAccept?: boolean;
+  acceptDeadline?: number;
 };
 
 type ChatMessage = { content: string; createdAt: string; authorLabel?: string; authorColor?: string };
@@ -36,6 +38,8 @@ export default function WaitingRoomPage() {
   const [chatInput, setChatInput] = useState("");
   const [sending, setSending] = useState(false);
   const [leavingQueue, setLeavingQueue] = useState(false);
+  const [acceptSecondsLeft, setAcceptSecondsLeft] = useState<number | null>(null);
+  const [accepting, setAccepting] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -101,6 +105,48 @@ export default function WaitingRoomPage() {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  const showAcceptModal = data?.pendingAccept && data?.acceptDeadline != null;
+  useEffect(() => {
+    if (!showAcceptModal || !data?.acceptDeadline) {
+      setAcceptSecondsLeft(null);
+      return;
+    }
+    const update = () => {
+      const left = Math.max(0, Math.ceil((data.acceptDeadline! - Date.now()) / 1000));
+      setAcceptSecondsLeft(left);
+    };
+    update();
+    const t = setInterval(update, 500);
+    return () => clearInterval(t);
+  }, [showAcceptModal, data?.acceptDeadline]);
+
+  async function handleAccept(accept: boolean) {
+    if (accepting) return;
+    setAccepting(true);
+    try {
+      const res = await fetch("/api/queue/accept", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ accept }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (json.matchFound && json.matchId) {
+        playMatchFoundSound();
+        notifyMatchFound(json.matchId).catch(() => {});
+        router.replace(`/matches/${json.matchId}`);
+        return;
+      }
+      if (res.ok && !accept) {
+        router.push("/queue");
+      } else if (res.ok) {
+        setData((d) => d ? { ...d, pendingAccept: true, acceptDeadline: d.acceptDeadline } : d);
+      }
+    } finally {
+      setAccepting(false);
+    }
+  }
+
   async function sendMessage(e: React.FormEvent) {
     e.preventDefault();
     const text = chatInput.trim();
@@ -144,7 +190,7 @@ export default function WaitingRoomPage() {
   const needed = getPlayersRequired(type);
 
   return (
-    <div className="space-y-8">
+      <div className="space-y-8">
       {matchFoundAlert && (
         <div className="rounded-2xl border-2 border-[var(--hub-accent)] bg-[var(--hub-accent)]/20 p-8 text-center clip-card animate-pulse">
           <p className="text-2xl font-black uppercase tracking-tight text-[var(--hub-text)]">Partida formada!</p>
@@ -153,6 +199,36 @@ export default function WaitingRoomPage() {
             <Loader2 size={18} className="animate-spin" />
             Redirecionando...
           </p>
+        </div>
+      )}
+
+      {showAcceptModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70" role="dialog" aria-modal="true">
+          <div className="rounded-2xl border-2 border-[var(--hub-accent)] bg-[var(--hub-bg-card)] max-w-md w-full p-6 shadow-xl text-center">
+            <p className="text-xl font-black uppercase tracking-tight text-[var(--hub-text)]">Partida formada!</p>
+            <p className="mt-2 text-sm text-[var(--hub-text-muted)]">Aceite em até 10 segundos para entrar na partida.</p>
+            <p className="mt-4 text-4xl font-mono font-bold text-[var(--hub-accent)]">{acceptSecondsLeft ?? 10}</p>
+            <p className="text-xs text-[var(--hub-text-muted)]">segundos restantes</p>
+            <div className="mt-6 flex gap-3 justify-center">
+              <button
+                type="button"
+                disabled={accepting}
+                onClick={() => handleAccept(false)}
+                className="rounded-xl border-2 border-red-500/50 px-5 py-2.5 text-sm font-bold text-red-400 hover:bg-red-500/10 disabled:opacity-50"
+              >
+                Recusar
+              </button>
+              <button
+                type="button"
+                disabled={accepting}
+                onClick={() => handleAccept(true)}
+                className="rounded-xl border-2 border-[var(--hub-accent)] bg-[var(--hub-accent)]/20 px-5 py-2.5 text-sm font-bold text-[var(--hub-accent)] hover:bg-[var(--hub-accent)]/30 disabled:opacity-50"
+              >
+                {accepting ? "..." : "Aceitar"}
+              </button>
+            </div>
+            <p className="mt-4 text-xs text-[var(--hub-text-muted)]">Quem não aceitar será removido da fila.</p>
+          </div>
         </div>
       )}
 
@@ -176,6 +252,10 @@ export default function WaitingRoomPage() {
         </h1>
         <p className="mt-2 text-sm text-[var(--hub-text-muted)]">
           {players.length}/{needed} jogadores · Aguardando partida
+        </p>
+        <p className="mt-1 text-sm text-[var(--hub-text-muted)]">
+          Entre no Discord da Hub:{" "}
+          <a href="https://discord.gg/dTafBSDEXg" target="_blank" rel="noopener noreferrer" className="text-[var(--hub-accent)] font-medium underline hover:no-underline">discord.gg/dTafBSDEXg</a>
         </p>
       </div>
 

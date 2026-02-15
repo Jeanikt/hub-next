@@ -140,7 +140,19 @@ export default function AdminMatchesPage() {
                       {m.creator?.username ?? "—"}
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex items-center gap-1">
+                      <div className="flex flex-wrap items-center gap-1">
+                        {(m.status === "pending" || m.status === "in_progress") && (
+                          <button
+                            type="button"
+                            disabled={concludingMatchId === m.matchId}
+                            onClick={() => concludeMatch(m.matchId)}
+                            className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-green-400 hover:bg-green-500/20 disabled:opacity-50"
+                            title="Concluir partida (sync Riot e distribuir pontos)"
+                          >
+                            {concludingMatchId === m.matchId ? <Loader2 size={14} className="animate-spin" /> : <Trophy size={14} />}
+                            Concluir
+                          </button>
+                        )}
                         {m.status !== "cancelled" && (
                           <button
                             type="button"

@@ -43,10 +43,15 @@ export async function POST(request: NextRequest) {
   await prisma.profileLike.create({
     data: { userId: session.user.id, targetUserId },
   });
+  const liker = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { name: true, username: true },
+  });
+  const likerLabel = liker?.name?.trim() || liker?.username?.trim() || "Alguém";
   await createNotification(targetUserId, {
     type: "profile_like",
-    title: "Alguém curtiu seu perfil",
-    body: null,
+    title: "Curtida no perfil",
+    body: `${likerLabel} curtiu seu perfil`,
   });
   const count = await prisma.profileLike.count({ where: { targetUserId } });
   return NextResponse.json({ liked: true, likesCount: count });
