@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
         creatorId: session.user.id,
         settings: JSON.stringify({
           mode: type,
-          map_pool: ["Ascent", "Bind", "Haven", "Split", "Icebox"],
+          map_pool: ["Abyss", "Bind", "Breeze", "Corrode", "Haven", "Pearl", "Split"],
           max_rounds: 13,
           overtime: true,
         }),
