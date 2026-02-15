@@ -63,6 +63,7 @@ export default function MatchDetailPage() {
   const [chatInput, setChatInput] = useState("");
   const [sendingChat, setSendingChat] = useState(false);
   const hadCodeRef = useRef(false);
+  const [matchRulesModalSeen, setMatchRulesModalSeen] = useState(true);
 
   const fetchMatch = () => {
     if (!matchId) return;
@@ -74,6 +75,15 @@ export default function MatchDetailPage() {
   };
 
   useEffect(() => {
+    if (!matchId || typeof window === "undefined") return;
+    try {
+      setMatchRulesModalSeen(sessionStorage.getItem(`hub_match_rules_${matchId}`) === "1");
+    } catch {
+      setMatchRulesModalSeen(true);
+    }
+  }, [matchId]);
+
+  useEffect(() => {
     if (!matchId) return;
     setLoading(true);
     fetch(`/api/matches/${matchId}`, { credentials: "include" })
@@ -81,6 +91,7 @@ export default function MatchDetailPage() {
       .then((m: Match) => {
         if (m?.settings?.valorant_room_code) hadCodeRef.current = true;
         setMatch(m);
+        if (m?.settings?.valorant_room_code) setValorantCode(m.settings.valorant_room_code);
       })
       .catch(() => setMatch(null))
       .finally(() => setLoading(false));
@@ -104,6 +115,7 @@ export default function MatchDetailPage() {
         .then((r) => r.json())
         .then((m: Match) => {
           setMatch((prev) => (prev ? { ...prev, settings: m.settings } : null));
+          if (m?.settings?.valorant_room_code) setValorantCode(m.settings.valorant_room_code);
         })
         .catch(() => {});
     }, 5000);
@@ -328,10 +340,16 @@ export default function MatchDetailPage() {
                 </div>
               )}
               {match.settings?.valorant_room_code ? (
-                <div>
-                  <span className="text-xs text-[var(--hub-text-muted)] uppercase">Valorant</span>
-                  <p className="text-2xl font-mono font-bold tracking-widest text-white">{match.settings.valorant_room_code}</p>
-                </div>
+                <>
+                  <div>
+                    <span className="text-xs text-[var(--hub-text-muted)] uppercase">Valorant</span>
+                    <p className="text-2xl font-mono font-bold tracking-widest text-white">{match.settings.valorant_room_code}</p>
+                  </div>
+                  <div className="text-sm text-[var(--hub-text-muted)]">
+                    Entre no Discord da Hub:{" "}
+                    <a href="https://discord.gg/dTafBSDEXg" target="_blank" rel="noopener noreferrer" className="text-[var(--hub-accent)] font-medium underline hover:no-underline">discord.gg/dTafBSDEXg</a>
+                  </div>
+                </>
               ) : isCreator && (
                 <form
                   className="flex gap-2 flex-wrap items-end"
@@ -348,7 +366,8 @@ export default function MatchDetailPage() {
                       });
                       const data = await res.json().catch(() => ({}));
                       if (res.ok) {
-                        setValorantCode("");
+                        const code = data.valorant_room_code ?? valorantCode.trim();
+                        setValorantCode(code);
                         fetchMatch();
                       } else {
                         alert(data.message || "Erro ao salvar código.");
@@ -616,6 +635,34 @@ export default function MatchDetailPage() {
                 {finishing ? "Encerrando…" : "Confirmar resultado"}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal obrigatório ao entrar na partida: regra de comunicação */}
+      {match?.userInMatch && (match.status === "pending" || match.status === "in_progress") && !matchRulesModalSeen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70" role="dialog" aria-modal="true" aria-labelledby="match-rules-title">
+          <div className="rounded-2xl border border-[var(--hub-border)] bg-[var(--hub-bg-card)] max-w-md w-full p-6 shadow-xl">
+            <h2 id="match-rules-title" className="text-lg font-bold text-[var(--hub-text)] mb-3">Aviso importante</h2>
+            <p className="text-[var(--hub-text)] mb-6">
+              Caso o jogador não se comunique pelo jogo ou pelo Discord da Hub, poderá receber suspensão na plataforma.
+            </p>
+            <p className="text-sm text-[var(--hub-text-muted)] mb-4">
+              Entre no Discord da Hub:{" "}
+              <a href="https://discord.gg/dTafBSDEXg" target="_blank" rel="noopener noreferrer" className="text-[var(--hub-accent)] underline">discord.gg/dTafBSDEXg</a>
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                try {
+                  if (matchId) sessionStorage.setItem(`hub_match_rules_${matchId}`, "1");
+                } catch {}
+                setMatchRulesModalSeen(true);
+              }}
+              className="w-full rounded-lg bg-[var(--hub-accent)] px-4 py-3 text-sm font-medium text-white"
+            >
+              Entendi e concordo
+            </button>
           </div>
         </div>
       )}

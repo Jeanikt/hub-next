@@ -20,7 +20,9 @@ type MatchItem = {
 const STATUS_LABEL: Record<string, string> = {
   pending: "Aguardando",
   in_progress: "Em andamento",
+  finished: "Concluída",
   completed: "Concluída",
+  cancelled: "Cancelada",
 };
 
 export default function MatchesPage() {
@@ -81,10 +83,10 @@ export default function MatchesPage() {
             onChange={(e) => setFilterStatus(e.target.value)}
             className="rounded-lg border border-[var(--hub-border)] bg-[var(--hub-bg-card)] px-3 py-2 text-sm text-[var(--hub-text)] focus:border-[var(--hub-accent)] focus:outline-none clip-button"
           >
-            <option value="">Todas</option>
+            <option value="">Todas (exceto canceladas)</option>
             <option value="pending">Aguardando</option>
             <option value="in_progress">Em andamento</option>
-            <option value="completed">Concluídas</option>
+            <option value="finished">Concluídas</option>
           </select>
         </div>
         <div className="flex items-center gap-2">

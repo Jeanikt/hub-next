@@ -85,7 +85,21 @@ export async function getLastCustomMatchFresh(
   region = "br",
   platform = "pc"
 ): Promise<{ data?: ValorantMatch | ValorantMatch[]; error?: string } | null> {
-  return getLastCustomMatchInternal(name, tag, region, platform, 0);
+  return getLastCustomMatchInternal(name, tag, region, platform, 0, 1);
+}
+
+/** Últimas N partidas customizadas (sem cache). Para sync: buscar várias e achar a que bate com a partida da Hub. */
+export async function getRecentCustomMatches(
+  name: string,
+  tag: string,
+  size = 10,
+  region = "br",
+  platform = "pc"
+): Promise<{ data?: ValorantMatch[]; error?: string } | null> {
+  const result = await getLastCustomMatchInternal(name, tag, region, platform, 0, size);
+  if (!result?.data) return result ? { error: result.error } : null;
+  const arr = Array.isArray(result.data) ? result.data : [result.data];
+  return { ...result, data: arr };
 }
 
 async function getLastCustomMatchInternal(
@@ -93,14 +107,15 @@ async function getLastCustomMatchInternal(
   tag: string,
   region: string,
   platform: string,
-  revalidate: number
+  revalidate: number,
+  size = 1
 ): Promise<{ data?: ValorantMatch | ValorantMatch[]; error?: string } | null> {
   try {
     const url = new URL(
       `${BASE_URL}/v4/matches/${region}/${platform}/${encodeURIComponent(name)}/${encodeURIComponent(tag)}`
     );
     url.searchParams.set("mode", "custom");
-    url.searchParams.set("size", "1");
+    url.searchParams.set("size", String(Math.min(20, Math.max(1, size))));
     const res = await valorantFetch(url.toString(), {
       headers: getHeaders(),
       next: { revalidate },

@@ -4,7 +4,7 @@
  */
 import { prisma } from "@/src/lib/prisma";
 import {
-  getLastCustomMatchFresh,
+  getRecentCustomMatches,
   getMatchByMatchId,
   VALORANT_RATE_LIMIT_ERROR,
   type ValorantMatch,
@@ -190,7 +190,7 @@ export async function syncPendingMatchesFromRiot(): Promise<SyncResult> {
       },
     },
     orderBy: { createdAt: "desc" },
-    take: 5,
+    take: 15,
   });
 
   for (const match of pendingMatches) {
@@ -204,95 +204,91 @@ export async function syncPendingMatchesFromRiot(): Promise<SyncResult> {
     const name = creator.user.riotId!.trim();
     const tag = creator.user.tagline!.trim();
 
-    // 1) pega última custom do criador
+    // 1) pega últimas customs do criador (várias para achar a partida da Hub)
     await new Promise((r) => setTimeout(r, DELAY_MS));
-    let lastCustom;
+    let recentData;
     try {
-      lastCustom = await getLastCustomMatchFresh(name, tag);
+      recentData = await getRecentCustomMatches(name, tag, 10);
     } catch (e) {
       if (e instanceof Error && e.message === VALORANT_RATE_LIMIT_ERROR) {
-        errors.push(`[${match.matchId}] Rate limit da API Riot (lastCustom)`);
+        errors.push(`[${match.matchId}] Rate limit da API Riot (recentCustoms)`);
       } else {
-        errors.push(`[${match.matchId}] Erro lastCustom: ${e instanceof Error ? e.message : "Erro"}`);
+        errors.push(`[${match.matchId}] Erro recentCustoms: ${e instanceof Error ? e.message : "Erro"}`);
       }
       await touchMatchUpdatedAt(match.id);
       continue;
     }
 
-    if (!lastCustom || "error" in lastCustom) {
-      await touchMatchUpdatedAt(match.id);
-      continue;
-    }
-
-    const first = extractFirstMatch(lastCustom.data);
-    if (!first) {
-      await touchMatchUpdatedAt(match.id);
-      continue;
-    }
-    if (!isMatchCompleted(first)) {
-      await touchMatchUpdatedAt(match.id);
-      continue;
-    }
-
-    const riotMatchId = getMatchIdFromMetadata(first);
-    if (!riotMatchId) {
+    if (!recentData?.data?.length) {
       await touchMatchUpdatedAt(match.id);
       continue;
     }
 
     const settings = match.settings ? JSON.parse(match.settings) : {};
-    if (settings.riot_match_id === riotMatchId) {
-      // já sincronizado com esse riotMatchId
-      await touchMatchUpdatedAt(match.id);
-      continue;
-    }
+    let details: ValorantMatchDetails | null = null;
+    let riotMatchId: string | null = null;
 
-    // 2) busca detalhes
-    await new Promise((r) => setTimeout(r, DELAY_MS));
-    let detailsRes;
-    try {
-      detailsRes = await getMatchByMatchId("br", riotMatchId);
-    } catch (e) {
-      if (e instanceof Error && e.message === VALORANT_RATE_LIMIT_ERROR) {
-        errors.push(`[${match.matchId}] Rate limit da API Riot (details)`);
-      } else {
-        errors.push(`[${match.matchId}] Erro details: ${e instanceof Error ? e.message : "Erro"}`);
-      }
-      await touchMatchUpdatedAt(match.id);
-      continue;
-    }
+    for (const first of recentData.data) {
+      if (!isMatchCompleted(first)) continue;
+      const mid = getMatchIdFromMetadata(first);
+      if (!mid || settings.riot_match_id === mid) continue;
 
-    if (!detailsRes?.data) {
-      await touchMatchUpdatedAt(match.id);
-      continue;
-    }
-
-    const details = detailsRes.data as ValorantMatchDetails;
-
-    // 3) valida mapa (DB vs Riot)
-    // DB: match.map (String?)
-    // Riot: metadata.map.name (ou metadata.map_name)
-    if (match.map) {
-      const riotMap = getDetailsMapName(details);
-      if (!riotMap) {
-        // sem mapa no payload, não finaliza (pra não arriscar)
-        errors.push(`[${match.matchId}] details sem mapa (metadata.map.name)`);
-        await touchMatchUpdatedAt(match.id);
+      await new Promise((r) => setTimeout(r, DELAY_MS));
+      let detailsRes;
+      try {
+        detailsRes = await getMatchByMatchId("br", mid);
+      } catch (e) {
+        if (e instanceof Error && e.message === VALORANT_RATE_LIMIT_ERROR) {
+          errors.push(`[${match.matchId}] Rate limit (details)`);
+          break;
+        }
         continue;
       }
+      if (!detailsRes?.data) continue;
 
-      const dbMapN = normalizeMapName(match.map);
-      const riotMapN = normalizeMapName(riotMap);
+      const d = detailsRes.data as ValorantMatchDetails;
+      const riotMap = getDetailsMapName(d);
+      if (match.map && riotMap) {
+        const dbMapN = normalizeMapName(match.map);
+        const riotMapN = normalizeMapName(riotMap);
+        if (dbMapN && riotMapN && dbMapN !== riotMapN) continue;
+      } else if (match.map && !riotMap) continue;
 
-      if (dbMapN && riotMapN && dbMapN !== riotMapN) {
-        // mapa não bate => provavelmente pegou custom errada do criador
-        errors.push(`[${match.matchId}] mapa não bate (db="${match.map}" riot="${riotMap}")`);
-        await touchMatchUpdatedAt(match.id);
-        continue;
+      const hubByKey = new Map(
+        participants.map((p) => [
+          normalizeRiotKey(p.user.riotId!, p.user.tagline!),
+          { userId: p.userId, team: normalizeTeam(p.team) },
+        ])
+      );
+      const allPlayers = getAllPlayers(d);
+      const riotByKey = new Map(
+        allPlayers.map((pl) => [
+          normalizeRiotKey(pl.name ?? "", pl.tag ?? ""),
+          { team: normalizeTeam(pl.team) },
+        ])
+      );
+      const expected = hubByKey.size;
+      let matchedPlayers = 0;
+      let mismatchedTeams = 0;
+      for (const [key, hub] of hubByKey.entries()) {
+        const riot = riotByKey.get(key);
+        if (!riot) break;
+        matchedPlayers++;
+        if (hub.team && riot.team && hub.team !== riot.team) mismatchedTeams++;
       }
+      if (matchedPlayers < expected || mismatchedTeams > 0) continue;
+
+      details = d;
+      riotMatchId = mid;
+      break;
     }
 
-    // 4) valida jogadores + times batendo
+    if (!details || !riotMatchId) {
+      await touchMatchUpdatedAt(match.id);
+      continue;
+    }
+
+    // Map e jogadores já validados no loop; monta estruturas para ELO/stats
     const hubByKey = new Map(
       participants.map((p) => [
         normalizeRiotKey(p.user.riotId!, p.user.tagline!),
@@ -301,48 +297,6 @@ export async function syncPendingMatchesFromRiot(): Promise<SyncResult> {
     );
 
     const allPlayers = getAllPlayers(details);
-    const riotByKey = new Map(
-      allPlayers.map((pl) => [
-        normalizeRiotKey(pl.name ?? "", pl.tag ?? ""),
-        { team: normalizeTeam(pl.team) },
-      ])
-    );
-
-    // precisa bater pelo menos TODOS os participantes com riotId/tagline
-    // (se tu quiser permitir “mínimo 8”, troca o expected)
-    const expected = hubByKey.size;
-
-    let matchedPlayers = 0;
-    let mismatchedTeams = 0;
-    let missingOnRiot = 0;
-
-    for (const [key, hub] of hubByKey.entries()) {
-      const riot = riotByKey.get(key);
-      if (!riot) {
-        missingOnRiot++;
-        continue;
-      }
-      matchedPlayers++;
-      if (hub.team && riot.team && hub.team !== riot.team) {
-        mismatchedTeams++;
-      }
-    }
-
-    // se não bate todo mundo, provavelmente é a custom errada
-    if (matchedPlayers < expected) {
-      errors.push(
-        `[${match.matchId}] players não batem (matched=${matchedPlayers}/${expected}, missing=${missingOnRiot})`
-      );
-      await touchMatchUpdatedAt(match.id);
-      continue;
-    }
-
-    // se time não bate, pula (isso é exatamente o que você pediu)
-    if (mismatchedTeams > 0) {
-      errors.push(`[${match.matchId}] times não batem (mismatches=${mismatchedTeams}/${expected})`);
-      await touchMatchUpdatedAt(match.id);
-      continue;
-    }
 
     // 5) winnerTeam
     const winnerTeam = computeWinnerTeam(details);

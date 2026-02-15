@@ -9,6 +9,7 @@ import { ReferralAttribute } from "./components/ReferralAttribute";
 import { JsonLdOrganization, JsonLdWebSite } from "./components/JsonLd";
 import { GoogleAnalytics } from "./components/GoogleAnalytics";
 import { CloudflareAnalytics } from "./components/CloudflareAnalytics";
+import { DiscordBanner } from "./components/DiscordBanner";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -106,6 +107,7 @@ export default function RootLayout({
           />
 
           <Providers>
+            <DiscordBanner />
             <Sidebar />
             <MissionBadge />
             <ReferralAttribute />

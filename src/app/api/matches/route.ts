@@ -11,10 +11,11 @@ export async function GET(request: NextRequest) {
     const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10));
     const perPage = Math.min(20, Math.max(1, parseInt(searchParams.get("per_page") ?? "10", 10)));
     const statusFilter = searchParams.get("status")?.trim();
-
-    const where = statusFilter
-      ? { status: statusFilter }
-      : undefined;
+    // "completed" alias para "finished"; nunca listar canceladas por padrão
+    const statusValue = statusFilter === "completed" ? "finished" : statusFilter;
+    const where = statusValue
+      ? { status: statusValue }
+      : { status: { not: "cancelled" } };
 
     const [matches, total] = await Promise.all([
       prisma.gameMatch.findMany({
@@ -35,6 +36,7 @@ export async function GET(request: NextRequest) {
       matchId: m.matchId,
       type: m.type,
       status: m.status,
+      map: m.map ?? null,
       maxPlayers: m.maxPlayers,
       playerCount: m._count.participants,
       creator: m.creator,

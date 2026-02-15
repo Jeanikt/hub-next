@@ -55,17 +55,20 @@ export async function GET(_request: Request, { params }: Params) {
     return NextResponse.json({ message: "Username é obrigatório." }, { status: 422 });
   }
 
-  let user: Record<string, unknown> | null = null;
+  const selectFullWithCount = { ...PROFILE_SELECT_FULL, _count: { select: { profileLikesReceived: true } } } as const;
+  const selectMinimalWithCount = { ...PROFILE_SELECT_MINIMAL, _count: { select: { profileLikesReceived: true } } } as const;
+
+  let user: (Record<string, unknown> & { _count?: { profileLikesReceived: number } }) | null = null;
   try {
     user = await prisma.user.findUnique({
       where: { username, isBanned: false },
-      select: PROFILE_SELECT_FULL,
+      select: selectFullWithCount,
     });
   } catch (e: unknown) {
     if ((e as { code?: string })?.code === "P2022") {
       user = await prisma.user.findUnique({
         where: { username, isBanned: false },
-        select: PROFILE_SELECT_MINIMAL,
+        select: selectMinimalWithCount,
       });
       if (user) {
         user.profileBackgroundUrl = null;
@@ -81,14 +84,15 @@ export async function GET(_request: Request, { params }: Params) {
     return NextResponse.json({ message: "Perfil não encontrado." }, { status: 404 });
   }
 
-  const [friendsCount, likesCount, missionsCompletedCount] = await Promise.all([
+  const likesCount = user._count?.profileLikesReceived ?? 0;
+  const { _count: _droppedCount, ...userWithoutCount } = user;
+  const [friendsCount, missionsCompletedCount] = await Promise.all([
     prisma.friend.count({
       where: {
         OR: [{ userId: user.id as string }, { friendId: user.id as string }],
         status: "accepted",
       },
     }).catch(() => 0),
-    prisma.profileLike.count({ where: { targetUserId: user.id as string } }).catch(() => 0),
     prisma.userMission.count({ where: { userId: user.id as string } }).catch(() => 0),
   ]);
 
@@ -96,7 +100,7 @@ export async function GET(_request: Request, { params }: Params) {
   const xpProgress = progressToNextLevel(user.xp as number);
 
   const lastLoginAt = user.lastLoginAt as Date | null | undefined;
-  const { lastLoginAt: _dropped, ...safeUser } = user as Record<string, unknown> & { lastLoginAt?: unknown };
+  const { lastLoginAt: _dropped, ...safeUser } = userWithoutCount as Record<string, unknown> & { lastLoginAt?: unknown };
   return NextResponse.json({
     ...safeUser,
     avatarUrl: user.image,

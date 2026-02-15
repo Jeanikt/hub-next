@@ -9,6 +9,8 @@ type ReportModalProps = {
   targetType: string;
   targetId: string;
   targetLabel: string;
+  /** Quando informado, limita a 1 report por usuário nesta partida */
+  gameMatchId?: number | null;
   onSuccess?: () => void;
 };
 
@@ -18,6 +20,7 @@ export function ReportModal({
   targetType,
   targetId,
   targetLabel,
+  gameMatchId,
   onSuccess,
 }: ReportModalProps) {
   const [reason, setReason] = useState("");
@@ -40,7 +43,12 @@ export function ReportModal({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ targetType, targetId, reason: r }),
+        body: JSON.stringify({
+          targetType,
+          targetId,
+          reason: r,
+          ...(gameMatchId != null && !Number.isNaN(Number(gameMatchId)) && { gameMatchId: Number(gameMatchId) }),
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
