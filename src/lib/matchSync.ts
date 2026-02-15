@@ -247,12 +247,6 @@ export async function syncPendingMatchesFromRiot(): Promise<SyncResult> {
       if (!detailsRes?.data) continue;
 
       const d = detailsRes.data as ValorantMatchDetails;
-      const riotMap = getDetailsMapName(d);
-      if (match.map && riotMap) {
-        const dbMapN = normalizeMapName(match.map);
-        const riotMapN = normalizeMapName(riotMap);
-        if (dbMapN && riotMapN && dbMapN !== riotMapN) continue;
-      } else if (match.map && !riotMap) continue;
 
       const hubByKey = new Map(
         participants.map((p) => [
@@ -321,6 +315,8 @@ export async function syncPendingMatchesFromRiot(): Promise<SyncResult> {
     const durationMs = meta?.game_length_in_ms ?? meta?.game_length ?? 0;
     const matchDurationSec = durationMs > 0 ? Math.round(durationMs / 1000) : null;
 
+    const riotMap = getDetailsMapName(details);
+
     // 7) aplica no banco
     try {
       await prisma.$transaction(async (tx) => {
@@ -333,6 +329,7 @@ export async function syncPendingMatchesFromRiot(): Promise<SyncResult> {
             winnerTeam,
             finishedAt: new Date(),
             matchDuration: matchDurationSec,
+            ...(riotMap ? { map: riotMap } : {}),
             settings: JSON.stringify(settings),
           },
         });
@@ -469,12 +466,6 @@ export async function syncSingleMatchFromRiot(matchId: string): Promise<Conclude
     if (!detailsRes?.data) continue;
 
     const d = detailsRes.data as ValorantMatchDetails;
-    const riotMap = getDetailsMapName(d);
-    if (match.map && riotMap) {
-      const dbMapN = normalizeMapName(match.map);
-      const riotMapN = normalizeMapName(riotMap);
-      if (dbMapN && riotMapN && dbMapN !== riotMapN) continue;
-    } else if (match.map && !riotMap) continue;
 
     const hubByKey = new Map(
       participants.map((p) => [
@@ -508,7 +499,7 @@ export async function syncSingleMatchFromRiot(matchId: string): Promise<Conclude
   if (!details || !riotMatchId) {
     return {
       success: false,
-      error: "Nenhuma partida finalizada no Valorant bateu com esta partida (mapa/jogadores). Confira se a partida já terminou no jogo.",
+      error: "Nenhuma partida finalizada no Valorant bateu com esta partida (os 10 jogadores). Confira se a partida já terminou no jogo.",
     };
   }
 
@@ -536,6 +527,7 @@ export async function syncSingleMatchFromRiot(matchId: string): Promise<Conclude
   const durationMs = meta?.game_length_in_ms ?? meta?.game_length ?? 0;
   const matchDurationSec = durationMs > 0 ? Math.round(durationMs / 1000) : null;
 
+  const riotMap = getDetailsMapName(details);
   try {
     await prisma.$transaction(async (tx) => {
       settings.riot_match_id = riotMatchId;
@@ -546,6 +538,7 @@ export async function syncSingleMatchFromRiot(matchId: string): Promise<Conclude
           winnerTeam,
           finishedAt: new Date(),
           matchDuration: matchDurationSec,
+          ...(riotMap ? { map: riotMap } : {}),
           settings: JSON.stringify(settings),
         },
       });

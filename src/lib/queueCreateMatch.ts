@@ -101,6 +101,10 @@ export async function createMatchFromQueue(queueType: QueueType): Promise<{ matc
         where: { userId: { in: orderedEntries.map((e) => e.userId) } },
       });
 
+      await tx.queueWaitingMessage.deleteMany({
+        where: { queueType },
+      });
+
       return created;
     });
 
