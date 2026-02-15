@@ -170,8 +170,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const redirectBase =
-      process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL;
+    const redirectBase = process.env.NEXTAUTH_URL || "https://hubexpresso.com";
 
     return NextResponse.redirect(
       new URL("/profile/discord", redirectBase ?? "https://hubexpresso.com")
