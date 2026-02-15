@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
     let matchFound = false;
     let matchId: string | null = null;
     let pendingAccept = false;
-    const acceptDeadline = Date.now() + 10_000;
+    const acceptDeadline = Date.now() + 30_000;
 
     if (entries.length >= playersNeeded) {
       const alreadyPending = await getPendingAccept(qt);
@@ -137,7 +137,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: matchFound ? "Partida encontrada! Aceite em 10 segundos." : "Você entrou na fila!",
+      message: matchFound ? "Partida encontrada! Aceite em 30 segundos." : "Você entrou na fila!",
       queue_type: qt,
       players_in_queue: playersInQueue,
       matchFound,

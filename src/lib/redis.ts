@@ -217,11 +217,11 @@ export async function releaseQueueMatchLock(lock: QueueMatchLock): Promise<void>
 }
 
 /* =======================
-   Pending accept (10s) – fila com 10 jogadores aguardando aceite
+   Pending accept (30s) – fila com jogadores aguardando aceite
    ======================= */
 
 const PENDING_ACCEPT_PREFIX = "hub:queue:pending:";
-const PENDING_ACCEPT_TTL = 15;
+const PENDING_ACCEPT_TTL = 35;
 
 export type PendingAcceptData = {
   userIds: string[];
@@ -304,7 +304,7 @@ export async function expirePendingAcceptIfNeeded(queueType: string): Promise<st
   const data = await getPendingAccept(queueType);
   if (!data) return null;
   const elapsed = Date.now() - data.createdAt;
-  if (elapsed < 10_000) return null; // 10s não passou
+  if (elapsed < 30_000) return null; // 30s não passou
   const notAccepted = data.userIds.filter((id) => data.accepted[id] !== true);
   await deletePendingAccept(queueType);
   return notAccepted;

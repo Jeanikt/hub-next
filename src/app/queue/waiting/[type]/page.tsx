@@ -250,7 +250,7 @@ export default function WaitingRoomPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70" role="dialog" aria-modal="true">
           <div className="rounded-2xl border-2 border-[var(--hub-accent)] bg-[var(--hub-bg-card)] max-w-md w-full p-6 shadow-xl text-center">
             <p className="text-xl font-black uppercase tracking-tight text-[var(--hub-text)]">Partida formada!</p>
-            <p className="mt-2 text-sm text-[var(--hub-text-muted)]">Aceite em até 10 segundos para entrar na partida.</p>
+            <p className="mt-2 text-sm text-[var(--hub-text-muted)]">Aceite em até 30 segundos para entrar na partida.</p>
             <p className="mt-4 text-4xl font-mono font-bold text-[var(--hub-accent)]">{acceptSecondsLeft ?? 10}</p>
             <p className="text-xs text-[var(--hub-text-muted)]">segundos restantes</p>
 

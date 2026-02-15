@@ -25,9 +25,9 @@ export async function POST() {
     const pending = await getPendingAccept(entry.queueType);
     if (pending?.userIds.includes(session.user.id)) {
       const elapsed = Date.now() - pending.createdAt;
-      if (elapsed < 10_000) {
+      if (elapsed < 30_000) {
         return NextResponse.json(
-          { message: "Você já aceitou a partida. Não é possível sair durante os 10 segundos de confirmação. Use Recusar no modal se não quiser jogar." },
+          { message: "Você já aceitou a partida. Não é possível sair durante os 30 segundos de confirmação. Use Recusar no modal se não quiser jogar." },
           { status: 409 }
         );
       }

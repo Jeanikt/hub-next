@@ -12,10 +12,10 @@ import { createMatchFromQueue } from "@/src/lib/queueCreateMatch";
 import { ALL_QUEUE_TYPES } from "@/src/lib/queues";
 import { serverError } from "@/src/lib/serverLog";
 
-const ACCEPT_DEADLINE_MS = 10_000;
+const ACCEPT_DEADLINE_MS = 30_000;
 
 /**
- * POST /api/queue/accept – aceitar ou recusar partida (quando 10 na fila, 10s para aceitar).
+ * POST /api/queue/accept – aceitar ou recusar partida (quando 10 na fila, 30s para aceitar).
  * Body: { accept: true | false }
  */
 export async function POST(request: NextRequest) {
@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: "Fila inválida." }, { status: 422 });
     }
 
-    // Expirar pending antigo (10s já passou) e remover quem não aceitou
+    // Expirar pending antigo (30s já passou) e remover quem não aceitou
     const notAccepted = await expirePendingAcceptIfNeeded(queueType);
     if (notAccepted?.length) {
       await prisma.queueEntry.deleteMany({
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
     const pending = await getPendingAccept(queueType);
     if (!pending) {
       return NextResponse.json(
-        { message: "Não há partida aguardando aceite. Você pode ter demorado mais de 10 segundos." },
+        { message: "Não há partida aguardando aceite. Você pode ter demorado mais de 30 segundos." },
         { status: 400 }
       );
     }

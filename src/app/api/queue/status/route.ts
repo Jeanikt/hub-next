@@ -173,9 +173,9 @@ export async function GET(request: NextRequest) {
         const pending = await getPendingAccept(myEntry.queueType);
         if (pending?.userIds.includes(session.user.id)) {
           const elapsed = Date.now() - pending.createdAt;
-          if (elapsed < 10_000) {
+          if (elapsed < 30_000) {
             pendingAccept = true;
-            acceptDeadline = pending.createdAt + 10_000;
+            acceptDeadline = pending.createdAt + 30_000;
           }
         }
         const notAccepted = await expirePendingAcceptIfNeeded(myEntry.queueType);
