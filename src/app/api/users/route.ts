@@ -170,7 +170,6 @@ export async function GET(request: NextRequest) {
     });
   } catch (e) {
     serverError("GET /api/users", "error", { err: e instanceof Error ? e.message : String(e) });
-    console.log(e)
     return NextResponse.json({ error: "Erro ao listar usuários." }, { status: 500 });
   }
 }

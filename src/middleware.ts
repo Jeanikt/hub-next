@@ -49,10 +49,6 @@ const REF_COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 dias
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  if (pathname.startsWith("/api/")) {
-    console.info("[server]", request.method, pathname);
-  }
-
   if (pathname.startsWith("/api/auth")) {
     return NextResponse.next();
   }

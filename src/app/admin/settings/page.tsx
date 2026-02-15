@@ -136,7 +136,6 @@ export default function AdminSettingsPage() {
       });
 
       const data = await res.json().catch(() => ({}));
-      console.log("PATCH /api/admin/settings", res.status, data);
 
       if (!res.ok) {
         alert(data?.message ?? data?.error ?? `Erro ao salvar (${res.status})`);
@@ -149,8 +148,7 @@ export default function AdminSettingsPage() {
         queues_disabled: normalize(data.queues_disabled ?? previous?.queues_disabled ?? "0"),
       };
       setSettings(next);
-    } catch (e) {
-      console.error(e);
+    } catch {
       alert("Erro de rede ao salvar.");
       if (previous) setSettings(previous);
     } finally {

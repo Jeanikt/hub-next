@@ -25,7 +25,7 @@ export async function createNotification(
         body: payload.body ?? null,
       },
     });
-  } catch (e) {
-    console.error("createNotification", e);
+  } catch {
+    // ignore
   }
 }

@@ -27,13 +27,8 @@ async function runStartPendingMatches(): Promise<void> {
       "./startPendingMatches"
     );
     const result = await startPendingMatchesWithFullTeams();
-    if (result.started > 0 && process.env.NODE_ENV !== "test") {
-      console.info(
-        `[match-cron] ${result.started} partida(s) pendente(s) iniciada(s).`
-      );
-    }
-  } catch (e) {
-    console.error("[match-cron] start-pending-matches:", e);
+  } catch {
+    // ignore
   }
 }
 
@@ -41,15 +36,7 @@ async function runSyncMatchesFromRiot(): Promise<void> {
   try {
     const { syncPendingMatchesFromRiot } = await import("./matchSync");
     const result = await syncPendingMatchesFromRiot();
-    if (
-      (result.updated > 0 || result.errors.length > 0) &&
-      process.env.NODE_ENV !== "test"
-    ) {
-      console.info(
-        `[match-cron] check-matches: ${result.updated} atualizada(s), ${result.errors.length} erro(s).`
-      );
-    }
-  } catch (e) {
-    console.error("[match-cron] check-matches:", e);
+  } catch {
+    // ignore
   }
 }

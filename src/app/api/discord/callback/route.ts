@@ -165,8 +165,8 @@ export async function GET(request: NextRequest) {
           discordId,
           userAccessToken: accessToken,
         });
-      } catch (err) {
-        console.warn(err);
+      } catch {
+        // ignore
       }
     }
 
@@ -175,8 +175,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(
       new URL("/profile/discord", redirectBase ?? "https://hubexpresso.com")
     );
-  } catch (e) {
-    console.error(e);
+  } catch {
     return NextResponse.json(
       { message: "Erro ao vincular Discord." },
       { status: 500 }

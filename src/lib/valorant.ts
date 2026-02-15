@@ -63,7 +63,6 @@ export async function getMatchlist(
     return data;
   } catch (e) {
     if (e instanceof Error && e.message === VALORANT_RATE_LIMIT_ERROR) throw e;
-    console.error("Valorant getMatchlist", e);
     return null;
   }
 }
@@ -127,7 +126,6 @@ async function getLastCustomMatchInternal(
     return data;
   } catch (e) {
     if (e instanceof Error && e.message === VALORANT_RATE_LIMIT_ERROR) throw e;
-    console.error("Valorant getLastCustomMatch", e);
     return null;
   }
 }
@@ -149,7 +147,6 @@ export async function getMatchByMatchId(
     return data;
   } catch (e) {
     if (e instanceof Error && e.message === VALORANT_RATE_LIMIT_ERROR) throw e;
-    console.error("Valorant getMatchByMatchId", e);
     return null;
   }
 }
@@ -236,7 +233,6 @@ export async function getAccount(
     return await fetchAccount("v1");
   } catch (e) {
     if (e instanceof Error && e.message === VALORANT_RATE_LIMIT_ERROR) throw e;
-    console.error("Valorant getAccount", e);
     return null;
   }
 }
@@ -298,7 +294,6 @@ export async function getMMR(
     if (data?.status !== undefined && data.status !== 200 && data.status !== 404) return null; return data;
   } catch (e) {
     if (e instanceof Error && e.message === VALORANT_RATE_LIMIT_ERROR) throw e;
-    console.error("Valorant getMMR", e);
     return null;
   }
 }
