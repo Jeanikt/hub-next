@@ -3,7 +3,7 @@
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
-import { MessageCircle, Send, Users, Loader2, CheckCircle2 } from "lucide-react";
+import { MessageCircle, Send, Users, Loader2, CheckCircle2, UserPlus, X } from "lucide-react";
 import { getQueueAliasFromId } from "@/src/lib/valorant";
 import { getQueueDisplayName, getPlayersRequired, QUEUE_COLORS } from "@/src/lib/queues";
 import { playMatchFoundSound, playAcceptPromptSound, notifyMatchFound } from "@/src/lib/useNotificationSound";
@@ -44,6 +44,9 @@ export default function WaitingRoomPage() {
   const [accepting, setAccepting] = useState(false);
 
   const [acceptedNotice, setAcceptedNotice] = useState(false);
+  const [duoModalOpen, setDuoModalOpen] = useState(false);
+  const [friends, setFriends] = useState<{ id: string; username: string | null; name: string | null }[]>([]);
+  const [invitingDuo, setInvitingDuo] = useState<string | null>(null);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
   const acceptPromptSoundPlayedRef = useRef(false);
@@ -92,7 +95,7 @@ export default function WaitingRoomPage() {
     }
 
     poll();
-    const interval = setInterval(poll, 3000);
+    const interval = setInterval(poll, 5000);
     return () => clearInterval(interval);
   }, [type, router]);
 
@@ -112,7 +115,7 @@ export default function WaitingRoomPage() {
       }
     }
     fetchMessages();
-    const interval = setInterval(fetchMessages, 2500);
+    const interval = setInterval(fetchMessages, 5000);
     return () => clearInterval(interval);
   }, [type]);
 
@@ -131,7 +134,7 @@ export default function WaitingRoomPage() {
       setAcceptSecondsLeft(left);
     };
     update();
-    const t = setInterval(update, 500);
+    const t = setInterval(update, 1000);
     return () => clearInterval(t);
   }, [showAcceptModal, data?.acceptDeadline]);
 
@@ -284,6 +287,19 @@ export default function WaitingRoomPage() {
           ← Voltar às filas
         </Link>
         <button
+          onClick={() => {
+            setDuoModalOpen(true);
+            fetch("/api/friends", { credentials: "include" })
+              .then((r) => r.json())
+              .then((j) => setFriends(j.friends ?? []))
+              .catch(() => setFriends([]));
+          }}
+          className="text-sm px-4 py-2 rounded-xl border border-[var(--hub-accent)]/50 text-[var(--hub-accent)] hover:bg-[var(--hub-accent)]/10 font-medium transition flex items-center gap-1.5"
+        >
+          <UserPlus size={16} />
+          Convidar duo
+        </button>
+        <button
           onClick={leaveQueue}
           disabled={leavingQueue}
           className="text-sm px-4 py-2 rounded-xl border border-red-500/50 text-red-400 hover:bg-red-500/10 disabled:opacity-50 font-medium transition"
@@ -291,6 +307,51 @@ export default function WaitingRoomPage() {
           {leavingQueue ? "Saindo..." : "Sair da fila"}
         </button>
       </div>
+
+      {duoModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onClick={() => setDuoModalOpen(false)}>
+          <div className="rounded-2xl border border-[var(--hub-border)] bg-[var(--hub-bg-card)] w-full max-w-md max-h-[80vh] overflow-hidden shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--hub-border)]">
+              <h3 className="font-bold text-[var(--hub-text)]">Convidar amigo para a fila</h3>
+              <button onClick={() => setDuoModalOpen(false)} className="p-1 rounded-lg hover:bg-[var(--hub-bg-elevated)] text-[var(--hub-text-muted)]">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-4 overflow-y-auto max-h-[320px] space-y-2">
+              {friends.length === 0 && <p className="text-sm text-[var(--hub-text-muted)]">Nenhum amigo para convidar. Adicione amigos em Amigos.</p>}
+              {friends.map((f) => (
+                <button
+                  key={f.id}
+                  disabled={!!invitingDuo}
+                  onClick={async () => {
+                    setInvitingDuo(f.id);
+                    try {
+                      const res = await fetch("/api/queue/invite-duo", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        credentials: "include",
+                        body: JSON.stringify({ toUserId: f.id }),
+                      });
+                      const j = await res.json().catch(() => ({}));
+                      if (res.ok) {
+                        setDuoModalOpen(false);
+                      } else {
+                        alert(j.message || "Erro ao enviar convite.");
+                      }
+                    } finally {
+                      setInvitingDuo(null);
+                    }
+                  }}
+                  className="w-full rounded-xl border border-[var(--hub-border)] bg-[var(--hub-bg-elevated)]/50 px-4 py-3 text-left text-sm font-medium text-[var(--hub-text)] hover:bg-[var(--hub-accent)]/10 disabled:opacity-50 flex items-center gap-3"
+                >
+                  <span className="truncate">{f.name || f.username || f.id}</span>
+                  {invitingDuo === f.id ? <Loader2 size={16} className="animate-spin shrink-0" /> : null}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="pl-6 py-2 border-l-4" style={{ borderColor: QUEUE_COLORS[type] ?? "var(--hub-accent)" }}>
         <h1 className="text-2xl font-black uppercase tracking-tight text-[var(--hub-text)] flex items-center gap-2">

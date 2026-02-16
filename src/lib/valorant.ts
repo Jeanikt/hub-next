@@ -114,7 +114,7 @@ async function getLastCustomMatchInternal(
       `${BASE_URL}/v4/matches/${region}/${platform}/${encodeURIComponent(name)}/${encodeURIComponent(tag)}`
     );
     url.searchParams.set("mode", "custom");
-    url.searchParams.set("size", String(Math.min(20, Math.max(1, size))));
+    url.searchParams.set("size", String(Math.min(30, Math.max(1, size))));
     const res = await valorantFetch(url.toString(), {
       headers: getHeaders(),
       next: { revalidate },

@@ -52,6 +52,8 @@ export default function QueuePage() {
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [duoInvites, setDuoInvites] = useState<{ id: number; queueType: string; fromUser: { username: string | null; name: string | null }; createdAt: string }[]>([]);
+  const [acceptingInviteId, setAcceptingInviteId] = useState<number | null>(null);
 
   async function fetchStatus() {
     try {
@@ -85,6 +87,17 @@ export default function QueuePage() {
     const interval = setInterval(fetchStatus, 15000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (!data?.inQueue) {
+      fetch("/api/queue/duo-invites", { credentials: "include" })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((j) => j?.invites && setDuoInvites(j.invites))
+        .catch(() => {});
+    } else {
+      setDuoInvites([]);
+    }
+  }, [data?.inQueue]);
 
   async function joinQueue(queueType: string) {
     setJoining(queueType);
@@ -153,6 +166,67 @@ export default function QueuePage() {
       {error && (
         <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-red-400 text-sm">
           {error}
+        </div>
+      )}
+
+      {duoInvites.length > 0 && (
+        <div className="rounded-2xl border border-[var(--hub-accent)]/40 bg-[var(--hub-accent)]/5 p-4 clip-card space-y-3">
+          <h2 className="font-bold text-[var(--hub-text)] flex items-center gap-2">
+            <Users size={20} className="text-[var(--hub-accent)]" />
+            Convites para fila em duo
+          </h2>
+          {duoInvites.map((inv) => (
+            <div key={inv.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--hub-border)] bg-[var(--hub-bg-card)] p-3">
+              <span className="text-sm text-[var(--hub-text)]">
+                <strong>{inv.fromUser.name || inv.fromUser.username || "Alguém"}</strong> te convidou para a fila {getQueueDisplayName(inv.queueType)}
+              </span>
+              <div className="flex gap-2">
+                <button
+                  onClick={async () => {
+                    setAcceptingInviteId(inv.id);
+                    try {
+                      const res = await fetch("/api/queue/accept-duo-invite", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        credentials: "include",
+                        body: JSON.stringify({ inviteId: inv.id }),
+                      });
+                      const j = await res.json().catch(() => ({}));
+                      if (res.ok) {
+                        setDuoInvites((prev) => prev.filter((i) => i.id !== inv.id));
+                        if (j.matchFound && j.pendingAccept) router.push(`/queue/waiting/${inv.queueType}?accept=1`);
+                        else router.push(`/queue/waiting/${inv.queueType}`);
+                      } else {
+                        alert(j.message || "Erro ao aceitar.");
+                      }
+                    } finally {
+                      setAcceptingInviteId(null);
+                    }
+                  }}
+                  disabled={!!joining || acceptingInviteId !== null}
+                  className="rounded-lg bg-[var(--hub-accent)] px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50 flex items-center gap-1"
+                >
+                  {acceptingInviteId === inv.id ? <Loader2 size={14} className="animate-spin" /> : null}
+                  Aceitar
+                </button>
+                <button
+                  onClick={async () => {
+                    const res = await fetch("/api/queue/decline-duo-invite", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      credentials: "include",
+                      body: JSON.stringify({ inviteId: inv.id }),
+                    });
+                    if (res.ok) setDuoInvites((prev) => prev.filter((i) => i.id !== inv.id));
+                  }}
+                  disabled={acceptingInviteId !== null}
+                  className="rounded-lg border border-[var(--hub-border)] px-3 py-1.5 text-xs text-[var(--hub-text-muted)] hover:bg-[var(--hub-bg-elevated)] disabled:opacity-50"
+                >
+                  Recusar
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 

@@ -63,6 +63,23 @@ function normalizeRiotKey(name: string, tag: string): string {
   return `${String(name || "").trim().toLowerCase()}#${String(tag || "").trim().toLowerCase()}`;
 }
 
+/** Normalização mais agressiva para matching: remove acentos e caracteres extras (API pode vir diferente). */
+function normalizeRiotKeyRelaxed(name: string, tag: string): string {
+  const n = String(name ?? "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Mc}/gu, "")
+    .replace(/\p{Mn}/gu, "");
+  const t = String(tag ?? "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Mc}/gu, "")
+    .replace(/\p{Mn}/gu, "");
+  return `${n}#${t}`;
+}
+
 function normalizeTeam(s: unknown): "red" | "blue" | null {
   const v = String(s ?? "").trim().toLowerCase();
   if (v === "red") return "red";
@@ -109,7 +126,7 @@ function computeWinnerTeam(details: ValorantMatchDetails): "red" | "blue" | null
     blueRounds = teams.blue?.rounds_won ?? 0;
   } else if (Array.isArray(teams)) {
     for (const t of teams) {
-      const id = String(t.team_id ?? "").toLowerCase();
+      const id = String(t.team_id ?? "").trim().toLowerCase();
       if (id === "red") {
         if (t.has_won) redWon = true;
         redRounds = t.rounds_won ?? redRounds;
@@ -125,6 +142,24 @@ function computeWinnerTeam(details: ValorantMatchDetails): "red" | "blue" | null
   if (blueWon) return "blue";
   if (redRounds > blueRounds) return "red";
   if (blueRounds > redRounds) return "blue";
+
+  const meta = details?.metadata as { round_win_team?: string; winning_team?: string } | undefined;
+  const winTeam = (meta?.round_win_team ?? meta?.winning_team ?? "").trim().toLowerCase();
+  if (winTeam === "red") return "red";
+  if (winTeam === "blue") return "blue";
+
+  const allPlayers = getAllPlayers(details);
+  let redWins = 0;
+  let blueWins = 0;
+  for (const pl of allPlayers) {
+    const team = getPlayerTeam(pl);
+    const won = (pl as { has_won?: boolean }).has_won === true;
+    if (won && team === "red") redWins++;
+    if (won && team === "blue") blueWins++;
+  }
+  if (redWins > blueWins) return "red";
+  if (blueWins > redWins) return "blue";
+
   return null;
 }
 
@@ -241,24 +276,26 @@ function compareDbVsRiot(
   const hubByKey = new Map(
     participants.map((p) => [
       normalizeRiotKey(p.user.riotId!, p.user.tagline!),
-      { userId: p.userId, team: normalizeTeam(p.team) },
+      { userId: p.userId, team: normalizeTeam(p.team), keyRelaxed: normalizeRiotKeyRelaxed(p.user.riotId!, p.user.tagline!) },
     ])
   );
 
   const allPlayers = getAllPlayers(details);
-  const riotByKey = new Map(
-    allPlayers.map((pl) => [
-      normalizeRiotKey(pl.name ?? "", pl.tag ?? ""),
-      { team: getPlayerTeam(pl) },
-    ])
-  );
+  const riotByKey = new Map<string, { team: "red" | "blue" | null }>();
+  for (const pl of allPlayers) {
+    const key = normalizeRiotKey(pl.name ?? "", pl.tag ?? "");
+    const keyRelaxed = normalizeRiotKeyRelaxed(pl.name ?? "", pl.tag ?? "");
+    const entry = { team: getPlayerTeam(pl) };
+    riotByKey.set(key, entry);
+    if (keyRelaxed !== key) riotByKey.set(keyRelaxed, entry);
+  }
 
   const missingPlayers: string[] = [];
   const teamMismatches: string[] = [];
   let matchedPlayers = 0;
 
   for (const [key, hub] of hubByKey.entries()) {
-    const riot = riotByKey.get(key);
+    const riot = riotByKey.get(key) ?? riotByKey.get(hub.keyRelaxed);
     if (!riot) {
       missingPlayers.push(key);
       continue;
@@ -315,26 +352,37 @@ export async function syncPendingMatchesFromRiot(): Promise<SyncResult> {
     }
 
     const creator = participants.find((p) => p.userId === match.creatorId) ?? participants[0];
-    const name = creator.user.riotId!.trim();
-    const tag = creator.user.tagline!.trim();
+    const toTry = [creator, ...participants.filter((p) => p.userId !== creator.userId)].slice(0, 3);
 
-    await new Promise((r) => setTimeout(r, DELAY_MS));
+    const seenMatchIds = new Set<string>();
+    const recentMatches: ValorantMatch[] = [];
 
-    let recentData: { data?: ValorantMatch[] } | null = null;
-    try {
-      recentData = await getRecentCustomMatches(name, tag, 20);
-    } catch (e) {
-      const msg =
-        e instanceof Error && e.message === VALORANT_RATE_LIMIT_ERROR
-          ? "rate limit (recentCustoms)"
-          : `recentCustoms: ${e instanceof Error ? e.message : "erro"}`;
-      errors.push(`[${match.matchId}] ${msg}`);
-      await touchMatchUpdatedAt(match.id);
-      continue;
+    for (const participant of toTry) {
+      const name = participant.user.riotId!.trim();
+      const tag = participant.user.tagline!.trim();
+      await new Promise((r) => setTimeout(r, DELAY_MS));
+      let data: { data?: ValorantMatch[] } | null = null;
+      try {
+        data = await getRecentCustomMatches(name, tag, 30);
+      } catch (e) {
+        if (e instanceof Error && e.message === VALORANT_RATE_LIMIT_ERROR) {
+          errors.push(`[${match.matchId}] rate limit (recentCustoms)`);
+          break;
+        }
+        continue;
+      }
+      if (!data?.data?.length) continue;
+      for (const m of data.data) {
+        const mid = getMatchIdFromMetadata(m);
+        if (mid && !seenMatchIds.has(mid)) {
+          seenMatchIds.add(mid);
+          recentMatches.push(m);
+        }
+      }
     }
 
-    if (!recentData?.data?.length) {
-      debug.push(`[${match.matchId}] skip: perfil do criador sem customs recentes`);
+    if (recentMatches.length === 0) {
+      debug.push(`[${match.matchId}] skip: perfil do(s) participante(s) sem customs recentes`);
       await touchMatchUpdatedAt(match.id);
       continue;
     }
@@ -345,7 +393,7 @@ export async function syncPendingMatchesFromRiot(): Promise<SyncResult> {
 
     const tried: string[] = [];
 
-    for (const first of recentData.data) {
+    for (const first of recentMatches) {
       if (!isMatchCompleted(first)) continue;
 
       const mid = getMatchIdFromMetadata(first);
@@ -582,29 +630,39 @@ export async function syncSingleMatchFromRiot(matchId: string): Promise<Conclude
   }
 
   const creator = participants.find((p) => p.userId === match.creatorId) ?? participants[0];
-  const name = creator.user.riotId!.trim();
-  const tag = creator.user.tagline!.trim();
+  const toTry = [creator, ...participants.filter((p) => p.userId !== creator.userId)].slice(0, 3);
 
-  await new Promise((r) => setTimeout(r, DELAY_MS));
+  const seenMatchIds = new Set<string>();
+  const recentMatches: ValorantMatch[] = [];
 
-  let recentData: { data?: ValorantMatch[] } | null = null;
-  try {
-    recentData = await getRecentCustomMatches(name, tag, 20);
-  } catch (e) {
-    const msg =
-      e instanceof Error && e.message === VALORANT_RATE_LIMIT_ERROR
-        ? "Rate limit da API Riot. Tente em 1 minuto."
-        : e instanceof Error
-          ? e.message
-          : "Erro na API Riot";
-    return { success: false, error: msg, debug: [`[${matchId}] recentCustoms: ${msg}`] };
+  for (const participant of toTry) {
+    const name = participant.user.riotId!.trim();
+    const tag = participant.user.tagline!.trim();
+    await new Promise((r) => setTimeout(r, DELAY_MS));
+    let data: { data?: ValorantMatch[] } | null = null;
+    try {
+      data = await getRecentCustomMatches(name, tag, 30);
+    } catch (e) {
+      if (e instanceof Error && e.message === VALORANT_RATE_LIMIT_ERROR) {
+        return { success: false, error: "Rate limit da API Riot. Tente em 1 minuto.", debug: [`[${matchId}] rate limit`] };
+      }
+      continue;
+    }
+    if (!data?.data?.length) continue;
+    for (const m of data.data) {
+      const mid = getMatchIdFromMetadata(m);
+      if (mid && !seenMatchIds.has(mid)) {
+        seenMatchIds.add(mid);
+        recentMatches.push(m);
+      }
+    }
   }
 
-  if (!recentData?.data?.length) {
+  if (recentMatches.length === 0) {
     return {
       success: false,
-      error: "Nenhuma partida custom finalizada encontrada no perfil do criador.",
-      debug: [`[${matchId}] sem customs recentes no perfil do criador`],
+      error: "Nenhuma partida custom finalizada encontrada nos perfis dos participantes.",
+      debug: [`[${matchId}] sem customs recentes`],
     };
   }
 
@@ -614,7 +672,7 @@ export async function syncSingleMatchFromRiot(matchId: string): Promise<Conclude
 
   const tried: string[] = [];
 
-  for (const first of recentData.data) {
+  for (const first of recentMatches) {
     if (!isMatchCompleted(first)) continue;
 
     const mid = getMatchIdFromMetadata(first);

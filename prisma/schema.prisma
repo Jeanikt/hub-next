@@ -106,6 +106,8 @@ model User {
   profileLikesSent       ProfileLike[]          @relation("ProfileLikesSent")
   queueEntries           QueueEntry?
   queueWaitingMessages   QueueWaitingMessage[]
+  queueDuoInvitesSent    QueueDuoInvite[]       @relation("QueueDuoInviteFrom")
+  queueDuoInvitesReceived QueueDuoInvite[]      @relation("QueueDuoInviteTo")
   referredBy             Referral?              @relation("ReferredBy")
   referralsSent          Referral[]             @relation("ReferralsSent")
   reports                Report[]
@@ -186,6 +188,22 @@ model QueueEntry {
 
   @@index([queueType])
   @@map("queue_entries")
+}
+
+/// Convite para entrar na fila em duo (quem está na fila convida um amigo).
+model QueueDuoInvite {
+  id        Int      @id @default(autoincrement())
+  fromUserId String
+  toUserId   String
+  queueType  String
+  status     String   @default("pending")
+  createdAt  DateTime @default(now())
+  fromUser   User     @relation("QueueDuoInviteFrom", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUser     User     @relation("QueueDuoInviteTo", fields: [toUserId], references: [id], onDelete: Cascade)
+
+  @@unique([fromUserId, toUserId, queueType])
+  @@index([toUserId, status])
+  @@map("queue_duo_invites")
 }
 
 /// Mensagens do chat da sala de espera da fila. Autor não é exposto (usuários anônimos).
