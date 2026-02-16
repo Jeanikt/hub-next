@@ -177,7 +177,7 @@ export default function UserProfileClient({ username }: { username: string }) {
     );
   }
 
-  const displayName = profile.username ?? profile.name ?? "Jogador";
+  const displayName = profile.name?.trim() ? profile.name.trim() : (profile.username ?? "Jogador");
   const isOwnProfile = (session?.user as { id?: string })?.id === profile.id;
   const mode = (profile.profileBackgroundMode ?? "full") as "full" | "banner" | "both";
   const hasUrl = Boolean(profile.profileBackgroundUrl);
@@ -333,7 +333,7 @@ export default function UserProfileClient({ username }: { username: string }) {
                     onClose={() => setReportOpen(false)}
                     targetType="user"
                     targetId={profile.id}
-                    targetLabel={profile.username ?? profile.name ?? "Jogador"}
+                    targetLabel={profile.name?.trim() ? profile.name.trim() : (profile.username ?? "Jogador")}
                   />
                 )}
               </div>

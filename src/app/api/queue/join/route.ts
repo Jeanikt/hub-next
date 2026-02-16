@@ -16,10 +16,6 @@ import { serverError } from "@/src/lib/serverLog";
 
 type QueueType = (typeof ALL_QUEUE_TYPES)[number];
 
-function getQueueSizes(qt: QueueType): { playersNeeded: number } {
-  return { playersNeeded: getPlayersRequired(qt) };
-}
-
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
@@ -100,18 +96,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const playersNeeded = getPlayersRequired(qt);
+    const currentCount = await prisma.queueEntry.count({
+      where: { queueType: qt },
+    });
+    if (currentCount >= playersNeeded) {
+      return NextResponse.json(
+        { message: "Esta fila já está cheia. Tente outra fila ou aguarde uma vaga." },
+        { status: 409 }
+      );
+    }
+
     // entra na fila
     await prisma.queueEntry.create({
       data: { userId: session.user.id, queueType: qt },
     });
     await invalidateQueueStatusCache();
 
-    const { playersNeeded } = getQueueSizes(qt);
-
     const entries = await prisma.queueEntry.findMany({
       where: { queueType: qt },
       orderBy: { joinedAt: "asc" },
-      take: playersNeeded,
+      take: playersNeeded, // já validado que count < playersNeeded antes de criar
       include: { user: { select: { primaryRole: true } } },
     });
 

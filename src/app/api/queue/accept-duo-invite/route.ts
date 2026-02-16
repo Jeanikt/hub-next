@@ -83,6 +83,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const playersNeeded = getPlayersRequired(qt);
+    const currentCount = await prisma.queueEntry.count({
+      where: { queueType: qt },
+    });
+    if (currentCount >= playersNeeded) {
+      return NextResponse.json(
+        { message: "Esta fila já está cheia. O convite não pode ser aceito agora." },
+        { status: 409 }
+      );
+    }
+
     await prisma.$transaction([
       prisma.queueDuoInvite.update({
         where: { id: inviteId },
@@ -94,7 +105,6 @@ export async function POST(request: NextRequest) {
     ]);
     await invalidateQueueStatusCache();
 
-    const playersNeeded = getPlayersRequired(qt);
     const entries = await prisma.queueEntry.findMany({
       where: { queueType: qt },
       orderBy: { joinedAt: "asc" },
